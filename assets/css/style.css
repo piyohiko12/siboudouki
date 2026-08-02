@@ -84,8 +84,9 @@ body[data-course="shushoku"] {
 /* アクセント色の上に置く文字色。ライトでは白、ダークでは暗い色にする */
 :root { --on-accent: #ffffff; }
 
+/* 端末の設定がダークのとき（ただし手動でライトに固定していない場合） */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --on-accent: #10141c;
     --accent: #8aa4f5;
     --accent-strong: #a5b9ff;
@@ -119,14 +120,58 @@ body[data-course="shushoku"] {
     --shadow-3: 0 2px 6px rgba(0, 0, 0, .4), 0 18px 40px -14px rgba(0, 0, 0, .6);
   }
 
-  body[data-course="shingaku"] {
+  :root:not([data-theme="light"]) body[data-course="shingaku"] {
     --accent: #8aa4f5; --accent-strong: #a5b9ff; --accent-soft: #1e2740;
     --accent-line: #33406a; --accent-ink: #b9c8ff;
   }
-  body[data-course="shushoku"] {
+  :root:not([data-theme="light"]) body[data-course="shushoku"] {
     --accent: #55c2dc; --accent-strong: #7ad4e9; --accent-soft: #102b33;
     --accent-line: #1f4d5c; --accent-ink: #8fdcef;
   }
+}
+
+/* 手動でダークに固定したとき（html に data-theme="dark" が付く） */
+:root[data-theme="dark"] {
+    --on-accent: #10141c;
+    --accent: #8aa4f5;
+    --accent-strong: #a5b9ff;
+    --accent-soft: #1e2740;
+    --accent-line: #33406a;
+    --accent-ink: #b9c8ff;
+
+    --ink: #e7ebf4;
+    --ink-2: #a3adc2;
+    --ink-3: #79839a;
+    --bg: #11141b;
+    --bg-grain: #151924;
+    --surface: #191e29;
+    --surface-2: #1f2532;
+    --line: #2b3242;
+    --line-2: #232a38;
+
+    --ok: #5fc79b;
+    --ok-soft: #122b22;
+    --ok-line: #2c5a46;
+    --warn: #e0b054;
+    --warn-soft: #2c2413;
+    --warn-line: #5c4a22;
+    --err: #f08a8a;
+    --err-soft: #2e1a1c;
+    --err-line: #5f3235;
+    --star: #f0b642;
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .3);
+    --shadow-2: 0 1px 3px rgba(0, 0, 0, .35), 0 6px 18px -6px rgba(0, 0, 0, .5);
+    --shadow-3: 0 2px 6px rgba(0, 0, 0, .4), 0 18px 40px -14px rgba(0, 0, 0, .6);
+}
+
+:root[data-theme="dark"] body[data-course="shingaku"] {
+    --accent: #8aa4f5; --accent-strong: #a5b9ff; --accent-soft: #1e2740;
+    --accent-line: #33406a; --accent-ink: #b9c8ff;
+}
+:root[data-theme="dark"] body[data-course="shushoku"] {
+    --accent: #55c2dc; --accent-strong: #7ad4e9; --accent-soft: #102b33;
+    --accent-line: #1f4d5c; --accent-ink: #8fdcef;
 }
 
 /* --------------------------------------------------------------------------
