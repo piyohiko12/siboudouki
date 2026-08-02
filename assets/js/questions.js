@@ -36,6 +36,76 @@
     return COURSES.find(function (c) { return c.id === mode; }) || COURSES[0];
   }
 
+  // ── 魅力カードの選択肢 ────────────────────────────────
+  // lead は、生成される文の書き出しにそのまま使う。
+  const WHERE_SHINGAKU = [
+    { label: 'オープンキャンパス', lead: 'オープンキャンパスに参加したとき、' },
+    { label: '体験授業', lead: '体験授業を受けたとき、' },
+    { label: '学校見学', lead: '学校を見学したとき、' },
+    { label: '個別相談', lead: '個別相談で話を聞いたとき、' },
+    { label: '学園祭', lead: '学園祭を見に行ったとき、' },
+    { label: '在校生・卒業生の話', lead: '在校生の方から話を聞いたとき、' },
+    { label: '先生の話', lead: '先生から話を聞いたとき、' },
+    { label: '学校案内・パンフレット', lead: '学校案内を読んだとき、' },
+    { label: '学校のホームページ', lead: '学校のホームページを見たとき、' },
+    { label: '進学ガイダンス', lead: '進学ガイダンスで話を聞いたとき、' }
+  ];
+
+  const WHERE_SHUSHOKU = [
+    { label: '職場見学', lead: '職場見学に行ったとき、' },
+    { label: '会社説明会', lead: '会社説明会に参加したとき、' },
+    { label: 'インターンシップ', lead: 'インターンシップに参加したとき、' },
+    { label: '先輩社員の話', lead: '先輩社員の方から話を聞いたとき、' },
+    { label: '先生の話', lead: '先生から話を聞いたとき、' },
+    { label: '求人票', lead: '求人票を読んだとき、' },
+    { label: '会社のホームページ', lead: '会社のホームページを見たとき、' },
+    { label: '会社案内・パンフレット', lead: '会社案内を読んだとき、' },
+    { label: '製品を実際に見て', lead: '実際に製品を見たとき、' }
+  ];
+
+  /**
+   * 感情の選択肢。
+   *  te  … 文の途中でつなぐ形（「わくわくし、〜」）
+   *  end … 文を締める形（「〜わくわくしました。」）
+   * こうしておくと、2つ選んでも1文に自然につながる。
+   */
+  const FEELINGS = [
+    { label: 'わくわくした', te: 'わくわくし', end: 'わくわくしました' },
+    { label: 'おどろいた', te: 'おどろき', end: 'おどろきました' },
+    { label: '自分もやってみたい', te: '自分もやってみたいと思い', end: '自分もやってみたいと思いました' },
+    { label: '見習いたい', te: '自分も見習いたいと思い', end: '自分も見習いたいと思いました' },
+    { label: '安心した', te: '安心し', end: '安心しました' },
+    { label: '想像とちがった', te: '思っていたものとのちがいにおどろき', end: '思っていたものとちがい、見方が変わりました' },
+    { label: '自分に合うと感じた', te: '自分に合っていると感じ', end: '自分に合っていると感じました' },
+    { label: 'あこがれた', te: 'あこがれを持ち', end: 'あこがれを持ちました' },
+    { label: '刺激を受けた', te: '強い刺激を受け', end: '強い刺激を受けました' },
+    { label: '責任の重さを感じた', te: '責任の重さを感じ', end: '責任の重さを感じました' },
+    { label: '楽しそうだと思った', te: '楽しそうだと感じ', end: '楽しそうだと感じました' },
+    { label: '真剣さが伝わった', te: '真剣さが伝わり', end: '真剣さが伝わってきました' }
+  ];
+
+  function whereList(mode) {
+    return mode === 'shushoku' ? WHERE_SHUSHOKU : WHERE_SHINGAKU;
+  }
+
+  /** 選んだ場面から、文の書き出しを取り出す（自由入力ならそのまま使う） */
+  function whereLead(label, mode) {
+    const hit = whereList(mode).find(function (w) { return w.label === label; });
+    if (hit) return hit.lead;
+    return label ? label + 'のとき、' : '';
+  }
+
+  /** 選んだ感情を1つの述語にまとめる（最大2つまで） */
+  function feelPhrase(labels) {
+    const picked = (labels || [])
+      .map(function (l) { return FEELINGS.find(function (f) { return f.label === l; }); })
+      .filter(Boolean)
+      .slice(0, 2);
+    if (!picked.length) return '';
+    if (picked.length === 1) return picked[0].end;
+    return picked[0].te + '、' + picked[1].end;
+  }
+
   /**
    * 入力欄の種類
    *  text / textarea / select / number / chips / whychain
@@ -155,6 +225,13 @@
             hint: '取得予定のものも「（〇年〇月取得予定）」と書けます。'
           },
           {
+            id: 'gapNow', type: 'textarea', label: '今の自分に足りないと感じていること', rows: 2,
+            placeholder: job
+              ? '例）指示されたことはできるが、自分から動くのがまだ苦手だと感じています。'
+              : '例）調べることは好きですが、それを人に伝える力がまだ足りないと感じています。',
+            hint: '書けなくても大丈夫。書けると「成長課題型」という構成が使えるようになります。'
+          },
+          {
             id: 'personality', type: 'chips', label: '自分の性格（人から言われることでもOK）',
             options: ['まじめ', 'こつこつ続けられる', '責任感が強い', '好奇心が強い', '人の話をよく聞く',
               'まわりを見て動ける', 'リーダーシップがある', '前向き', '落ち着いている', '明るい'],
@@ -209,14 +286,21 @@
             allowFree: true
           },
           {
-            id: 'visitImpression', type: 'textarea', label: '行ってみて印象に残ったこと', rows: 3,
-            placeholder: job
-              ? '例）職場見学のとき、社員の方が作業の前に必ず声をかけ合っていたのが印象に残っています。安全を全員で守る雰囲気があると感じました。'
-              : '例）体験授業で、先生が「答えより考え方が大事」と話されたことが印象に残っています。学生同士で議論する時間が長く、自分もこの中で学びたいと思いました。',
-            hint: 'その場で「見た・聞いた・感じた」ことは、他の人には書けない強い材料です。'
+            id: 'attractCards', type: 'cards', required: true,
+            label: '魅力カード',
+            max: 3,
+            whereOptions: whereList(mode),
+            feelOptions: FEELINGS.map(function (f) { return f.label; }),
+            hint: 'あなたが「いいな」と思った瞬間を、1枚ずつカードにします。ここに書いたことが、そのまま本文の中心になります。まず1枚、できれば2〜3枚。',
+            whatPlaceholder: job
+              ? '例）社員の方が、作業を始める前に必ずおたがいに声をかけ合っていた'
+              : '例）学生同士が、答えではなく考え方のほうを話し合っていた',
+            linkPlaceholder: job
+              ? '例）アルバイトで、声をかけ合うとミスが減った経験と重なります'
+              : '例）課題研究で、人と話すほど自分の考えが整理された経験と重なります'
           },
           {
-            id: 'attractPoints', type: 'chips', label: '魅力を感じた点', required: true,
+            id: 'attractPoints', type: 'chips', label: '魅力を感じた点（分類）', required: true,
             options: job
               ? ['仕事の内容', '会社の製品・サービス', '技術力', '地域への貢献', '研修・人材育成',
                 '資格取得の支援', '職場の雰囲気', '会社の理念', '安定性', '働き方・休日', '若手の活躍']
@@ -330,5 +414,14 @@
   /** チップ入力欄のうち、文章生成で「〜や〜」とつなぐ最大数 */
   const CHIP_JOIN_LIMIT = 3;
 
-  global.QUESTIONS = { COURSES: COURSES, courseOf: courseOf, buildSteps: buildSteps, CHIP_JOIN_LIMIT: CHIP_JOIN_LIMIT };
+  global.QUESTIONS = {
+    COURSES: COURSES,
+    FEELINGS: FEELINGS,
+    courseOf: courseOf,
+    buildSteps: buildSteps,
+    whereList: whereList,
+    whereLead: whereLead,
+    feelPhrase: feelPhrase,
+    CHIP_JOIN_LIMIT: CHIP_JOIN_LIMIT
+  };
 })(window);

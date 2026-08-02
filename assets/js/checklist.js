@@ -229,6 +229,53 @@
     return result('notation', '表記', 'warn', '志望理由書での書き方にそろえましょう。', out);
   }
 
+  /**
+   * 使い回し表現（誰が書いても同じになるフレーズ）
+   * 志望動機で最も「その人らしさ」が消える原因なので、見つけたら置き換えを促す。
+   */
+  const CLICHE_COMMON = [
+    'アットホーム', '風通しがよい', '成長できる環境', '幅広い知識', '社会に貢献',
+    '人の役に立ちたい', '将来の夢を叶え', '自分を高め', '魅力を感じました', '興味を持ちました'
+  ];
+  const CLICHE_SHINGAKU = ['校風が自分に合', '雰囲気が自分に合', '施設が充実', '先生が親身'];
+  const CLICHE_SHUSHOKU = ['安定した会社', '地域に根ざし', '手に職をつけ', '社会人として成長'];
+
+  function checkCliche(text, d) {
+    const words = CLICHE_COMMON.concat(d.course === 'shushoku' ? CLICHE_SHUSHOKU : CLICHE_SHINGAKU);
+    const hits = words.filter(function (w) { return text.indexOf(w) !== -1; });
+    if (!hits.length) {
+      return result('cliche', '使い回し表現', 'ok', '誰でも書ける決まり文句は使われていません。');
+    }
+    return result('cliche', '使い回し表現', 'warn',
+      '多くの人が書く表現です。あなたが実際に見た場面（魅力カード）に置き換えると、ぐっと自分だけの文章になります。',
+      hits.map(function (w) { return '「' + w + '」'; }));
+  }
+
+  /**
+   * 魅力カードに書いた「自分が見てきたこと」が、本文に残っているか。
+   * 字数調整や手直しで落ちてしまうことがあるため、提出前に気づけるようにする。
+   */
+  function checkOwnExperience(text, d) {
+    const cards = (d.attractCards || []).filter(function (c) { return c && String(c.what || '').trim(); });
+    const flat = text.replace(/[\s　]/g, '');
+
+    if (!cards.length) {
+      return result('own', '見てきたことの反映', 'warn',
+        '魅力カードが1枚もありません。STEP 3 で「どこで・何を見て・どう感じたか」を書くと、あなたにしか書けない文章になります。');
+    }
+
+    const used = cards.filter(function (c) {
+      return flat.indexOf(String(c.what).replace(/[\s　]/g, '').slice(0, 10)) !== -1;
+    });
+
+    if (!used.length) {
+      return result('own', '見てきたことの反映', 'error',
+        '魅力カードに書いた内容が、本文に入っていません。あなたが実際に見た場面こそが、この志望動機の核心です。');
+    }
+    return result('own', '見てきたことの反映', 'ok',
+      '自分の目で見た場面が' + used.length + '件、本文に入っています。');
+  }
+
   // ── まとめて実行 ─────────────────────────────────────
   function run(text, data) {
     const t = String(text || '');
@@ -237,8 +284,10 @@
       checkLength(t, d),
       checkTone(t, d),
       checkTargetName(t, d),
+      checkOwnExperience(t, d),
       checkFuture(t, d),
       checkConditionOnly(t, d),
+      checkCliche(t, d),
       checkSpoken(t),
       checkNegative(t, d),
       checkSentenceLength(t),
@@ -259,6 +308,7 @@
   const MANUAL_SHINGAKU = [
     '志望校の名前・学部・学科名を、正式名称で正しく書いた',
     '学校のパンフレットやHPの文をそのまま写していない（自分の言葉になっている）',
+    '自分が見た場面が、他の人には書けない具体的なものになっている',
     'この学校にしか当てはまらない内容になっている',
     '高校での経験と、進学先で学びたいことがつながっている',
     '入学後の学びと、卒業後の進路がつながっている'
@@ -267,6 +317,7 @@
   const MANUAL_SHUSHOKU = [
     '会社名を、求人票のとおりに正しく書いた（株式会社の位置も）',
     '会社のホームページの文をそのまま写していない（自分の言葉になっている）',
+    '自分が見た場面が、他の人には書けない具体的なものになっている',
     'この会社にしか当てはまらない内容になっている',
     '仕事の内容を正しく理解して書けている',
     '高校での経験と、入社後に活かせる力がつながっている',

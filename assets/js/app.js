@@ -73,12 +73,33 @@
       const saved = JSON.parse(raw);
       Object.assign(state.data, saved.data || {});
       state.data.whyChain = Object.assign({ why1: '', why2: '', why3: '' }, state.data.whyChain);
+      migrate();
       state.custom = saved.custom || {};
       state.bodyEdited = !!saved.bodyEdited;
       state.index = Math.min(saved.index || 0, views().length - 1);
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /** 旧バージョンの保存データを、今の形に寄せる */
+  function migrate() {
+    // 「印象に残ったこと」は、魅力カードの②に置き換わった
+    if (state.data.visitImpression && !(state.data.attractCards || []).length) {
+      state.data.attractCards = [{
+        where: state.data.knewBy || '',
+        what: state.data.visitImpression,
+        feel: [],
+        link: '',
+        weight: 3
+      }];
+    }
+    delete state.data.visitImpression;
+
+    // 旧データには存在しないテンプレートIDが入っていることがある
+    if (!global.COMPOSE.TEMPLATES.some(function (t) { return t.id === state.data.template; })) {
+      state.data.template = 'prep';
     }
   }
 
@@ -196,6 +217,10 @@
         wrap.appendChild(renderWhyChain(field));
         break;
 
+      case 'cards':
+        wrap.appendChild(renderCards(field));
+        break;
+
       default:
         input = h('input', {
           id: 'f_' + field.id, class: 'input', type: 'text',
@@ -259,6 +284,155 @@
     }
 
     if (!state.data[field.id]) state.data[field.id] = selected;
+    repaint();
+    return box;
+  }
+
+  // ── 魅力カード ────────────────────────────────────
+  // 「どこで・何を見て・どう感じて・自分の何とつながるか」を1枚にまとめる。
+  // ここに書いた内容が、そのまま本文の中心になる。
+  const WEIGHT_LABELS = ['', '気になった', 'かなり大きい', '一番の理由'];
+
+  function renderCards(field) {
+    const box = h('div', { class: 'cards' });
+    if (!Array.isArray(state.data[field.id])) state.data[field.id] = [];
+    const list = state.data[field.id];
+
+    function newCard() {
+      return { where: '', what: '', feel: [], link: '', weight: list.length === 0 ? 3 : 2 };
+    }
+
+    /** カードの追加・削除・★変更のときだけ作り直す（入力中は作り直さない）*/
+    function repaint() {
+      box.innerHTML = '';
+
+      list.forEach(function (card, i) {
+        const el = h('div', { class: 'attrCard' });
+
+        el.appendChild(h('div', { class: 'attrCard__head' }, [
+          h('span', { class: 'attrCard__no', text: '魅力カード ' + (i + 1) }),
+          renderWeight(card, repaint),
+          h('button', {
+            type: 'button', class: 'attrCard__del', title: 'このカードを削除',
+            onclick: function () {
+              if (!confirm('このカードを削除しますか？')) return;
+              list.splice(i, 1);
+              save();
+              repaint();
+            }
+          }, ['削除'])
+        ]));
+
+        // ① どこで感じたか
+        el.appendChild(h('label', { class: 'attrCard__label', text: '① どこで感じた？' }));
+        const sel = h('select', { class: 'input' });
+        sel.appendChild(h('option', { value: '', text: '選んでください' }));
+        (field.whereOptions || []).forEach(function (w) {
+          sel.appendChild(h('option', { value: w.label, text: w.label }));
+        });
+        sel.value = card.where || '';
+        sel.addEventListener('change', function () { card.where = sel.value; scheduleSave(); });
+        el.appendChild(sel);
+
+        // ② 何を見た・聞いた
+        el.appendChild(h('label', { class: 'attrCard__label', text: '② 何を見た・聞いた？' }));
+        el.appendChild(h('p', { class: 'attrCard__hint', text: 'ここがいちばん大事。「すごかった」ではなく、その場の様子をそのまま書く。' }));
+        const what = h('textarea', {
+          class: 'input input--area', rows: 2, placeholder: field.whatPlaceholder || ''
+        });
+        what.value = card.what || '';
+        what.addEventListener('input', function () {
+          card.what = what.value;
+          emitChange(field.id);
+          scheduleSave();
+        });
+        el.appendChild(what);
+
+        // ③ そのときの気持ち
+        el.appendChild(h('label', { class: 'attrCard__label', text: '③ そのとき、どう感じた？' }));
+        el.appendChild(h('p', { class: 'attrCard__hint', text: '近いものを2つまで。文章の中で自然な形に変換されます。' }));
+        el.appendChild(renderFeelChips(card, field));
+
+        // ④ 自分とのつながり
+        el.appendChild(h('label', { class: 'attrCard__label', text: '④ 自分の何とつながる？（書けたら）' }));
+        const link = h('textarea', {
+          class: 'input input--area', rows: 2, placeholder: field.linkPlaceholder || ''
+        });
+        link.value = card.link || '';
+        link.addEventListener('input', function () { card.link = link.value; scheduleSave(); });
+        el.appendChild(link);
+
+        el.appendChild(h('div', { class: 'attrCard__preview' }, [
+          h('span', { class: 'attrCard__previewLabel', text: 'この文になります' }),
+          h('span', { class: 'attrCard__previewText', text: previewOf(card) })
+        ]));
+
+        // プレビューは入力のたびに文字だけ差し替える
+        const pv = el.querySelector('.attrCard__previewText');
+        [what, link].forEach(function (t) {
+          t.addEventListener('input', function () { pv.textContent = previewOf(card); });
+        });
+        el.querySelectorAll('.chip').forEach(function (c) {
+          c.addEventListener('click', function () {
+            setTimeout(function () { pv.textContent = previewOf(card); }, 0);
+          });
+        });
+
+        box.appendChild(el);
+      });
+
+      const max = field.max || 3;
+      if (list.length < max) {
+        box.appendChild(h('button', {
+          type: 'button', class: 'attrCard__add',
+          onclick: function () { list.push(newCard()); save(); repaint(); }
+        }, [list.length === 0 ? '＋ 最初の魅力カードを作る' : '＋ 魅力をもう1つ追加する（あと' + (max - list.length) + '枚）']));
+      }
+    }
+
+    function previewOf(card) {
+      return global.COMPOSE.cardPreview(card, state.data.course) || '（②を書くと、ここに文章が出ます）';
+    }
+
+    function renderWeight(card, onChange) {
+      const wrap = h('div', { class: 'stars', title: 'どのくらい大きな理由か' });
+      [1, 2, 3].forEach(function (n) {
+        wrap.appendChild(h('button', {
+          type: 'button',
+          class: 'star' + ((card.weight || 2) >= n ? ' is-on' : ''),
+          'aria-label': WEIGHT_LABELS[n],
+          onclick: function () { card.weight = n; save(); onChange(); }
+        }, ['★']));
+      });
+      wrap.appendChild(h('span', { class: 'stars__label', text: WEIGHT_LABELS[card.weight || 2] }));
+      return wrap;
+    }
+
+    function renderFeelChips(card, field) {
+      const chips = h('div', { class: 'chips chips--sm' });
+      if (!Array.isArray(card.feel)) card.feel = [];
+      (field.feelOptions || []).forEach(function (opt) {
+        const btn = h('button', {
+          type: 'button',
+          class: 'chip' + (card.feel.indexOf(opt) !== -1 ? ' is-on' : ''),
+          onclick: function () {
+            const i = card.feel.indexOf(opt);
+            if (i !== -1) card.feel.splice(i, 1);
+            else if (card.feel.length < 2) card.feel.push(opt);
+            else return; // 2つまで
+            btn.className = 'chip' + (card.feel.indexOf(opt) !== -1 ? ' is-on' : '');
+            chips.querySelectorAll('.chip').forEach(function (c, k) {
+              c.className = 'chip' + (card.feel.indexOf(field.feelOptions[k]) !== -1 ? ' is-on' : '');
+            });
+            scheduleSave();
+          }
+        }, [opt]);
+        chips.appendChild(btn);
+      });
+      return chips;
+    }
+
+    if (!list.length) list.push(newCard());
     repaint();
     return box;
   }
@@ -336,7 +510,9 @@
       let empty;
       if (f.type === 'chips') empty = !(state.data[f.id] || []).length;
       else if (f.type === 'whychain') empty = !String(state.data.whyChain.why1 || '').trim();
-      else empty = !String(state.data[f.id] == null ? '' : state.data[f.id]).trim();
+      else if (f.type === 'cards') {
+        empty = !(state.data[f.id] || []).some(function (c) { return c && String(c.what || '').trim(); });
+      } else empty = !String(state.data[f.id] == null ? '' : state.data[f.id]).trim();
 
       if (empty) {
         ok = false;
@@ -344,7 +520,9 @@
           wrap.classList.add('has-error');
           if (err) err.textContent = f.type === 'whychain'
             ? '少なくとも「なぜ？1」は書きましょう。'
-            : 'ここは必ず入力してください。';
+            : f.type === 'cards'
+              ? '魅力カードを1枚は作りましょう。②「何を見た・聞いた」だけでも大丈夫です。'
+              : 'ここは必ず入力してください。';
           if (!firstBad) firstBad = wrap;
         }
       }
@@ -372,6 +550,11 @@
     }
 
     COURSE_SPECIFIC_FIELDS.forEach(function (k) { delete state.data[k]; });
+
+    // 魅力カードは中身を残す（いちばん大事な入力なので消さない）。
+    // ただし「どこで感じたか」の選択肢は進路で変わるため、そこだけ選び直してもらう。
+    (state.data.attractCards || []).forEach(function (c) { c.where = ''; });
+
     state.data.course = id;
     state.data.targetChars = id === 'shushoku' ? 300 : 500;
     state.data.body = '';
@@ -453,17 +636,24 @@
       h('p', { class: 'lead', text: '構成を選ぶと、あなたが書いた材料をつないで下書きを作ります。できた文章は自由に直せます。' })
     ]);
 
+    const rec = global.COMPOSE.recommend(state.data);
+    card.appendChild(h('div', { class: 'notice notice--tip' }, [
+      h('strong', { text: 'あなたにおすすめ：' + (global.COMPOSE.TEMPLATES.find(function (t) { return t.id === rec.id; }) || {}).name }),
+      h('p', { text: rec.reason + ' もちろん、別の型を選んでもすぐに切り替わります。' })
+    ]));
+
     const picker = h('div', { class: 'templates' });
     global.COMPOSE.TEMPLATES.forEach(function (t) {
       picker.appendChild(h('button', {
         type: 'button',
-        class: 'tplCard' + (state.data.template === t.id ? ' is-on' : ''),
+        class: 'tplCard' + (state.data.template === t.id ? ' is-on' : '') + (rec.id === t.id ? ' is-rec' : ''),
         onclick: function () {
           state.data.template = t.id;
           regenerate(true);
           render();
         }
       }, [
+        rec.id === t.id ? h('span', { class: 'tplCard__badge', text: 'おすすめ' }) : null,
         h('span', { class: 'tplCard__name', text: t.name }),
         h('span', { class: 'tplCard__summary', text: t.summary }),
         h('span', { class: 'tplCard__order', text: t.order(isJob()) })
@@ -494,16 +684,40 @@
     });
     card.appendChild(ta);
     card.appendChild(h('div', { class: 'meter', id: 'bodyMeter' }));
+    card.appendChild(h('div', { class: 'unused', id: 'unusedBox' }));
     card.appendChild(h('p', { class: 'field__hint', text: '※ 文字数は空白と改行を除いて数えています。段落を分けたいところは1行あけてください。' }));
+
+    ta.addEventListener('input', updateUnused);
 
     setTimeout(function () {
       if (!state.data.body) regenerate(true);
       updateBodyMeter();
+      updateUnused();
       const note = document.getElementById('composeNote');
       if (note && state.lastNote) note.textContent = state.lastNote;
     }, 0);
 
     return card;
+  }
+
+  /** 集めた材料のうち、本文に入っていないものを知らせる */
+  function updateUnused() {
+    const box = document.getElementById('unusedBox');
+    if (!box) return;
+    const rest = global.COMPOSE.unusedMaterials(state.data, state.data.body || '');
+    box.innerHTML = '';
+    if (!rest.length) {
+      box.appendChild(h('p', { class: 'unused__ok', text: '✓ 集めた材料は、ひととおり本文に入っています。' }));
+      return;
+    }
+    box.appendChild(h('p', { class: 'unused__head', text: 'まだ本文に入っていない材料（' + rest.length + '件）' }));
+    const tags = h('div', { class: 'unused__tags' });
+    rest.forEach(function (label) { tags.appendChild(h('span', { class: 'unused__tag', text: label })); });
+    box.appendChild(tags);
+    box.appendChild(h('p', {
+      class: 'unused__note',
+      text: '字数に収めるため自動で削られたものです。入れたい材料があれば、本文を直接書き足すか、目標字数を増やしてください。'
+    }));
   }
 
   function regenerate(force) {
@@ -597,7 +811,20 @@
   function payload() {
     const d = state.data;
     const course = global.QUESTIONS.courseOf(d.course);
-    return {
+
+    // 魅力カードは1枚ずつ列に展開する（先生が横に並べて読めるように）
+    const cards = (d.attractCards || []).filter(function (c) { return c && String(c.what || '').trim(); });
+    const cardCols = {};
+    for (let i = 0; i < 3; i++) {
+      const c = cards[i] || {};
+      cardCols['card' + (i + 1) + 'Where'] = c.where || '';
+      cardCols['card' + (i + 1) + 'What'] = c.what || '';
+      cardCols['card' + (i + 1) + 'Feel'] = (c.feel || []).join('、');
+      cardCols['card' + (i + 1) + 'Link'] = c.link || '';
+      cardCols['card' + (i + 1) + 'Weight'] = c.what ? (c.weight || 2) : '';
+    }
+
+    return Object.assign(cardCols, {
       course: d.course || '',
       courseName: course.name,
       studentName: d.studentName || '',
@@ -616,9 +843,9 @@
       personality: (d.personality || []).join('、'),
       futureDream: d.futureDream || '',
       futureWhy: d.futureWhy || '',
+      gapNow: d.gapNow || '',
       knewBy: d.knewBy || '',
       visited: (d.visited || []).join('、'),
-      visitImpression: d.visitImpression || '',
       attractPoints: (d.attractPoints || []).join('、'),
       targetFeature: d.targetFeature || '',
       studyWant: d.studyWant || '',
@@ -636,7 +863,7 @@
       template: (global.COMPOSE.TEMPLATES.find(function (t) { return t.id === d.template; }) || {}).name || '',
       body: d.body || '',
       bodyChars: global.COMPOSE.countChars(d.body || '')
-    };
+    });
   }
 
   function viewSubmit() {
