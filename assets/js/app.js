@@ -5,26 +5,14 @@
   'use strict';
 
   const cfg = global.APP_CONFIG || {};
-  const STEPS = global.QUESTIONS.STEPS;
-  const STORAGE_KEY = 'shibou-douki-v1';
-
-  // intro を 0 番目、以降に設問4ステップ + 組み立て/見直し/提出
-  const VIEWS = [
-    { id: 'intro', title: 'はじめに' },
-    { id: 'basic', title: '基本情報' },
-    { id: 'self', title: '自分を知る' },
-    { id: 'school', title: '学校を知る' },
-    { id: 'connect', title: 'つなげる' },
-    { id: 'compose', title: '組み立てる' },
-    { id: 'review', title: '見直す' },
-    { id: 'submit', title: '提出する' }
-  ];
+  const STORAGE_KEY = 'shibou-douki-v2';
 
   // ── 状態 ──────────────────────────────────────────
   const state = {
     index: 0,
     data: {
-      targetChars: 400,
+      course: '',          // 'shingaku'（進学）/ 'shushoku'（就職）
+      targetChars: 500,
       tone: 'です・ます調',
       whyChain: { why1: '', why2: '', why3: '' },
       template: 'prep',
@@ -35,6 +23,29 @@
     bodyEdited: false,   // 本文を手で直したか（自動再生成の上書き確認に使う）
     submitted: null
   };
+
+  /** 選んだ進路に応じた設問セット */
+  function steps() {
+    return global.QUESTIONS.buildSteps(state.data.course || 'shingaku');
+  }
+
+  function isJob() {
+    return state.data.course === 'shushoku';
+  }
+
+  /** 進路選択を 0 番目、以降に設問4ステップ + 組み立て/見直し/提出 */
+  function views() {
+    return [
+      { id: 'start', title: '進路をえらぶ' },
+      { id: 'basic', title: '基本情報' },
+      { id: 'self', title: '自分を知る' },
+      { id: 'research', title: isJob() ? '会社を知る' : '学校を知る' },
+      { id: 'connect', title: 'つなげる' },
+      { id: 'compose', title: '組み立てる' },
+      { id: 'review', title: '見直す' },
+      { id: 'submit', title: '提出する' }
+    ];
+  }
 
   // ── 保存／復元 ────────────────────────────────────
   let saveTimer = null;
@@ -64,7 +75,7 @@
       state.data.whyChain = Object.assign({ why1: '', why2: '', why3: '' }, state.data.whyChain);
       state.custom = saved.custom || {};
       state.bodyEdited = !!saved.bodyEdited;
-      state.index = Math.min(saved.index || 0, VIEWS.length - 1);
+      state.index = Math.min(saved.index || 0, views().length - 1);
       return true;
     } catch (e) {
       return false;
@@ -344,31 +355,89 @@
   }
 
   // ── 各ビューの描画 ────────────────────────────────
-  function viewIntro() {
-    return h('div', { class: 'card' }, [
-      h('h2', { class: 'card__title', text: 'このアプリでできること' }),
-      h('p', { class: 'lead', text: '質問に答えていくだけで、志望動機の下書きができあがります。書いた内容は自動で保存されるので、途中でやめても大丈夫です。' }),
-      h('ol', { class: 'flow' }, [
-        ['材料を集める', 'STEP 1〜4。単語や短い文で答えるだけ。文章にする必要はありません。'],
-        ['組み立てる', 'STEP 5。3つの構成から選ぶと、下書きが自動でできます。'],
-        ['見直す', 'STEP 6。文字数・話し言葉・文体などを自動でチェックします。'],
-        ['提出する', 'STEP 7。先生のスプレッドシートに送信、印刷、コピーができます。']
-      ].map(function (x) {
-        return h('li', {}, [h('strong', { text: x[0] }), h('span', { text: x[1] })]);
-      })),
-      h('div', { class: 'notice' }, [
-        h('strong', { text: 'かかる時間の目安：40〜60分' }),
-        h('p', { text: '学校のホームページや、学校説明会でもらったパンフレットを手元に用意しておくと、STEP 3 がスムーズです。' })
-      ]),
-      global.API.isConfigured() ? null : h('div', { class: 'notice notice--warn' }, [
+  /** 進路を変えると、選択肢の中身が変わる設問はいったん白紙に戻す */
+  const COURSE_SPECIFIC_FIELDS = ['strengths', 'attractPoints', 'afterEnter', 'visited',
+    'knewBy', 'examType', 'studyWant', 'jobUnderstanding', 'contribution'];
+
+  function setCourse(id) {
+    if (state.data.course === id) return;
+
+    const hasAnswers = COURSE_SPECIFIC_FIELDS.some(function (k) {
+      const v = state.data[k];
+      return Array.isArray(v) ? v.length > 0 : !!v;
+    });
+    if (state.data.course && hasAnswers &&
+      !confirm('進路を変えると、選択肢の中身がちがう設問（得意なこと・魅力を感じた点など）は白紙に戻ります。変更しますか？')) {
+      return;
+    }
+
+    COURSE_SPECIFIC_FIELDS.forEach(function (k) { delete state.data[k]; });
+    state.data.course = id;
+    state.data.targetChars = id === 'shushoku' ? 300 : 500;
+    state.data.body = '';
+    state.bodyEdited = false;
+    save();
+    render();
+  }
+
+  function viewStart() {
+    const card = h('div', { class: 'card' }, [
+      h('h2', { class: 'card__title', text: 'まず、進路をえらんでください' }),
+      h('p', { class: 'lead', text: '進学と就職では、書くべき内容も、見られるポイントも変わります。選んだ進路に合わせて質問と下書きの型を切り替えます。' })
+    ]);
+
+    const picker = h('div', { class: 'courses' });
+    global.QUESTIONS.COURSES.forEach(function (c) {
+      picker.appendChild(h('button', {
+        type: 'button',
+        class: 'courseCard' + (state.data.course === c.id ? ' is-on' : ''),
+        'aria-pressed': state.data.course === c.id ? 'true' : 'false',
+        onclick: function () { setCourse(c.id); }
+      }, [
+        h('span', { class: 'courseCard__icon', text: c.icon }),
+        h('span', { class: 'courseCard__name', text: c.name }),
+        h('span', { class: 'courseCard__sub', text: c.sub }),
+        h('span', { class: 'courseCard__desc', text: c.desc })
+      ]));
+    });
+    card.appendChild(picker);
+
+    if (!state.data.course) {
+      card.appendChild(h('p', { class: 'field__error', text: 'どちらかを選ぶと、次へ進めます。' }));
+      return card;
+    }
+
+    const job = isJob();
+    card.appendChild(h('h3', { class: 'card__sub', text: 'この先の流れ' }));
+    card.appendChild(h('ol', { class: 'flow' }, [
+      ['材料を集める', 'STEP 1〜4。単語や短い文で答えるだけ。文章にする必要はありません。'],
+      ['組み立てる', 'STEP 5。3つの構成から選ぶと、下書きが自動でできます。'],
+      ['見直す', 'STEP 6。文字数・話し言葉・文体などを自動でチェックします。'],
+      ['提出する', 'STEP 7。先生のスプレッドシートに送信、印刷、コピーができます。']
+    ].map(function (x) {
+      return h('li', {}, [h('strong', { text: x[0] }), h('span', { text: x[1] })]);
+    })));
+
+    card.appendChild(h('div', { class: 'notice' }, [
+      h('strong', { text: 'かかる時間の目安：40〜60分' }),
+      h('p', {
+        text: job
+          ? '求人票と、会社のホームページを手元に用意しておくと、STEP 3 がスムーズです。'
+          : '学校案内のパンフレットと、学校のホームページを手元に用意しておくと、STEP 3 がスムーズです。'
+      })
+    ]));
+
+    if (!global.API.isConfigured()) {
+      card.appendChild(h('div', { class: 'notice notice--warn' }, [
         h('strong', { text: '送信先が未設定です' }),
         h('p', { text: 'config.js に GAS のURLが入っていないため、STEP 7 の「スプレッドシートに送信」は使えません。下書き作成・チェック・印刷・コピーはそのまま使えます。' })
-      ])
-    ]);
+      ]));
+    }
+    return card;
   }
 
   function viewQuestions(stepId) {
-    const step = STEPS.find(function (s) { return s.id === stepId; });
+    const step = steps().find(function (s) { return s.id === stepId; });
     const card = h('div', { class: 'card' }, [
       h('h2', { class: 'card__title', text: 'STEP ' + step.no + '　' + step.title }),
       h('p', { class: 'lead', text: step.lead }),
@@ -397,7 +466,7 @@
       }, [
         h('span', { class: 'tplCard__name', text: t.name }),
         h('span', { class: 'tplCard__summary', text: t.summary }),
-        h('span', { class: 'tplCard__order', text: t.order })
+        h('span', { class: 'tplCard__order', text: t.order(isJob()) })
       ]));
     });
     card.appendChild(picker);
@@ -493,7 +562,7 @@
 
     card.appendChild(h('h3', { class: 'card__sub', text: '自分の目で確かめること' }));
     const man = h('ul', { class: 'manual' });
-    global.CHECKLIST.MANUAL.forEach(function (label, i) {
+    global.CHECKLIST.manualFor(state.data.course).forEach(function (label, i) {
       const id = 'm' + i;
       const on = (state.data.manualChecks || []).indexOf(i) !== -1;
       const cb = h('input', { type: 'checkbox', id: id });
@@ -527,12 +596,15 @@
 
   function payload() {
     const d = state.data;
+    const course = global.QUESTIONS.courseOf(d.course);
     return {
+      course: d.course || '',
+      courseName: course.name,
       studentName: d.studentName || '',
-      juniorHigh: d.juniorHigh || '',
+      highSchool: d.highSchool || '',
       className: d.className || '',
-      targetSchool: d.targetSchool || '',
-      targetCourse: d.targetCourse || '',
+      targetName: d.targetName || '',
+      targetSub: d.targetSub || '',
       examType: d.examType || '',
       targetChars: d.targetChars || '',
       tone: d.tone || '',
@@ -540,6 +612,7 @@
       effortDetail: d.effortDetail || '',
       effortLearned: d.effortLearned || '',
       strengths: (d.strengths || []).join('、'),
+      licenses: d.licenses || '',
       personality: (d.personality || []).join('、'),
       futureDream: d.futureDream || '',
       futureWhy: d.futureWhy || '',
@@ -547,9 +620,10 @@
       visited: (d.visited || []).join('、'),
       visitImpression: d.visitImpression || '',
       attractPoints: (d.attractPoints || []).join('、'),
-      curriculum: d.curriculum || '',
-      clubWant: d.clubWant || '',
-      schoolPolicy: d.schoolPolicy || '',
+      targetFeature: d.targetFeature || '',
+      studyWant: d.studyWant || '',
+      jobUnderstanding: d.jobUnderstanding || '',
+      targetPolicy: d.targetPolicy || '',
       mainReason: d.mainReason || '',
       why1: d.whyChain.why1 || '',
       why2: d.whyChain.why2 || '',
@@ -557,6 +631,7 @@
       mustReason: d.mustReason || '',
       afterEnter: (d.afterEnter || []).join('、'),
       afterEnterDetail: d.afterEnterDetail || '',
+      contribution: d.contribution || '',
       afterGrad: d.afterGrad || '',
       template: (global.COMPOSE.TEMPLATES.find(function (t) { return t.id === d.template; }) || {}).name || '',
       body: d.body || '',
@@ -575,8 +650,11 @@
     ]);
 
     card.appendChild(h('dl', { class: 'summary' }, [
-      ['名前', p.studentName], ['志望校', p.targetSchool + ' ' + p.targetCourse],
-      ['構成', p.template], ['文字数', p.bodyChars + ' / ' + p.targetChars + ' 字']
+      ['進路', p.courseName],
+      ['名前', p.studentName],
+      [isJob() ? '志望する会社' : '志望校', (p.targetName + ' ' + p.targetSub).trim()],
+      ['構成', p.template],
+      ['文字数', p.bodyChars + ' / ' + p.targetChars + ' 字']
     ].reduce(function (acc, x) {
       acc.push(h('dt', { text: x[0] }));
       acc.push(h('dd', { text: x[1] || '（未入力）' }));
@@ -597,9 +675,9 @@
     const sendBtn = h('button', {
       type: 'button', class: 'btn btn--primary btn--wide',
       onclick: async function () {
-        if (!state.data.studentName || !state.data.targetSchool) {
+        if (!state.data.studentName || !state.data.targetName) {
           status.className = 'status status--error';
-          status.textContent = 'STEP 1 の「名前」と「志望校名」を入力してください。';
+          status.textContent = 'STEP 1 の「名前」と「' + (isJob() ? '志望する会社名' : '志望校名') + '」を入力してください。';
           return;
         }
         sendBtn.disabled = true;
@@ -648,17 +726,18 @@
 
   function downloadText() {
     const p = payload();
+    const doc = global.QUESTIONS.courseOf(p.course).docName;
     const lines = [
-      '志望動機　下書き',
+      doc + '　下書き（' + p.courseName + '）',
       '氏名: ' + p.studentName,
-      '中学校: ' + p.juniorHigh + ' ' + p.className,
-      '志望校: ' + p.targetSchool + ' ' + p.targetCourse,
+      '高校: ' + p.highSchool + ' ' + p.className,
+      (isJob() ? '志望先: ' : '志望校: ') + p.targetName + ' ' + p.targetSub,
       '文字数: ' + p.bodyChars + ' / ' + p.targetChars,
       '',
       p.body
     ].join('\n');
     const blob = new Blob([lines], { type: 'text/plain;charset=utf-8' });
-    const a = h('a', { href: URL.createObjectURL(blob), download: (p.studentName || 'shibou') + '_志望動機.txt' });
+    const a = h('a', { href: URL.createObjectURL(blob), download: (p.studentName || 'shibou') + '_' + doc + '.txt' });
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -668,9 +747,9 @@
     const p = payload();
     const area = document.getElementById('printArea');
     area.innerHTML =
-      '<h1>志望動機</h1>' +
-      '<p class="printMeta">' + esc(p.juniorHigh) + '　' + esc(p.className) + '　' + esc(p.studentName) + '</p>' +
-      '<p class="printMeta">志望校：' + esc(p.targetSchool) + '　' + esc(p.targetCourse) + '</p>' +
+      '<h1>' + esc(global.QUESTIONS.courseOf(p.course).docName) + '</h1>' +
+      '<p class="printMeta">' + esc(p.highSchool) + '　' + esc(p.className) + '　' + esc(p.studentName) + '</p>' +
+      '<p class="printMeta">' + (isJob() ? '志望先：' : '志望校：') + esc(p.targetName) + '　' + esc(p.targetSub) + '</p>' +
       '<div class="printBody">' + esc(p.body).replace(/\n/g, '<br>') + '</div>' +
       '<p class="printMeta">（' + p.bodyChars + '字）</p>';
     window.print();
@@ -678,57 +757,65 @@
 
   // ── レンダリング ──────────────────────────────────
   function render() {
-    const view = VIEWS[state.index];
+    const V = views();
+    const view = V[state.index];
     const root = document.getElementById('view');
     root.innerHTML = '';
     changeListeners = []; // 前の画面のDOMを参照している通知先を捨てる
 
     let node;
-    if (view.id === 'intro') node = viewIntro();
+    if (view.id === 'start') node = viewStart();
     else if (view.id === 'compose') node = viewCompose();
     else if (view.id === 'review') node = viewReview();
     else if (view.id === 'submit') node = viewSubmit();
     else node = viewQuestions(view.id);
     root.appendChild(node);
 
-    renderNav();
-    renderProgress();
+    renderNav(V);
+    renderProgress(V);
     save();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function renderProgress() {
-    const pct = Math.round((state.index / (VIEWS.length - 1)) * 100);
+  function renderProgress(V) {
+    const pct = Math.round((state.index / (V.length - 1)) * 100);
     document.getElementById('progressFill').style.width = pct + '%';
     document.getElementById('stepLabel').textContent =
-      state.index === 0 ? 'はじめに' : 'STEP ' + state.index + ' / ' + (VIEWS.length - 1) + '　' + VIEWS[state.index].title;
+      state.index === 0 ? V[0].title : 'STEP ' + state.index + ' / ' + (V.length - 1) + '　' + V[state.index].title;
 
     const tabs = document.getElementById('stepTabs');
     tabs.innerHTML = '';
-    VIEWS.forEach(function (v, i) {
+    V.forEach(function (v, i) {
+      // 進路を選ぶまでは先へ飛べないようにする
+      const locked = i > 0 && !state.data.course;
       tabs.appendChild(h('button', {
         type: 'button',
+        title: v.title,
         class: 'tab' + (i === state.index ? ' is-on' : '') + (i < state.index ? ' is-done' : ''),
-        onclick: function () { state.index = i; render(); }
+        disabled: locked ? 'disabled' : null,
+        onclick: function () { if (!locked) { state.index = i; render(); } }
       }, [i === 0 ? '◎' : String(i)]));
     });
   }
 
-  function renderNav() {
+  function renderNav(V) {
     const prev = document.getElementById('prevBtn');
     const next = document.getElementById('nextBtn');
     prev.disabled = state.index === 0;
-    next.style.display = state.index === VIEWS.length - 1 ? 'none' : '';
+    next.style.display = state.index === V.length - 1 ? 'none' : '';
+    next.disabled = state.index === 0 && !state.data.course;
     next.textContent = state.index === 0 ? 'はじめる' :
-      state.index === VIEWS.length - 2 ? '提出へ進む' : '次へ進む';
+      state.index === V.length - 2 ? '提出へ進む' : '次へ進む';
   }
 
   function goNext() {
-    const view = VIEWS[state.index];
-    const step = STEPS.find(function (s) { return s.id === view.id; });
+    const V = views();
+    const view = V[state.index];
+    if (view.id === 'start' && !state.data.course) return;
+    const step = steps().find(function (s) { return s.id === view.id; });
     if (step && !validateStep(step)) return;
     if (view.id === 'connect') regenerate(!state.bodyEdited);
-    state.index = Math.min(state.index + 1, VIEWS.length - 1);
+    state.index = Math.min(state.index + 1, V.length - 1);
     render();
   }
 

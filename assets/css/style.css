@@ -70,6 +70,8 @@ body {
 .tab:hover { border-color: var(--brand); color: var(--brand); }
 .tab.is-done { background: var(--brand-soft); border-color: var(--brand-soft); color: var(--brand-dark); }
 .tab.is-on { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 700; }
+.tab:disabled { opacity: .4; cursor: not-allowed; }
+.tab:disabled:hover { border-color: var(--line); color: var(--ink-soft); }
 
 /* ===== レイアウト ===== */
 .view { max-width: 780px; margin: 20px auto; padding: 0 16px; }
@@ -99,6 +101,20 @@ body {
 .notice p { margin: 4px 0 0; font-size: 14px; }
 .notice--tip { background: #f3f6fa; border-color: var(--line); }
 .notice--warn { background: var(--warn-soft); border-color: #f0dcae; }
+
+/* ===== 進路の選択 ===== */
+.courses { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+.courseCard {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  text-align: left; padding: 18px 16px; cursor: pointer; font-family: inherit;
+  border: 2px solid var(--line); border-radius: 12px; background: #fff; transition: .15s;
+}
+.courseCard:hover { border-color: var(--brand); transform: translateY(-1px); }
+.courseCard.is-on { border-color: var(--brand); background: var(--brand-soft); box-shadow: 0 0 0 3px rgba(47, 111, 208, .12); }
+.courseCard__icon { font-size: 30px; line-height: 1.2; }
+.courseCard__name { font-size: 19px; font-weight: 700; }
+.courseCard__sub { font-size: 12.5px; color: var(--ink-soft); }
+.courseCard__desc { font-size: 13px; color: var(--ink-soft); line-height: 1.7; margin-top: 6px; }
 
 /* ===== 入力欄 ===== */
 .field { margin-bottom: 26px; }
@@ -248,6 +264,7 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;chars
   .card { padding: 20px 16px; border-radius: 10px; }
   .card__title { font-size: 19px; }
   .templates { grid-template-columns: 1fr; }
+  .courses { grid-template-columns: 1fr; }
   .view { margin: 14px auto; }
 }
 

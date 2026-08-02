@@ -15,40 +15,44 @@ var UPDATE_IF_EXISTS = true;
 
 /** 列の定義。順番がそのままスプレッドシートの列順になる。 */
 var COLUMNS = [
-  { key: 'timestamp',       label: '送信日時',            width: 140 },
-  { key: 'studentName',     label: '名前',                width: 110 },
-  { key: 'juniorHigh',      label: '中学校',              width: 150 },
-  { key: 'className',       label: 'クラス・番号',        width: 110 },
-  { key: 'targetSchool',    label: '志望校',              width: 180 },
-  { key: 'targetCourse',    label: '学科・コース',        width: 140 },
-  { key: 'examType',        label: '受験の種類',          width: 100 },
-  { key: 'bodyChars',       label: '本文字数',            width: 80 },
-  { key: 'targetChars',     label: '目標字数',            width: 80 },
-  { key: 'template',        label: '構成',                width: 110 },
-  { key: 'body',            label: '本文',                width: 460 },
-  { key: 'mainReason',      label: '志望理由（ひとこと）', width: 220 },
-  { key: 'why1',            label: 'なぜ1',               width: 200 },
-  { key: 'why2',            label: 'なぜ2',               width: 200 },
-  { key: 'why3',            label: 'なぜ3',               width: 200 },
-  { key: 'mustReason',      label: 'この学校でなければ',   width: 240 },
-  { key: 'efforts',         label: 'がんばったこと',      width: 160 },
-  { key: 'effortDetail',    label: 'がんばったこと詳細',  width: 260 },
-  { key: 'effortLearned',   label: '学んだこと',          width: 220 },
-  { key: 'strengths',       label: '得意・好きな教科',    width: 160 },
-  { key: 'personality',     label: '性格',                width: 160 },
-  { key: 'futureDream',     label: '将来やりたいこと',    width: 180 },
-  { key: 'futureWhy',       label: 'そのきっかけ',        width: 220 },
-  { key: 'knewBy',          label: '知ったきっかけ',      width: 150 },
-  { key: 'visited',         label: '参加したもの',        width: 150 },
-  { key: 'visitImpression', label: '印象に残ったこと',    width: 240 },
-  { key: 'attractPoints',   label: '魅力を感じた点',      width: 180 },
-  { key: 'curriculum',      label: '学校独自の制度',      width: 240 },
-  { key: 'clubWant',        label: '入りたい部活',        width: 120 },
-  { key: 'schoolPolicy',    label: '共感した教育目標',    width: 200 },
-  { key: 'afterEnter',      label: '入学後にやりたいこと', width: 180 },
-  { key: 'afterEnterDetail',label: '入学後の取り組み',    width: 240 },
-  { key: 'afterGrad',       label: '卒業後の進路',        width: 200 },
-  { key: 'tone',            label: '文体',                width: 90 }
+  { key: 'timestamp',        label: '送信日時',              width: 140 },
+  { key: 'courseName',       label: '進路',                  width: 70 },
+  { key: 'studentName',      label: '名前',                  width: 110 },
+  { key: 'highSchool',       label: '高校',                  width: 150 },
+  { key: 'className',        label: 'クラス・番号',          width: 110 },
+  { key: 'targetName',       label: '志望先（学校・会社）',  width: 190 },
+  { key: 'targetSub',        label: '学科・職種',            width: 150 },
+  { key: 'examType',         label: '入試方式・応募方法',    width: 130 },
+  { key: 'bodyChars',        label: '本文字数',              width: 80 },
+  { key: 'targetChars',      label: '目標字数',              width: 80 },
+  { key: 'template',         label: '構成',                  width: 110 },
+  { key: 'body',             label: '本文',                  width: 460 },
+  { key: 'mainReason',       label: '志望理由（ひとこと）',  width: 220 },
+  { key: 'why1',             label: 'なぜ1',                 width: 200 },
+  { key: 'why2',             label: 'なぜ2',                 width: 200 },
+  { key: 'why3',             label: 'なぜ3',                 width: 200 },
+  { key: 'mustReason',       label: 'ここでなければの理由',  width: 240 },
+  { key: 'efforts',          label: 'がんばったこと',        width: 160 },
+  { key: 'effortDetail',     label: 'がんばったこと詳細',    width: 260 },
+  { key: 'effortLearned',    label: '学んだこと',            width: 220 },
+  { key: 'strengths',        label: '得意なこと',            width: 160 },
+  { key: 'licenses',         label: '資格・免許',            width: 180 },
+  { key: 'personality',      label: '性格',                  width: 160 },
+  { key: 'futureDream',      label: '将来の目標',            width: 180 },
+  { key: 'futureWhy',        label: 'そのきっかけ',          width: 220 },
+  { key: 'knewBy',           label: '知ったきっかけ',        width: 150 },
+  { key: 'visited',          label: '参加したもの',          width: 150 },
+  { key: 'visitImpression',  label: '印象に残ったこと',      width: 240 },
+  { key: 'attractPoints',    label: '魅力を感じた点',        width: 180 },
+  { key: 'targetFeature',    label: '独自の学び・製品技術',  width: 240 },
+  { key: 'studyWant',        label: '学びたいこと（進学）',  width: 220 },
+  { key: 'jobUnderstanding', label: '仕事の理解（就職）',    width: 220 },
+  { key: 'targetPolicy',     label: '共感した理念',          width: 200 },
+  { key: 'afterEnter',       label: '入学後・入社後の目標',  width: 180 },
+  { key: 'afterEnterDetail', label: 'その取り組み方',        width: 240 },
+  { key: 'contribution',     label: '活かせる力（就職）',    width: 220 },
+  { key: 'afterGrad',        label: '卒業後・将来像',        width: 200 },
+  { key: 'tone',             label: '文体',                  width: 90 }
 ];
 
 // ── 受信エンドポイント ────────────────────────────────
@@ -108,7 +112,7 @@ function saveRow(payload) {
       return v === undefined || v === null ? '' : v;
     });
 
-    var existing = UPDATE_IF_EXISTS ? findRow(sheet, payload.studentName, payload.targetSchool) : -1;
+    var existing = UPDATE_IF_EXISTS ? findRow(sheet, payload.studentName, payload.targetName) : -1;
 
     if (existing > 0) {
       sheet.getRange(existing, 1, 1, values.length).setValues([values]);
@@ -125,18 +129,18 @@ function saveRow(payload) {
   }
 }
 
-/** 同じ名前・同じ志望校の行を探す（見つからなければ -1）*/
-function findRow(sheet, name, school) {
+/** 同じ名前・同じ志望先の行を探す（見つからなければ -1）*/
+function findRow(sheet, name, target) {
   var last = sheet.getLastRow();
   if (last < 2) return -1;
 
   var nameCol = colIndex('studentName');
-  var schoolCol = colIndex('targetSchool');
+  var targetCol = colIndex('targetName');
   var data = sheet.getRange(2, 1, last - 1, COLUMNS.length).getValues();
 
   for (var i = 0; i < data.length; i++) {
     if (String(data[i][nameCol - 1]).trim() === String(name).trim() &&
-        String(data[i][schoolCol - 1]).trim() === String(school).trim()) {
+        String(data[i][targetCol - 1]).trim() === String(target).trim()) {
       return i + 2;
     }
   }
@@ -236,13 +240,14 @@ function testSubmit() {
     postData: {
       contents: JSON.stringify({
         token: PropertiesService.getScriptProperties().getProperty('FORM_TOKEN') || '',
+        courseName: '進学',
         studentName: 'テスト太郎',
-        juniorHigh: 'テスト中学校',
-        targetSchool: 'テスト高等学校',
-        targetCourse: '普通科',
+        highSchool: 'テスト高等学校',
+        targetName: 'テスト大学',
+        targetSub: '経済学部',
         body: 'これは動作確認用のテスト送信です。',
         bodyChars: 20,
-        targetChars: 400
+        targetChars: 500
       })
     }
   });

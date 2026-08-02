@@ -134,66 +134,115 @@
     return t;
   }
 
+  // ── 進路ごとの語彙 ─────────────────────────────────────
+  // 文章の骨組みは共通で、呼び方だけを進学／就職で入れ替える。
+  const LEX = {
+    shingaku: {
+      org: '学校',
+      honorific: '貴校',
+      join: '入学',
+      joinAfter: '入学後',
+      wantVerb: '学びたい',
+      wantNoun: '学びたいこと',
+      metPhrase: 'ここでなら自分の力をさらに伸ばせる',
+      lifeNoun: '学生生活',
+      docLead: '志望理由',
+      featureLead: '学び'
+    },
+    shushoku: {
+      org: '会社',
+      honorific: '貴社',
+      join: '入社',
+      joinAfter: '入社後',
+      wantVerb: '取り組みたい',
+      wantNoun: '取り組みたい仕事',
+      metPhrase: 'ここで働きたい',
+      lifeNoun: '社会人生活',
+      docLead: '志望動機',
+      featureLead: '仕事'
+    }
+  };
+
+  function lex(mode) {
+    return LEX[mode] || LEX.shingaku;
+  }
+
   // ── テンプレート定義 ───────────────────────────────────
   const TEMPLATES = [
     {
       id: 'prep',
       name: '結論先行型',
       summary: '最初に結論を言い切る、いちばん読みやすい型。迷ったらこれ。',
-      order: '結論 → 学校の魅力 → 自分の経験 → 他校との違い → 入学後 → 結び',
+      order: function (job) {
+        return job ? '結論 → 会社の魅力 → 自分の経験 → 他社との違い → 入社後 → 結び'
+          : '結論 → 学校の魅力 → 自分の経験 → 他校との違い → 入学後 → 結び';
+      },
       build: buildPrep
     },
     {
       id: 'story',
       name: 'エピソード型',
-      summary: '自分の体験から語り始める型。中学の活動に強い実績がある人向け。',
-      order: '体験 → 学んだこと → 学校との出会い → 魅力 → 入学後 → 結び',
+      summary: '自分の体験から語り始める型。高校時代に打ち込んだことがある人向け。',
+      order: function (job) {
+        return job ? '体験 → 学んだこと → 会社との出会い → 魅力 → 入社後 → 結び'
+          : '体験 → 学んだこと → 学校との出会い → 魅力 → 入学後 → 結び';
+      },
       build: buildStory
     },
     {
       id: 'future',
       name: '将来目標型',
-      summary: '将来の夢から逆算する型。進みたい分野がはっきりしている人向け。',
-      order: '将来の夢 → きっかけ → 必要な力 → 学校の特色 → 自分の経験 → 結び',
+      summary: '将来の目標から逆算する型。やりたいことがはっきりしている人向け。',
+      order: function (job) {
+        return job ? '将来像 → きっかけ → 必要な力 → 会社の特色 → 自分の経験 → 結び'
+          : '将来の目標 → きっかけ → 必要な力 → 学校の特色 → 自分の経験 → 結び';
+      },
       build: buildFuture
     }
   ];
 
   // ── 生成の共通材料 ────────────────────────────────────
   function materials(d) {
-    const school = bare(d.targetSchool) || '貴校';
-    const course = bare(d.targetCourse);
+    const mode = d.course === 'shushoku' ? 'shushoku' : 'shingaku';
+    const L = lex(mode);
+    const name = bare(d.targetName) || L.honorific;
+    const sub = bare(d.targetSub);
     const efforts = d.efforts || [];
-    const attract = d.attractPoints || [];
-    const after = d.afterEnter || [];
     const chain = d.whyChain || {};
 
     return {
-      school: school,
-      schoolFull: course ? school + course : school,
-      course: course,
+      mode: mode,
+      job: mode === 'shushoku',
+      L: L,
+      name: name,
+      // 進学は「〇〇大学経済学部」、就職は「株式会社〇〇の製造職」とつなぐ
+      nameFull: !sub ? name : (mode === 'shushoku' ? name + 'の' + sub : name + sub),
+      sub: sub,
       efforts: efforts,
       effortTop: efforts[0] || '学校生活',
       effortDetail: flow(d.effortDetail),
       effortLearned: flow(d.effortLearned),
       strengths: d.strengths || [],
       personality: d.personality || [],
+      licenses: bare(d.licenses),
       futureDream: bare(d.futureDream),
       futureWhy: flow(d.futureWhy),
       knewBy: bare(d.knewBy),
       visited: d.visited || [],
       visitImpression: flow(d.visitImpression),
-      attract: attract,
-      curriculum: flow(d.curriculum),
-      clubWant: bare(d.clubWant),
-      schoolPolicy: bare(d.schoolPolicy),
+      attract: d.attractPoints || [],
+      feature: flow(d.targetFeature),
+      policy: bare(d.targetPolicy),
+      studyWant: flow(d.studyWant),
+      jobUnderstanding: flow(d.jobUnderstanding),
       mainReason: bare(d.mainReason),
       // 深掘りの最も深い答えを「本当の動機」として使う
       deepReason: firstOf(chain.why3, chain.why2, chain.why1),
       midReason: firstOf(chain.why2, chain.why1),
       mustReason: flow(d.mustReason),
-      after: after,
+      after: d.afterEnter || [],
       afterEnterDetail: flow(d.afterEnterDetail),
+      contribution: flow(d.contribution),
       afterGrad: flow(d.afterGrad)
     };
   }
@@ -206,25 +255,34 @@
 
   // ── テンプレート1: 結論先行型 ──────────────────────────
   function buildPrep(m) {
+    const L = m.L;
     const paras = [];
 
     paras.push([
-      S('私が' + m.schoolFull + 'を志望した理由は、' + asReason(m.mainReason) + 'です。', 1),
+      S('私が' + m.nameFull + 'を志望した理由は、' + asReason(m.mainReason) + 'です。', 1),
       // 深掘りの答えは「志望理由の根拠」なので、結論のすぐ後ろに置く
       m.deepReason ? S('そう考えるようになったのは、' + asReason(m.deepReason) + 'です。', 2) : null
     ]);
 
     const p2 = [];
-    if (m.curriculum) p2.push(S(m.school + 'には' + bare(m.curriculum) + 'があり、私が学びたいことと重なっていると感じました。', 1));
+    if (m.feature) {
+      p2.push(S(m.job
+        ? m.name + 'の、' + bare(m.feature) + 'に強く関心を持ち、私が' + L.wantNoun + 'と重なっていると感じました。'
+        : m.name + 'には' + bare(m.feature) + 'があり、私が' + L.wantNoun + 'と重なっていると感じました。', 1));
+    }
+    if (m.job && m.jobUnderstanding) p2.push(S(m.jobUnderstanding, 2));
+    if (!m.job && m.studyWant) p2.push(S(m.studyWant, 2));
     if (m.attract.length) p2.push(S('特に' + joinNouns(m.attract, 3) + 'に強くひかれました。', 2));
     if (m.visitImpression) p2.push(S(m.knewBy ? m.knewBy + 'に参加した際、' + bare(m.visitImpression) + '。' : m.visitImpression, 2));
-    if (m.schoolPolicy) p2.push(S(bare(m.schoolPolicy) + 'という考え方にも共感しています。', 3));
+    if (m.policy) p2.push(S(bare(m.policy) + 'という考え方にも共感しています。', 3));
     paras.push(p2);
 
     const p3 = [];
-    p3.push(S('私は中学校で' + m.effortTop + 'に力を入れてきました。', 1));
+    p3.push(S('私は高校で' + m.effortTop + 'に力を入れてきました。', 1));
     if (m.effortDetail) p3.push(S(m.effortDetail, 2));
     if (m.effortLearned) p3.push(S('この経験から、' + bare(m.effortLearned) + '。', 1));
+    if (m.job && m.contribution) p3.push(S(m.contribution, 1));
+    if (m.job && m.licenses) p3.push(S('また、' + m.licenses + 'を取得しており、仕事の中で活かしていきたいと考えています。', 3));
     paras.push(p3);
 
     const p4 = [];
@@ -232,89 +290,100 @@
     paras.push(p4);
 
     const p5 = [];
-    if (m.after.length) p5.push(S('入学後は、' + joinNouns(m.after, 3) + 'に取り組みたいと考えています。', 1));
+    if (m.after.length) p5.push(S(L.joinAfter + 'は、' + joinNouns(m.after, 3) + 'に取り組みたいと考えています。', 1));
     if (m.afterEnterDetail) p5.push(S(m.afterEnterDetail, 2));
-    if (m.clubWant) p5.push(S('また、' + m.clubWant + 'にも挑戦したいです。', 3));
     if (m.afterGrad) p5.push(S(m.afterGrad, 3));
     paras.push(p5);
 
-    paras.push([S('以上の理由から、私は' + m.schoolFull + 'を志望します。', 1)]);
+    paras.push([S('以上の理由から、私は' + m.nameFull + 'を志望します。', 1)]);
     return paras;
   }
 
   // ── テンプレート2: エピソード型 ────────────────────────
   function buildStory(m) {
+    const L = m.L;
     const paras = [];
 
     const p1 = [];
-    p1.push(S('私は中学校の3年間、' + m.effortTop + 'に力を注いできました。', 1));
+    p1.push(S('私は高校の3年間、' + m.effortTop + 'に力を注いできました。', 1));
     if (m.effortDetail) p1.push(S(m.effortDetail, 2));
     if (m.effortLearned) p1.push(S('この経験を通して、' + bare(m.effortLearned) + '。', 1));
     paras.push(p1);
 
     const p2 = [];
-    p2.push(S(
-      (m.knewBy ? m.knewBy + 'で' : '') + m.schoolFull + 'を知り、ここでなら自分の力をさらに伸ばせると感じました。', 1));
-    if (m.visitImpression) p2.push(S(m.visitImpression, 1));
-    if (m.attract.length) p2.push(S('中でも' + joinNouns(m.attract, 3) + 'は、私が高校生活で最も大切にしたい点です。', 2));
+    p2.push(S((m.knewBy ? m.knewBy + 'で' : '') + m.nameFull + 'を知り、' + L.metPhrase + 'と感じました。', 1));
+    if (m.visitImpression) p2.push(S(m.visitImpression, 2));
+    if (m.attract.length) p2.push(S('中でも' + joinNouns(m.attract, 3) + 'は、私が' + L.lifeNoun + 'で最も大切にしたい点です。', 2));
     paras.push(p2);
 
     const p3 = [];
-    if (m.curriculum) p3.push(S('特に魅力を感じたのは、' + bare(m.curriculum) + 'です。', 1));
+    if (m.feature) p3.push(S('特に魅力を感じたのは、' + bare(m.feature) + 'です。', 1));
+    if (m.job && m.jobUnderstanding) p3.push(S(m.jobUnderstanding, 2));
+    if (!m.job && m.studyWant) p3.push(S(m.studyWant, 2));
     if (m.deepReason) p3.push(S('なぜなら、' + asReason(m.deepReason) + 'です。', 2));
     if (m.mustReason) p3.push(S(m.mustReason, 2));
-    if (m.schoolPolicy) p3.push(S(bare(m.schoolPolicy) + 'という方針も、私の考えと重なります。', 3));
+    if (m.policy) p3.push(S(bare(m.policy) + 'という方針も、私の考えと重なります。', 3));
     paras.push(p3);
 
     const p4 = [];
-    if (m.after.length) p4.push(S('入学後は' + joinNouns(m.after, 3) + 'に力を入れたいです。', 1));
+    if (m.after.length) p4.push(S(L.joinAfter + 'は' + joinNouns(m.after, 3) + 'に力を入れたいです。', 1));
     if (m.afterEnterDetail) p4.push(S(m.afterEnterDetail, 2));
-    if (m.clubWant) p4.push(S('部活動では' + m.clubWant + 'に入り、中学で培った力を続けて伸ばしていきたいです。', 3));
+    if (m.job && m.contribution) p4.push(S(m.contribution, 2));
     if (m.afterGrad) p4.push(S(m.afterGrad, 3));
     paras.push(p4);
 
-    paras.push([S('中学校で身につけたことを土台に、' + m.school + 'でさらに成長したいと考え、志望しました。', 1)]);
+    paras.push([S('高校で身につけたことを土台に、' + m.name + 'でさらに成長したいと考え、志望しました。', 1)]);
     return paras;
   }
 
   // ── テンプレート3: 将来目標型 ──────────────────────────
   function buildFuture(m) {
+    const L = m.L;
     const paras = [];
 
     const p1 = [];
-    p1.push(S('私は将来、' + (m.futureDream || 'やりたいことを見つけ、社会に貢献する仕事に就くこと') + 'を目指しています。', 1));
+    p1.push(S('私は将来、' +
+      (m.futureDream || (m.job ? '任された仕事をやり切れる社会人になること' : 'やりたいことを見つけ、社会に貢献する仕事に就くこと')) +
+      'を目指しています。', 1));
     if (m.futureWhy) p1.push(S(m.futureWhy, 2));
     paras.push(p1);
 
     const p2 = [];
-    p2.push(S('その目標に近づくために、高校では' +
+    p2.push(S('その目標に近づくために、' + (m.job ? '働くうえでは' : '進学先では') +
       (m.mainReason ? asWish(m.mainReason) : '主体的に学ぶ力を身につける必要があると考えました') + '。', 1));
     if (m.deepReason) p2.push(S('そう考えたのは、' + asReason(m.deepReason) + 'です。', 2));
     paras.push(p2);
 
     const p3 = [];
-    if (m.curriculum) p3.push(S(m.schoolFull + 'には' + bare(m.curriculum) + 'があり、私の目標に直接つながると考えています。', 1));
+    if (m.feature) {
+      p3.push(S(m.job
+        ? m.name + 'の、' + bare(m.feature) + 'は、私の目標に直接つながると考えています。'
+        : m.nameFull + 'には' + bare(m.feature) + 'があり、私の目標に直接つながると考えています。', 1));
+    }
+    if (m.job && m.jobUnderstanding) p3.push(S(m.jobUnderstanding, 3));
+    if (!m.job && m.studyWant) p3.push(S(m.studyWant, 3));
     if (m.attract.length) p3.push(S('また、' + joinNouns(m.attract, 3) + 'も志望の大きな理由です。', 3));
     if (m.visitImpression) p3.push(S(m.visitImpression, 3));
     if (m.mustReason) p3.push(S(m.mustReason, 2));
     paras.push(p3);
 
     const p4 = [];
-    p4.push(S('私は中学校で' + m.effortTop + 'に取り組んできました。', 2));
+    p4.push(S('私は高校で' + m.effortTop + 'に取り組んできました。', 2));
     if (m.effortDetail) p4.push(S(m.effortDetail, 3));
     if (m.effortLearned) {
       p4.push(S('この経験から、' + bare(m.effortLearned) + '。', 2));
-      p4.push(S('ここで得たものを、高校でも活かしたいです。', 3));
+      p4.push(S('ここで得たものを、' + (m.job ? '仕事の場でも' : '進学先でも') + '活かしたいです。', 3));
     }
+    if (m.job && m.contribution) p4.push(S(m.contribution, 2));
     paras.push(p4);
 
     const p5 = [];
-    if (m.after.length) p5.push(S('入学後は' + joinNouns(m.after, 3) + 'に取り組みます。', 1));
+    if (m.after.length) p5.push(S(L.joinAfter + 'は' + joinNouns(m.after, 3) + 'に取り組みます。', 1));
     if (m.afterEnterDetail) p5.push(S(m.afterEnterDetail, 2));
     if (m.afterGrad) p5.push(S(m.afterGrad, 3));
     paras.push(p5);
 
-    paras.push([S('目標を実現できる環境がそろっていると考え、私は' + m.schoolFull + 'を志望します。', 1)]);
+    paras.push([S('目標を実現できる環境がそろっていると考え、私は' + m.nameFull + 'を志望します。', 1)]);
     return paras;
   }
 
