@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>志望動機メーカー｜高校受験の志望理由書づくり</title>
+  <meta name="description" content="質問に答えるだけで、高校受験の志望動機（志望理由書）の下書きが作れるワークシートアプリ。">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <header class="header">
+    <div class="header__inner">
+      <div class="header__titles">
+        <h1 id="appTitle">志望動機メーカー</h1>
+        <p id="appSubtitle"></p>
+      </div>
+      <button type="button" id="resetBtn" class="btn btn--ghost">最初からやり直す</button>
+    </div>
+
+    <div class="progress">
+      <div class="progress__track"><i id="progressFill" class="progress__fill"></i></div>
+      <div class="progress__meta">
+        <span id="stepLabel"></span>
+        <span id="saveIndicator" class="saveIndicator">保存しました</span>
+      </div>
+      <nav id="stepTabs" class="tabs" aria-label="ステップ移動"></nav>
+    </div>
+  </header>
+
+  <main id="view" class="view"></main>
+
+  <footer class="footer">
+    <div class="footer__nav">
+      <button type="button" id="prevBtn" class="btn btn--sub">戻る</button>
+      <button type="button" id="nextBtn" class="btn btn--primary">次へ進む</button>
+    </div>
+    <p class="footer__note">入力内容はこのブラウザの中だけに自動保存されます。共用パソコンを使うときは、終わったら「最初からやり直す」を押してください。</p>
+  </footer>
+
+  <!-- 印刷専用（画面には表示されない） -->
+  <div id="printArea" class="printArea" aria-hidden="true"></div>
+
+  <script src="config.js"></script>
+  <script src="assets/js/questions.js"></script>
+  <script src="assets/js/compose.js"></script>
+  <script src="assets/js/checklist.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
