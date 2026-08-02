@@ -36,14 +36,14 @@
   /** 進路選択を 0 番目、以降に設問4ステップ + 組み立て/見直し/提出 */
   function views() {
     return [
-      { id: 'start', title: '進路をえらぶ' },
-      { id: 'basic', title: '基本情報' },
-      { id: 'self', title: '自分を知る' },
-      { id: 'research', title: isJob() ? '会社を知る' : '学校を知る' },
-      { id: 'connect', title: 'つなげる' },
-      { id: 'compose', title: '組み立てる' },
-      { id: 'review', title: '見直す' },
-      { id: 'submit', title: '提出する' }
+      { id: 'start', title: '進路をえらぶ', short: '進路' },
+      { id: 'basic', title: '基本情報', short: '基本' },
+      { id: 'self', title: '自分を知る', short: '自分' },
+      { id: 'research', title: isJob() ? '会社を知る' : '学校を知る', short: isJob() ? '会社' : '学校' },
+      { id: 'connect', title: 'つなげる', short: 'つなぐ' },
+      { id: 'compose', title: '組み立てる', short: '組立' },
+      { id: 'review', title: '見直す', short: '見直し' },
+      { id: 'submit', title: '提出する', short: '提出' }
     ];
   }
 
@@ -135,6 +135,14 @@
       el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
     });
     return el;
+  }
+
+  /** カードの見出し（「STEP 3」を小さく上に出す） */
+  function cardTitle(step, title) {
+    return h('h2', { class: 'card__title' }, [
+      step ? h('span', { class: 'card__step', text: 'STEP ' + step }) : null,
+      document.createTextNode(title)
+    ]);
   }
 
   function esc(s) {
@@ -565,7 +573,7 @@
 
   function viewStart() {
     const card = h('div', { class: 'card' }, [
-      h('h2', { class: 'card__title', text: 'まず、進路をえらんでください' }),
+      cardTitle('', 'まず、進路をえらんでください'),
       h('p', { class: 'lead', text: '進学と就職では、書くべき内容も、見られるポイントも変わります。選んだ進路に合わせて質問と下書きの型を切り替えます。' })
     ]);
 
@@ -586,7 +594,7 @@
     card.appendChild(picker);
 
     if (!state.data.course) {
-      card.appendChild(h('p', { class: 'field__error', text: 'どちらかを選ぶと、次へ進めます。' }));
+      card.appendChild(h('p', { class: 'pickHint', text: 'どちらかを選ぶと、この先の質問が決まります。' }));
       return card;
     }
 
@@ -594,7 +602,8 @@
     card.appendChild(h('h3', { class: 'card__sub', text: 'この先の流れ' }));
     card.appendChild(h('ol', { class: 'flow' }, [
       ['材料を集める', 'STEP 1〜4。単語や短い文で答えるだけ。文章にする必要はありません。'],
-      ['組み立てる', 'STEP 5。3つの構成から選ぶと、下書きが自動でできます。'],
+      ['魅力を書きとめる', 'STEP 3 の「魅力カード」がいちばん大事。心が動いた場面をそのまま書きます。'],
+      ['組み立てる', 'STEP 5。6つの構成から選ぶと、下書きが自動でできます。おすすめも出ます。'],
       ['見直す', 'STEP 6。文字数・話し言葉・文体などを自動でチェックします。'],
       ['提出する', 'STEP 7。先生のスプレッドシートに送信、印刷、コピーができます。']
     ].map(function (x) {
@@ -622,7 +631,7 @@
   function viewQuestions(stepId) {
     const step = steps().find(function (s) { return s.id === stepId; });
     const card = h('div', { class: 'card' }, [
-      h('h2', { class: 'card__title', text: 'STEP ' + step.no + '　' + step.title }),
+      cardTitle(step.no, step.title),
       h('p', { class: 'lead', text: step.lead }),
       step.note ? h('div', { class: 'notice notice--tip' }, [h('p', { text: step.note })]) : null
     ]);
@@ -632,7 +641,7 @@
 
   function viewCompose() {
     const card = h('div', { class: 'card' }, [
-      h('h2', { class: 'card__title', text: 'STEP 5　組み立てる' }),
+      cardTitle(5, '組み立てる'),
       h('p', { class: 'lead', text: '構成を選ぶと、あなたが書いた材料をつないで下書きを作ります。できた文章は自由に直せます。' })
     ]);
 
@@ -750,7 +759,7 @@
     const warns = results.filter(function (r) { return r.level === 'warn'; }).length;
 
     const card = h('div', { class: 'card' }, [
-      h('h2', { class: 'card__title', text: 'STEP 6　見直す' }),
+      cardTitle(6, '見直す'),
       h('p', { class: 'lead', text: '機械でチェックできるところを自動で確認しました。赤は直しましょう。黄色は読み返して判断してください。' }),
       h('div', { class: 'scoreRow' }, [
         h('span', { class: 'score score--error', text: '要修正 ' + errors }),
@@ -759,9 +768,8 @@
       ])
     ]);
 
-    const list = h('ul', { class: 'checks' });
-    results.forEach(function (r) {
-      list.appendChild(h('li', { class: 'check check--' + r.level }, [
+    function checkItem(r) {
+      return h('li', { class: 'check check--' + r.level }, [
         h('div', { class: 'check__head' }, [
           h('span', { class: 'check__icon', text: r.level === 'ok' ? '✓' : r.level === 'warn' ? '!' : '×' }),
           h('span', { class: 'check__label', text: r.label })
@@ -770,9 +778,25 @@
         r.samples.length ? h('ul', { class: 'check__samples' }, r.samples.map(function (s) {
           return h('li', { text: s });
         })) : null
+      ]);
+    }
+
+    // 直すべきものだけを前に出し、問題のなかった項目は畳んでおく
+    const todo = results.filter(function (r) { return r.level !== 'ok'; });
+    const done = results.filter(function (r) { return r.level === 'ok'; });
+
+    if (todo.length) {
+      card.appendChild(h('ul', { class: 'checks' }, todo.map(checkItem)));
+    } else {
+      card.appendChild(h('p', { class: 'checks__clear', text: '自動チェックはすべて通りました。あとは自分の目で確かめましょう。' }));
+    }
+
+    if (done.length) {
+      card.appendChild(h('details', { class: 'checks__done' }, [
+        h('summary', { text: '問題のなかった項目（' + done.length + '件）' }),
+        h('ul', { class: 'checks' }, done.map(checkItem))
       ]));
-    });
-    card.appendChild(list);
+    }
 
     card.appendChild(h('h3', { class: 'card__sub', text: '自分の目で確かめること' }));
     const man = h('ul', { class: 'manual' });
@@ -872,7 +896,7 @@
     const errors = results.filter(function (r) { return r.level === 'error'; });
 
     const card = h('div', { class: 'card' }, [
-      h('h2', { class: 'card__title', text: 'STEP 7　提出する' }),
+      cardTitle(7, '提出する'),
       h('p', { class: 'lead', text: '内容を確認して送信しましょう。送信するとスプレッドシートに1行追加され、先生が読めるようになります。' })
     ]);
 
@@ -998,6 +1022,7 @@
     else node = viewQuestions(view.id);
     root.appendChild(node);
 
+    document.body.dataset.course = state.data.course || '';
     renderNav(V);
     renderProgress(V);
     save();
@@ -1018,16 +1043,21 @@
       tabs.appendChild(h('button', {
         type: 'button',
         title: v.title,
+        'aria-current': i === state.index ? 'step' : null,
         class: 'tab' + (i === state.index ? ' is-on' : '') + (i < state.index ? ' is-done' : ''),
         disabled: locked ? 'disabled' : null,
         onclick: function () { if (!locked) { state.index = i; render(); } }
-      }, [i === 0 ? '◎' : String(i)]));
+      }, [
+        h('span', { class: 'tab__no', text: i === 0 ? '◎' : String(i) }),
+        h('span', { class: 'tab__label', text: v.short || v.title })
+      ]));
     });
   }
 
   function renderNav(V) {
     const prev = document.getElementById('prevBtn');
     const next = document.getElementById('nextBtn');
+    prev.style.display = state.index === 0 ? 'none' : '';
     prev.disabled = state.index === 0;
     next.style.display = state.index === V.length - 1 ? 'none' : '';
     next.disabled = state.index === 0 && !state.data.course;
