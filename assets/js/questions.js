@@ -205,11 +205,126 @@
     return fill(hit.frame, w);
   }
 
+
+  // ══════════════════════════════════════════════════════
+  //  文章構成をえらぶための3つの質問
+  //  ここで型が決まると、次のステップで聞く質問が変わる。
+  // ══════════════════════════════════════════════════════
+  const PICKER = [
+    {
+      id: 'pickTarget',
+      q: function (isJob) {
+        return isJob ? 'その会社について、いちばん語れることは？' : 'その学校について、いちばん語れることは？';
+      },
+      options: [
+        {
+          label: function (isJob) { return isJob ? '職場見学や説明会で、心が動いた場面がある' : '見学や体験授業で、心が動いた場面がある'; },
+          note: 'その場面から書き出すと、あなたにしか書けない文章になります',
+          vote: { scene: 2 }
+        },
+        {
+          label: function (isJob) { return isJob ? 'やりたい仕事の中身が、はっきりしている' : '学びたい内容が、はっきりしている'; },
+          note: '結論から言い切る書き方が向いています',
+          vote: { prep: 2 }
+        },
+        {
+          label: function () { return '名前や条件は知っているが、まだ言葉にできていない'; },
+          note: '順番に質問に答えていけば形になります',
+          vote: { prep: 1 }
+        }
+      ]
+    },
+    {
+      id: 'pickSelf',
+      q: function () { return '自分について、いちばん語れることは？'; },
+      options: [
+        {
+          label: function () { return '高校で打ち込んだ活動がある'; },
+          note: 'その体験から語り始める書き方が向いています',
+          vote: { story: 2 }
+        },
+        {
+          label: function () { return '将来やりたいことが、はっきりしている'; },
+          note: '将来から逆算する書き方が向いています',
+          vote: { future: 2 }
+        },
+        {
+          label: function () { return '今の自分に足りないものを感じている'; },
+          note: '背伸びせずに意欲を示せる書き方が向いています',
+          vote: { gap: 2 }
+        },
+        {
+          label: function () { return 'まだ整理できていない'; },
+          note: '質問に答えるうちに見つかります',
+          vote: { prep: 1 }
+        }
+      ]
+    },
+    {
+      id: 'pickLength',
+      q: function () { return 'どのくらいの長さで書きますか？'; },
+      options: [
+        { label: function () { return '300字くらいまで'; }, note: '履歴書の志望動機欄', vote: { prep: 1 }, chars: 300 },
+        { label: function () { return '400〜600字'; }, note: '志望理由書・エントリーシート', vote: {}, chars: 500 },
+        { label: function () { return '600字以上'; }, note: 'じっくり書く。面接でも話せる形に', vote: { three: 2 }, chars: 700 }
+      ]
+    }
+  ];
+
+  /** 同点のときに優先する順（前ほど強い） */
+  const TIE_BREAK = ['scene', 'story', 'future', 'gap', 'three', 'prep'];
+
+  /**
+   * 3つの答えから構成を決める。
+   * 票が同じときは TIE_BREAK の順で決める。
+   * @returns {{id:string, reason:string}}
+   */
+  function decide(picks) {
+    const score = {};
+    const reasons = [];
+
+    PICKER.forEach(function (q) {
+      const chosen = (picks || {})[q.id];
+      const opt = q.options.find(function (o, i) { return String(i) === String(chosen); });
+      if (!opt) return;
+      Object.keys(opt.vote).forEach(function (k) { score[k] = (score[k] || 0) + opt.vote[k]; });
+      if (Object.keys(opt.vote).length) reasons.push(opt.label(false));
+    });
+
+    let best = 'prep';
+    let bestScore = -1;
+    TIE_BREAK.forEach(function (id) {
+      const v = score[id] || 0;
+      if (v > bestScore) { bestScore = v; best = id; }
+    });
+
+    return {
+      id: best,
+      reason: reasons.length
+        ? '「' + reasons.join('」「') + '」と答えたので、この型を選びました。'
+        : '迷ったときに、いちばん読みやすい型です。'
+    };
+  }
+
+  /** 選んだ長さから目標字数を取り出す */
+  function pickChars(picks) {
+    const q = PICKER[2];
+    const opt = q.options.find(function (o, i) { return String(i) === String((picks || {})[q.id]); });
+    return opt ? opt.chars : 0;
+  }
+
   // ══════════════════════════════════════════════════════
   //  設問
+  //  only を持つ設問は、その構成を選んだときだけ出す。
   // ══════════════════════════════════════════════════════
-  function buildSteps(mode) {
+  function buildSteps(mode, template) {
     const isJob = job(mode);
+    const tpl = template || 'prep';
+
+    function usable(f) {
+      if (!f) return false;
+      return !f.only || f.only.indexOf(tpl) !== -1;
+    }
 
     return [
       // ───────────────────────────── STEP 1
@@ -309,6 +424,7 @@
           },
           {
             id: 'effortResult', type: 'text', label: 'その結果どうなったか',
+            only: ['prep', 'story', 'gap', 'three'],
             placeholder: '例）県大会ベスト8',
             hint: '数字や順位が入ると説得力が出ます。単語で構いません。'
           },
@@ -341,31 +457,36 @@
           },
           {
             id: 'futureKind', type: 'select', label: '将来について、今いえるのはどれですか', required: true,
+            only: ['future'],
             options: FUTURE_KIND.map(function (k) { return k.label; }),
             default: '興味のある分野がある',
             hint: '選んだ内容に合わせて、次の欄の言葉が文章に組み込まれます。'
           },
           {
             id: 'futureDream', type: 'text', label: 'その職業名・分野名', required: true,
+            only: ['future'],
             placeholder: isJob ? '例）ものづくり' : '例）看護師 / 情報 / 地域づくり',
             hint: '単語だけで大丈夫です。「〜になりたい」までは書かなくて構いません。'
           },
           {
             id: 'futureWhySource', type: 'select', label: 'そう思ったきっかけは、どこにありましたか',
+            only: ['future'],
             options: WHY_SOURCE.map(function (s) { return s.label; }),
             hint: '選ばなくても進めますが、選ぶと文章に厚みが出ます。'
           },
           {
             id: 'futureWhyWhat', type: 'text', label: 'そのとき見たこと・経験したこと',
+            only: ['future'],
             placeholder: isJob ? '例）先輩が新人に教えている姿' : '例）祖母の入院',
             hint: '出来事を短い言葉で。上で選んだきっかけと組み合わせて文になります。'
           },
           {
-            id: 'gapNow', type: 'text', label: '今の自分に足りないと感じている力',
+            id: 'gapNow', type: 'text', label: '今の自分に足りないと感じている力', required: true,
+            only: ['gap'],
             placeholder: isJob ? '例）自分から動く力' : '例）人に伝える力',
-            hint: '書けなくても大丈夫。書けると「成長課題型」という構成が使えるようになります。'
+            hint: 'この構成の出発点になります。「◯◯する力」の形で書くと入れやすいです。'
           }
-        ]
+        ].filter(usable)
       },
 
       // ───────────────────────────── STEP 3
@@ -439,9 +560,11 @@
           },
           {
             id: 'featureDetail', type: 'text',
+            only: ['prep', 'future', 'scene', 'three'],
             label: 'そこでできること・特徴',
-            placeholder: isJob ? '例）検査工程まで自社で担当' : '例）自治体と組んだ課題調査',
-            hint: '短い言葉で。「そこでは◯◯に関わることができると知りました。」という文になります。'
+            placeholder: isJob ? '例）検査から出荷までの一貫生産' : '例）自治体と組んだ課題調査',
+            hint: '「〜すること」「〜の◯◯」のように、ものごとの名前で書いてください。'
+              + '「そこでは◯◯に関わることができると知りました。」という文になります。'
           },
           isJob
             ? {
@@ -456,11 +579,12 @@
             },
           {
             id: 'targetPolicy', type: 'text',
+            only: ['prep', 'story', 'three'],
             label: isJob ? '共感した理念の言葉' : '共感した教育目標の言葉',
             placeholder: isJob ? '例）安全第一、品質第二' : '例）自ら学び、自ら考える',
             hint: 'ホームページに載っている言葉をそのまま。かぎかっこは自動でつきます。'
           }
-        ].filter(Boolean)
+        ].filter(usable)
       },
 
       // ───────────────────────────── STEP 4
@@ -536,7 +660,7 @@
               ? '「5年後には、◯◯を身につけていたいです。」という文になります。'
               : '「卒業後は、◯◯を目指したいと考えています。」という文になります。'
           }
-        ].filter(Boolean)
+        ].filter(usable)
       }
     ];
   }
@@ -546,6 +670,9 @@
 
   global.QUESTIONS = {
     COURSES: COURSES,
+    PICKER: PICKER,
+    decide: decide,
+    pickChars: pickChars,
     FEELINGS: FEELINGS,
     courseOf: courseOf,
     buildSteps: buildSteps,

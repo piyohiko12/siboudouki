@@ -549,6 +549,86 @@ h1, h2, h3 { line-height: 1.5; letter-spacing: .01em; }
   text-align: center;
 }
 
+/* 文章の型をえらぶ3問（縦にならぶ選択カード） */
+.picks {
+  display: grid;
+  gap: 10px;
+}
+
+.pickCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  align-items: start;
+  gap: 2px 10px;
+  text-align: left;
+  padding: 15px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  transition: border-color .16s, background-color .16s, transform .16s;
+}
+.pickCard:hover { border-color: var(--accent-line); background: var(--surface-2); }
+.pickCard:active { transform: translateY(1px); }
+
+.pickCard__mark {
+  grid-row: 1 / span 2;
+  width: 22px; height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  border: 1.5px solid var(--line);
+  background: var(--surface-2);
+  font-size: 12px; font-weight: 700;
+  line-height: 1;
+}
+.pickCard__label { font-size: 15px; font-weight: 600; line-height: 1.6; }
+.pickCard__note { font-size: 12.5px; color: var(--ink-3); line-height: 1.7; }
+
+.pickCard.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: var(--ring);
+}
+.pickCard.is-on .pickCard__label { color: var(--accent-ink); }
+.pickCard.is-on .pickCard__mark {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  animation: pop .24s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+
+.field.has-error .pickCard { border-color: var(--err-line); }
+
+.sep {
+  height: 0;
+  margin: 26px 0 22px;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+/* 「いまの型」の帯（STEP 6 の上に置く） */
+.tplNow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  border: 1.5px solid var(--accent-line);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+}
+.tplNow__body { flex: 1; min-width: 200px; display: grid; gap: 2px; }
+.tplNow__cap { font-size: 11.5px; letter-spacing: .08em; color: var(--ink-3); }
+.tplNow__name { font-size: 16px; color: var(--accent-ink); }
+.tplNow__order { font-size: 12px; color: var(--ink-2); line-height: 1.7; }
+
+.btn--sm { padding: 9px 14px; font-size: 13px; }
+
 /* --------------------------------------------------------------------------
    6. 入力欄
    -------------------------------------------------------------------------- */

@@ -15,7 +15,9 @@
       targetChars: 500,
       tone: 'です・ます調',
       whyChain: { why1: '', why2: '', why3: '' },
+      picks: {},           // 型をえらぶ3問の答え { pickTarget: 0, ... }
       template: 'prep',
+      templateManual: false, // 生徒が判定と別の型を選び直したか
       body: '',
       manualChecks: []
     },
@@ -24,19 +26,23 @@
     submitted: null
   };
 
-  /** 選んだ進路に応じた設問セット */
+  /** 選んだ進路と文章の型に応じた設問セット */
   function steps() {
-    return global.QUESTIONS.buildSteps(state.data.course || 'shingaku');
+    return global.QUESTIONS.buildSteps(state.data.course || 'shingaku', state.data.template);
   }
 
   function isJob() {
     return state.data.course === 'shushoku';
   }
 
-  /** 進路選択を 0 番目、以降に設問4ステップ + 組み立て/見直し/提出 */
+  /**
+   * 0 進路 → 1 型 → 2〜5 設問 → 6 組み立て → 7 見直し → 8 提出
+   * 型を先に決めてから質問するので、聞いた材料が全部本文に使われる。
+   */
   function views() {
     return [
       { id: 'start', title: '進路をえらぶ', short: '進路' },
+      { id: 'pick', title: '文章の型をえらぶ', short: '型' },
       { id: 'basic', title: '基本情報', short: '基本' },
       { id: 'self', title: '自分を知る', short: '自分' },
       { id: 'research', title: isJob() ? '会社を知る' : '学校を知る', short: isJob() ? '会社' : '学校' },
@@ -116,6 +122,9 @@
     if (!global.COMPOSE.TEMPLATES.some(function (t) { return t.id === state.data.template; })) {
       state.data.template = 'prep';
     }
+
+    // 「型をえらぶ」ステップができる前の保存データには picks がない
+    if (!state.data.picks || typeof state.data.picks !== 'object') state.data.picks = {};
   }
 
   function flashSaved() {
@@ -152,7 +161,7 @@
     return el;
   }
 
-  /** カードの見出し（「STEP 3」を小さく上に出す） */
+  /** カードの見出し（「STEP 4」を小さく上に出す） */
   function cardTitle(step, title) {
     return h('h2', { class: 'card__title' }, [
       step ? h('span', { class: 'card__step', text: 'STEP ' + step }) : null,
@@ -555,6 +564,30 @@
     return ok;
   }
 
+  /** 型をえらぶ3問が埋まっているか */
+  function validatePicks() {
+    let ok = true;
+    let firstBad = null;
+
+    global.QUESTIONS.PICKER.forEach(function (q) {
+      const wrap = document.querySelector('[data-field="' + q.id + '"]');
+      const err = wrap && wrap.querySelector('.field__error');
+      if (err) err.textContent = '';
+      if (wrap) wrap.classList.remove('has-error');
+      if ((state.data.picks || {})[q.id] != null) return;
+
+      ok = false;
+      if (wrap) {
+        wrap.classList.add('has-error');
+        if (err) err.textContent = 'どれか1つ選んでください。近いものでかまいません。';
+        if (!firstBad) firstBad = wrap;
+      }
+    });
+
+    if (firstBad) firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return ok;
+  }
+
   // ── 各ビューの描画 ────────────────────────────────
   /** 進路を変えると、選択肢の中身が変わる設問はいったん白紙に戻す */
   const COURSE_SPECIFIC_FIELDS = ['strengths', 'attractPoints', 'afterEnter', 'visited',
@@ -579,7 +612,9 @@
     (state.data.attractCards || []).forEach(function (c) { c.where = ''; });
 
     state.data.course = id;
-    state.data.targetChars = id === 'shushoku' ? 300 : 500;
+    // 目標字数は STEP 1 で選んだ長さを優先し、まだなら進路ごとの目安を入れる
+    state.data.targetChars = global.QUESTIONS.pickChars(state.data.picks) ||
+      (id === 'shushoku' ? 300 : 500);
     state.data.body = '';
     state.bodyEdited = false;
     save();
@@ -616,11 +651,12 @@
     const job = isJob();
     card.appendChild(h('h3', { class: 'card__sub', text: 'この先の流れ' }));
     card.appendChild(h('ol', { class: 'flow' }, [
-      ['材料を集める', 'STEP 1〜4。単語や短い文で答えるだけ。文章にする必要はありません。'],
-      ['魅力を書きとめる', 'STEP 3 の「魅力カード」がいちばん大事。心が動いた場面をそのまま書きます。'],
-      ['組み立てる', 'STEP 5。6つの構成から選ぶと、下書きが自動でできます。おすすめも出ます。'],
-      ['見直す', 'STEP 6。文字数・話し言葉・文体などを自動でチェックします。'],
-      ['提出する', 'STEP 7。先生のスプレッドシートに送信、印刷、コピーができます。']
+      ['型をきめる', 'STEP 1。3つの質問に答えると、あなたに向いた文章の型が決まります。'],
+      ['材料を集める', 'STEP 2〜5。単語や短い文で答えるだけ。選んだ型に必要な質問しか出ません。'],
+      ['魅力を書きとめる', 'STEP 4 の「魅力カード」がいちばん大事。心が動いた場面をそのまま書きます。'],
+      ['組み立てる', 'STEP 6。集めた材料が、型どおりの順番で下書きになります。'],
+      ['見直す', 'STEP 7。文字数・話し言葉・文体などを自動でチェックします。'],
+      ['提出する', 'STEP 8。先生のスプレッドシートに送信、印刷、コピーができます。']
     ].map(function (x) {
       return h('li', {}, [h('strong', { text: x[0] }), h('span', { text: x[1] })]);
     })));
@@ -629,24 +665,152 @@
       h('strong', { text: 'かかる時間の目安：40〜60分' }),
       h('p', {
         text: job
-          ? '求人票と、会社のホームページを手元に用意しておくと、STEP 3 がスムーズです。'
-          : '学校案内のパンフレットと、学校のホームページを手元に用意しておくと、STEP 3 がスムーズです。'
+          ? '求人票と、会社のホームページを手元に用意しておくと、STEP 4 がスムーズです。'
+          : '学校案内のパンフレットと、学校のホームページを手元に用意しておくと、STEP 4 がスムーズです。'
       })
     ]));
 
     if (!global.API.isConfigured()) {
       card.appendChild(h('div', { class: 'notice notice--warn' }, [
         h('strong', { text: '送信先が未設定です' }),
-        h('p', { text: 'config.js に GAS のURLが入っていないため、STEP 7 の「スプレッドシートに送信」は使えません。下書き作成・チェック・印刷・コピーはそのまま使えます。' })
+        h('p', { text: 'config.js に GAS のURLが入っていないため、STEP 8 の「スプレッドシートに送信」は使えません。下書き作成・チェック・印刷・コピーはそのまま使えます。' })
       ]));
     }
+    return card;
+  }
+
+  // ── STEP 1：文章の型をえらぶ ──────────────────────
+  /** 3問すべてに答えたか */
+  function picksDone() {
+    const picks = state.data.picks || {};
+    return global.QUESTIONS.PICKER.every(function (q) { return picks[q.id] != null; });
+  }
+
+  /**
+   * 3問の答えから型と目標字数を決める。
+   * 答えを変えたら判定をやり直すので、選び直しの印は消す。
+   */
+  function applyPicks() {
+    if (!picksDone()) return;
+    const picks = state.data.picks;
+    const before = state.data.template;
+    state.data.template = global.QUESTIONS.decide(picks).id;
+    state.data.templateManual = false;
+    const chars = global.QUESTIONS.pickChars(picks);
+    if (chars) state.data.targetChars = chars;
+    if (state.data.template !== before) {
+      state.data.body = '';
+      state.bodyEdited = false;
+    }
+    save();
+  }
+
+  /** 型を手で選び直したとき */
+  function chooseTemplate(id) {
+    if (state.data.template === id) return;
+    state.data.template = id;
+    state.data.templateManual = true;
+    state.data.body = '';
+    state.bodyEdited = false;
+    save();
+    render();
+  }
+
+  function templateCards(decidedId) {
+    const job = isJob();
+    const box = h('div', { class: 'templates' });
+    global.COMPOSE.TEMPLATES.forEach(function (t) {
+      box.appendChild(h('button', {
+        type: 'button',
+        class: 'tplCard' + (state.data.template === t.id ? ' is-on' : '') + (decidedId === t.id ? ' is-rec' : ''),
+        'aria-pressed': state.data.template === t.id ? 'true' : 'false',
+        onclick: function () { chooseTemplate(t.id); }
+      }, [
+        decidedId === t.id ? h('span', { class: 'tplCard__badge', text: 'おすすめ' }) : null,
+        h('span', { class: 'tplCard__name', text: t.name }),
+        h('span', { class: 'tplCard__summary', text: t.summary }),
+        h('span', { class: 'tplCard__order', text: t.order(job) })
+      ]));
+    });
+    return box;
+  }
+
+  function viewPick() {
+    const job = isJob();
+    const picks = state.data.picks || (state.data.picks = {});
+
+    const card = h('div', { class: 'card' }, [
+      cardTitle(1, '文章の型をえらぶ'),
+      h('p', {
+        class: 'lead',
+        text: '先に「どういう順番で書くか」を決めます。あとの質問は、選んだ型が必要とするものだけになるので、答えた材料がむだなく本文に入ります。'
+      })
+    ]);
+
+    global.QUESTIONS.PICKER.forEach(function (q) {
+      const wrap = h('div', { class: 'field', 'data-field': q.id });
+      wrap.appendChild(h('label', { class: 'field__label' }, [
+        document.createTextNode(q.q(job)),
+        h('span', { class: 'badge badge--required', text: '必須' })
+      ]));
+
+      const list = h('div', { class: 'picks' });
+      q.options.forEach(function (o, i) {
+        const on = String(picks[q.id]) === String(i);
+        list.appendChild(h('button', {
+          type: 'button',
+          class: 'pickCard' + (on ? ' is-on' : ''),
+          'aria-pressed': on ? 'true' : 'false',
+          onclick: function () { picks[q.id] = i; applyPicks(); render(); }
+        }, [
+          h('span', { class: 'pickCard__mark', text: on ? '✓' : '' }),
+          h('span', { class: 'pickCard__label', text: o.label(job) }),
+          o.note ? h('span', { class: 'pickCard__note', text: o.note }) : null
+        ]));
+      });
+      wrap.appendChild(list);
+      wrap.appendChild(h('p', { class: 'field__error', text: '' }));
+      card.appendChild(wrap);
+    });
+
+    if (!picksDone()) {
+      card.appendChild(h('p', { class: 'pickHint', text: '3つとも答えると、あなたに向いた型が決まります。' }));
+      return card;
+    }
+
+    const decided = global.QUESTIONS.decide(picks);
+    const chosen = global.COMPOSE.TEMPLATES.find(function (t) { return t.id === state.data.template; });
+
+    card.appendChild(h('hr', { class: 'sep' }));
+    card.appendChild(h('div', { class: 'notice notice--tip' }, [
+      h('strong', {
+        text: state.data.templateManual
+          ? 'あなたが選んだ型：' + chosen.name
+          : 'あなたに向いている型：' + chosen.name
+      }),
+      h('p', {
+        text: state.data.templateManual
+          ? 'おすすめは「' + (global.COMPOSE.TEMPLATES.find(function (t) { return t.id === decided.id; }) || {}).name + '」でしたが、選び直した型で進めます。'
+          : decided.reason
+      })
+    ]));
+
+    card.appendChild(h('h3', { class: 'card__sub', text: 'ほかの型に変えることもできます' }));
+    card.appendChild(templateCards(decided.id));
+
+    const n = steps().reduce(function (sum, s) { return sum + s.fields.length; }, 0);
+    card.appendChild(h('div', { class: 'notice' }, [
+      h('strong', { text: 'この型で答える質問：' + n + '問／目標字数：' + (state.data.targetChars || 500) + '字' }),
+      h('p', { text: '型を変えると、聞く質問も入れかわります。ここで決めた字数は STEP 2 で変えられます。' })
+    ]));
+
     return card;
   }
 
   function viewQuestions(stepId) {
     const step = steps().find(function (s) { return s.id === stepId; });
     const card = h('div', { class: 'card' }, [
-      cardTitle(step.no, step.title),
+      cardTitle(state.index, step.title),
       h('p', { class: 'lead', text: step.lead }),
       step.note ? h('div', { class: 'notice notice--tip' }, [h('p', { text: step.note })]) : null
     ]);
@@ -656,34 +820,23 @@
 
   function viewCompose() {
     const card = h('div', { class: 'card' }, [
-      cardTitle(5, '組み立てる'),
-      h('p', { class: 'lead', text: '構成を選ぶと、あなたが書いた材料をつないで下書きを作ります。できた文章は自由に直せます。' })
+      cardTitle(state.index, '組み立てる'),
+      h('p', { class: 'lead', text: 'STEP 1 で決めた型に、あなたが答えた材料を流し込みました。できた文章は自由に直せます。' })
     ]);
 
-    const rec = global.COMPOSE.recommend(state.data);
-    card.appendChild(h('div', { class: 'notice notice--tip' }, [
-      h('strong', { text: 'あなたにおすすめ：' + (global.COMPOSE.TEMPLATES.find(function (t) { return t.id === rec.id; }) || {}).name }),
-      h('p', { text: rec.reason + ' もちろん、別の型を選んでもすぐに切り替わります。' })
+    const tpl = global.COMPOSE.TEMPLATES.find(function (t) { return t.id === state.data.template; })
+      || global.COMPOSE.TEMPLATES[0];
+    card.appendChild(h('div', { class: 'tplNow' }, [
+      h('div', { class: 'tplNow__body' }, [
+        h('span', { class: 'tplNow__cap', text: 'この文章の型' }),
+        h('strong', { class: 'tplNow__name', text: tpl.name }),
+        h('span', { class: 'tplNow__order', text: tpl.order(isJob()) })
+      ]),
+      h('button', {
+        type: 'button', class: 'btn btn--ghost btn--sm',
+        onclick: function () { state.index = 1; render(); }
+      }, ['型を選び直す'])
     ]));
-
-    const picker = h('div', { class: 'templates' });
-    global.COMPOSE.TEMPLATES.forEach(function (t) {
-      picker.appendChild(h('button', {
-        type: 'button',
-        class: 'tplCard' + (state.data.template === t.id ? ' is-on' : '') + (rec.id === t.id ? ' is-rec' : ''),
-        onclick: function () {
-          state.data.template = t.id;
-          regenerate(true);
-          render();
-        }
-      }, [
-        rec.id === t.id ? h('span', { class: 'tplCard__badge', text: 'おすすめ' }) : null,
-        h('span', { class: 'tplCard__name', text: t.name }),
-        h('span', { class: 'tplCard__summary', text: t.summary }),
-        h('span', { class: 'tplCard__order', text: t.order(isJob()) })
-      ]));
-    });
-    card.appendChild(picker);
 
     const bar = h('div', { class: 'toolbar' }, [
       h('button', {
@@ -774,7 +927,7 @@
     const warns = results.filter(function (r) { return r.level === 'warn'; }).length;
 
     const card = h('div', { class: 'card' }, [
-      cardTitle(6, '見直す'),
+      cardTitle(state.index, '見直す'),
       h('p', { class: 'lead', text: '機械でチェックできるところを自動で確認しました。赤は直しましょう。黄色は読み返して判断してください。' }),
       h('div', { class: 'scoreRow' }, [
         h('span', { class: 'score score--error', text: '要修正 ' + errors }),
@@ -921,7 +1074,7 @@
     const errors = results.filter(function (r) { return r.level === 'error'; });
 
     const card = h('div', { class: 'card' }, [
-      cardTitle(7, '提出する'),
+      cardTitle(state.index, '提出する'),
       h('p', { class: 'lead', text: '内容を確認して送信しましょう。送信するとスプレッドシートに1行追加され、先生が読めるようになります。' })
     ]);
 
@@ -1041,6 +1194,7 @@
 
     let node;
     if (view.id === 'start') node = viewStart();
+    else if (view.id === 'pick') node = viewPick();
     else if (view.id === 'compose') node = viewCompose();
     else if (view.id === 'review') node = viewReview();
     else if (view.id === 'submit') node = viewSubmit();
@@ -1063,8 +1217,8 @@
     const tabs = document.getElementById('stepTabs');
     tabs.innerHTML = '';
     V.forEach(function (v, i) {
-      // 進路を選ぶまでは先へ飛べないようにする
-      const locked = i > 0 && !state.data.course;
+      // 進路と型を決めるまでは、その先へ飛べないようにする
+      const locked = (i > 0 && !state.data.course) || (i > 1 && !picksDone());
       tabs.appendChild(h('button', {
         type: 'button',
         title: v.title,
@@ -1094,6 +1248,7 @@
     const V = views();
     const view = V[state.index];
     if (view.id === 'start' && !state.data.course) return;
+    if (view.id === 'pick' && !validatePicks()) return;
     const step = steps().find(function (s) { return s.id === view.id; });
     if (step && !validateStep(step)) return;
     if (view.id === 'connect') regenerate(!state.bodyEdited);
