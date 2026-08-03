@@ -97,6 +97,21 @@
     }
     delete state.data.visitImpression;
 
+    // 記述式だった設問を「単語で答える」形に作り替えたので、
+    // 近い意味の欄へ移しておく（長すぎる場合は生徒が短くする）
+    [['effortDetail', 'effortAction'],
+     ['futureWhy', 'futureWhyWhat'],
+     ['targetFeature', 'featureName'],
+     ['jobUnderstanding', 'jobTask'],
+     ['mustReason', 'mustPoint'],
+     ['afterEnterDetail', 'afterAction'],
+     ['mainReason', 'wantObject'],
+     ['afterGrad', 'afterGradWhat']
+    ].forEach(function (pair) {
+      if (state.data[pair[0]] && !state.data[pair[1]]) state.data[pair[1]] = state.data[pair[0]];
+      delete state.data[pair[0]];
+    });
+
     // 旧データには存在しないテンプレートIDが入っていることがある
     if (!global.COMPOSE.TEMPLATES.some(function (t) { return t.id === state.data.template; })) {
       state.data.template = 'prep';
@@ -860,30 +875,40 @@
       targetChars: d.targetChars || '',
       tone: d.tone || '',
       efforts: (d.efforts || []).join('、'),
-      effortDetail: d.effortDetail || '',
+      effortWhen: d.effortWhen || '',
+      effortRole: d.effortRole || '',
+      effortAction: d.effortAction || '',
+      effortResult: d.effortResult || '',
       effortLearned: d.effortLearned || '',
       strengths: (d.strengths || []).join('、'),
       licenses: d.licenses || '',
       personality: (d.personality || []).join('、'),
+      futureKind: d.futureKind || '',
       futureDream: d.futureDream || '',
-      futureWhy: d.futureWhy || '',
+      futureWhySource: d.futureWhySource || '',
+      futureWhyWhat: d.futureWhyWhat || '',
       gapNow: d.gapNow || '',
       knewBy: d.knewBy || '',
       visited: (d.visited || []).join('、'),
       attractPoints: (d.attractPoints || []).join('、'),
-      targetFeature: d.targetFeature || '',
+      featureKind: d.featureKind || '',
+      featureName: d.featureName || '',
+      featureDetail: d.featureDetail || '',
       studyWant: d.studyWant || '',
-      jobUnderstanding: d.jobUnderstanding || '',
+      jobTask: d.jobTask || '',
       targetPolicy: d.targetPolicy || '',
-      mainReason: d.mainReason || '',
+      wantObject: d.wantObject || '',
+      wantVerb: d.wantVerb || '',
       why1: d.whyChain.why1 || '',
       why2: d.whyChain.why2 || '',
       why3: d.whyChain.why3 || '',
-      mustReason: d.mustReason || '',
+      mustPoint: d.mustPoint || '',
       afterEnter: (d.afterEnter || []).join('、'),
-      afterEnterDetail: d.afterEnterDetail || '',
+      afterAction: d.afterAction || '',
+      contributionFrom: d.contributionFrom || '',
       contribution: d.contribution || '',
-      afterGrad: d.afterGrad || '',
+      afterGradWhen: d.afterGradWhen || '',
+      afterGradWhat: d.afterGradWhat || '',
       template: (global.COMPOSE.TEMPLATES.find(function (t) { return t.id === d.template; }) || {}).name || '',
       body: d.body || '',
       bodyChars: global.COMPOSE.countChars(d.body || '')

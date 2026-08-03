@@ -185,26 +185,41 @@
       hits.map(function (w) { return '「' + w + '」'; }));
   }
 
+  // 段落が変われば読み手は一度息をつくので、同じ段落の中だけで数える
   function checkRepeatEnding(text) {
-    const ends = sentences(text)
-      .map(function (s) { return s.replace(/[。！？!?]$/, '').slice(-3); })
-      .filter(Boolean);
-    for (let i = 0; i + 2 < ends.length; i++) {
-      if (ends[i] === ends[i + 1] && ends[i + 1] === ends[i + 2]) {
-        return result('repeat', '語尾のくり返し', 'warn',
-          '「' + ends[i] + '」で終わる文が3つ続いています。語尾を変えると単調さがなくなります。');
+    const paragraphs = String(text || '').split(/\n{2,}/);
+
+    for (let p = 0; p < paragraphs.length; p++) {
+      const ends = sentences(paragraphs[p])
+        .map(function (s) { return s.replace(/[。！？!?]$/, '').slice(-3); })
+        .filter(Boolean);
+      for (let i = 0; i + 2 < ends.length; i++) {
+        if (ends[i] === ends[i + 1] && ends[i + 1] === ends[i + 2]) {
+          return result('repeat', '語尾のくり返し', 'warn',
+            '同じ段落の中で「' + ends[i] + '」で終わる文が3つ続いています。語尾を変えると単調さがなくなります。');
+        }
       }
     }
     return result('repeat', '語尾のくり返し', 'ok', '語尾に変化があります。');
   }
 
-  function checkOpening(text) {
+  // 結論から入る構成でだけ、書き出しに志望の話があるかを見る。
+  // 場面やエピソードから始める構成では、なくて当たり前なので指摘しない。
+  const CONCLUSION_FIRST = ['prep', 'three'];
+
+  function checkOpening(text, d) {
     const first = sentences(text)[0] || '';
-    if (/志望|理由|目指/.test(first)) {
+    const hasReason = /志望|理由|目指/.test(first);
+
+    if (CONCLUSION_FIRST.indexOf(d.template) === -1) {
+      return result('opening', '書き出し', 'ok',
+        '選んだ構成では、場面や体験から書き出すのが自然です。最初の3行で何の話か伝わるかだけ確認しましょう。');
+    }
+    if (hasReason) {
       return result('opening', '書き出し', 'ok', '書き出しで志望の話に入れています。');
     }
     return result('opening', '書き出し', 'warn',
-      '書き出しに「志望した理由は」などの言葉がありません。エピソードから始める構成なら問題ありませんが、最初の3行で何の話か伝わるか確認しましょう。');
+      'この構成は結論から入る型です。書き出しに「志望した理由は」を置くと、ぐっと読みやすくなります。');
   }
 
   const NOTATION = [
@@ -294,7 +309,7 @@
       checkVague(t),
       checkConcrete(t),
       checkRepeatEnding(t),
-      checkOpening(t),
+      checkOpening(t, d),
       checkNotation(t, d)
     ].filter(Boolean);
   }

@@ -43,24 +43,6 @@
     return a.slice(0, -1).join('、') + '、' + a[a.length - 1];
   }
 
-  /** 「〜から」「〜ため」などで終わっていたら、その形をそろえる */
-  function asReason(s) {
-    let t = bare(s);
-    if (!t) return '';
-    t = t.replace(/です$/, '');
-    if (/(から|ため|ので)$/.test(t)) return t;
-    return t + 'から';
-  }
-
-  /** 「〜したい」で終わる文か、名詞句かを見分けて自然につなぐ */
-  function asWish(s) {
-    const t = bare(s);
-    if (!t) return '';
-    if (/(たい|ほしい|しい)$/.test(t)) return t + 'と考えました';
-    if (/(こと|力|経験|知識|技術)$/.test(t)) return t + 'を身につける必要があると考えました';
-    return t + 'が必要だと考えました';
-  }
-
   /** 配列から最初の空でない値 */
   function firstOf() {
     for (let i = 0; i < arguments.length; i++) {
@@ -89,7 +71,6 @@
     [/過ぎました/g, '過ぎた'], [/過ぎます/g, '過ぎる'],
     [/生きました/g, '生きた'], [/生きます/g, '生きる'],
     [/用いました/g, '用いた'], [/用います/g, '用いる'],
-    [/います/g, 'いる'], [/いました/g, 'いた'],
     [/ありません/g, 'ない'], [/できません/g, 'できない'], [/いません/g, 'いない']
   ];
 
@@ -97,6 +78,8 @@
   const FIXED = [
     [/ていました/g, 'ていた'],
     [/ています/g, 'ている'],
+    [/でいました/g, 'でいた'],
+    [/でいます/g, 'でいる'],
     [/たいです/g, 'たい'],
     [/たいと思います/g, 'たいと考える'],
     [/ませんでした/g, 'なかった'],
@@ -272,9 +255,12 @@
   }
 
   // ── 生成の共通材料 ────────────────────────────────────
+  // 生徒が答えるのは単語（名詞）だけ。ここから下の関数が、助詞と語尾をつけて文にする。
   function materials(d) {
     const mode = d.course === 'shushoku' ? 'shushoku' : 'shingaku';
+    const Q = global.QUESTIONS;
     const L = lex(mode);
+    const isJob = mode === 'shushoku';
     const name = bare(d.targetName) || L.honorific;
     const sub = bare(d.targetSub);
     const efforts = d.efforts || [];
@@ -286,50 +272,68 @@
       .slice()
       .sort(function (a, b) { return (b.weight || 2) - (a.weight || 2); });
 
+    const want = Q.wantPhrase(d.wantVerb, d.wantObject, mode)
+      || (isJob ? 'この仕事に取り組みたい' : 'ここで学びたい');
+
     return {
+      mode: mode,
+      job: isJob,
+      L: L,
+      name: name,
+      // 進学は「〇〇大学経済学部」、就職は「株式会社〇〇の製造職」とつなぐ
+      nameFull: !sub ? name : (isJob ? name + 'の' + sub : name + sub),
+      sub: sub,
+
       cards: cards,
       /** i 番目のカードの文を、指定した優先度で取り出す */
       cardSent: function (i, base) {
         return cards[i] ? cardSentences(cards[i], mode, base, i) : [];
       },
-      mode: mode,
-      job: mode === 'shushoku',
-      L: L,
-      name: name,
-      // 進学は「〇〇大学経済学部」、就職は「株式会社〇〇の製造職」とつなぐ
-      nameFull: !sub ? name : (mode === 'shushoku' ? name + 'の' + sub : name + sub),
-      sub: sub,
+
       efforts: efforts,
       effortTop: efforts[0] || '学校生活',
-      effortDetail: flow(d.effortDetail),
-      effortLearned: flow(d.effortLearned),
+      effortWhen: bare(d.effortWhen),
+      effortRole: bare(d.effortRole),
+      effortAction: bare(d.effortAction),
+      effortResult: bare(d.effortResult),
+      effortLearned: bare(d.effortLearned),
+
       strengths: d.strengths || [],
       personality: d.personality || [],
       licenses: bare(d.licenses),
+
+      futureLine: Q.futureSentence(d.futureKind, d.futureDream),
       futureDream: bare(d.futureDream),
-      futureWhy: flow(d.futureWhy),
+      whyLine: Q.whySourceSentence(d.futureWhySource, d.futureWhyWhat),
+      gapNow: bare(d.gapNow),
+
       knewBy: bare(d.knewBy),
       visited: d.visited || [],
-      gapNow: flow(d.gapNow),
       attract: d.attractPoints || [],
-      feature: flow(d.targetFeature),
+      featureKind: bare(d.featureKind),
+      featureName: bare(d.featureName),
+      featureDetail: bare(d.featureDetail),
+      studyWant: bare(d.studyWant),
+      jobTask: bare(d.jobTask),
       policy: bare(d.targetPolicy),
-      studyWant: flow(d.studyWant),
-      jobUnderstanding: flow(d.jobUnderstanding),
-      mainReason: bare(d.mainReason),
+
+      want: want,
+      wantObject: bare(d.wantObject),
       // 深掘りの最も深い答えを「本当の動機」として使う
       deepReason: firstOf(chain.why3, chain.why2, chain.why1),
       midReason: firstOf(chain.why2, chain.why1),
-      mustReason: flow(d.mustReason),
+
+      mustPoint: bare(d.mustPoint),
       after: d.afterEnter || [],
-      afterEnterDetail: flow(d.afterEnterDetail),
-      contribution: flow(d.contribution),
-      afterGrad: flow(d.afterGrad)
+      afterAction: bare(d.afterAction),
+      contributionFrom: bare(d.contributionFrom),
+      contribution: bare(d.contribution),
+      afterGradWhen: bare(d.afterGradWhen),
+      afterGradWhat: bare(d.afterGradWhat)
     };
   }
 
-  /**
-   * 文オブジェクト
+  /** 文オブジェクト
    * p は優先度: 0=骨組み（絶対に消さない） 1=必須 2=推奨 3=余裕があれば
    * 書き出しと結びを 0 にしておくことで、どれだけ字数を削っても
    * 「文章として始まって終わる」状態が保たれる。
@@ -339,55 +343,145 @@
     return t ? { text: t, p: p === 0 ? 0 : (p || 2) } : null;
   }
 
+  // ══════════════════════════════════════════════════════
+  //  単語 → 文
+  //  生徒が書いた名詞を受け取り、助詞と語尾をつけて1文にする。
+  // ══════════════════════════════════════════════════════
+
+  /** 志望理由のひとこと */
+  function sHead(m) {
+    return '私が' + m.nameFull + 'を志望した理由は、' + m.want + 'からです。';
+  }
+
+  /** なぜなぜ深掘りの答え。名詞止めでも文でも成り立つ形にする */
+  function sDeep(m, lead) {
+    const t = bare(m.deepReason);
+    if (!t) return '';
+    return lead + (PREDICATE_END.test(t) ? t + 'からです。' : t + 'があるからです。');
+  }
+
+  /** 志望先の特色。固有名詞をかぎかっこで囲んで示す */
+  function sFeature(m) {
+    if (!m.featureName) return '';
+    const kind = m.featureKind || (m.job ? '取り組み' : '学び');
+    return '私が特に関心を持ったのは、' + m.name + 'の' + kind + '「' + m.featureName + '」です。';
+  }
+
+  function sFeatureDetail(m) {
+    return m.featureDetail ? 'そこでは' + m.featureDetail + 'に関わることができると知りました。' : '';
+  }
+
+  /** 進学＝学びたい科目 ／ 就職＝仕事の理解 */
+  function sLearnOrTask(m) {
+    if (m.job) return m.jobTask ? m.jobTask + 'を行う仕事だと理解しています。' : '';
+    return m.studyWant ? '特に「' + m.studyWant + '」を学びたいと考えています。' : '';
+  }
+
+  function sPolicy(m) {
+    return m.policy ? '「' + m.policy + '」という考え方にも共感しています。' : '';
+  }
+
+  function sEffortIntro(m) {
+    // 前後の段落と「ました」が並びやすいので、ここは体言で受ける
+    return (m.effortWhen || '高校生活で') + '、いちばん力を入れてきたのは' + m.effortTop + 'です。';
+  }
+
+  function sEffortAction(m) {
+    if (!m.effortAction) return '';
+    return (m.effortRole ? m.effortRole + 'として、' : 'その中で、') + m.effortAction + 'に取り組みました。';
+  }
+
+  function sEffortResult(m) {
+    // ここを「〜ました」にすると語尾が4つ続いて単調になるため、体言で受ける
+    return m.effortResult ? m.effortResult + 'は、その中で生まれた成果です。' : '';
+  }
+
+  function sEffortLearned(m) {
+    return m.effortLearned ? 'この経験から、' + m.effortLearned + 'を学びました。' : '';
+  }
+
+  function sMust(m) {
+    if (!m.mustPoint) return '';
+    return '同じような' + m.L.org + 'は他にもありますが、' + m.name + 'には'
+      + m.mustPoint + 'という違いがあります。';
+  }
+
+  function sAfter(m) {
+    return m.after.length
+      ? m.L.joinAfter + 'は、' + joinNouns(m.after, 3) + 'に取り組みたいと考えています。' : '';
+  }
+
+  function sAfterAction(m) {
+    return m.afterAction ? 'まずは' + m.afterAction + 'から始めたいです。' : '';
+  }
+
+  function sContribution(m) {
+    if (!m.job || !m.contribution) return '';
+    return (m.contributionFrom || '高校生活') + 'で身につけた' + m.contribution
+      + 'は、この仕事でも活かせると考えています。';
+  }
+
+  function sAfterGrad(m) {
+    if (!m.afterGradWhat) return '';
+    const when = m.afterGradWhen || (m.job ? '5年後' : '卒業後');
+    return m.job
+      ? when + 'には、' + m.afterGradWhat + 'を身につけていたいです。'
+      : when + 'は、' + m.afterGradWhat + 'を目指したいと考えています。';
+  }
+
+  /** 魅力カードが1枚もないときだけ使う、分類チップからの代替文 */
+  function sAttractFallback(m, lead) {
+    if (m.cards.length || !m.attract.length) return '';
+    return lead + joinNouns(m.attract, 3) + 'に魅力を感じました。';
+  }
+
+  /** 配列に文を積む小道具（空文字は捨てる） */
+  function push(list, text, p) {
+    const s = S(text, p);
+    if (s) list.push(s);
+  }
+
   // ── テンプレート1: 結論先行型 ──────────────────────────
   function buildPrep(m) {
-    const L = m.L;
     const paras = [];
 
-    paras.push([
-      S('私が' + m.nameFull + 'を志望した理由は、' + asReason(m.mainReason) + 'です。', 0),
-      // 深掘りの答えは「志望理由の根拠」なので、結論のすぐ後ろに置く
-      m.deepReason ? S('そう考えるようになったのは、' + asReason(m.deepReason) + 'です。', 2) : null
-    ]);
+    const p1 = [];
+    push(p1, sHead(m), 0);
+    push(p1, sDeep(m, 'そう考えるようになったのは、'), 2);
+    paras.push(p1);
 
     const p2 = [];
-    if (m.feature) {
-      p2.push(S(m.job
-        ? m.name + 'の、' + bare(m.feature) + 'に強く関心を持ち、私が' + L.wantNoun + 'と重なっていると感じました。'
-        : m.name + 'には' + bare(m.feature) + 'があり、私が' + L.wantNoun + 'と重なっていると感じました。', 1));
-    }
-    if (m.job && m.jobUnderstanding) p2.push(S(m.jobUnderstanding, 2));
-    if (!m.job && m.studyWant) p2.push(S(m.studyWant, 2));
-    if (m.policy) p2.push(S(bare(m.policy) + 'という考え方にも共感しています。', 3));
+    push(p2, sFeature(m), 1);
+    push(p2, sFeatureDetail(m), 2);
+    push(p2, sLearnOrTask(m), 2);
+    push(p2, sPolicy(m), 3);
     paras.push(p2);
 
     // 魅力カード：自分が見てきた場面を、そのまま段落にする
-    const pCard = [];
-    m.cardSent(0, 0).forEach(function (s) { pCard.push(s); });
-    m.cardSent(1, 2).forEach(function (s) { pCard.push(s); });
-    m.cardSent(2, 3).forEach(function (s) { pCard.push(s); });
-    if (!m.cards.length && m.attract.length) {
-      pCard.push(S('特に' + joinNouns(m.attract, 3) + 'に強くひかれました。', 2));
-    }
-    paras.push(pCard);
-
     const p3 = [];
-    p3.push(S('私は高校で' + m.effortTop + 'に力を入れてきました。', 1));
-    if (m.effortDetail) p3.push(S(m.effortDetail, 2));
-    if (m.effortLearned) p3.push(S('この経験から、' + bare(m.effortLearned) + '。', 1));
-    if (m.job && m.contribution) p3.push(S(m.contribution, 2));
-    if (m.job && m.licenses) p3.push(S('また、' + m.licenses + 'を取得しており、仕事の中で活かしていきたいと考えています。', 3));
+    m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
+    m.cardSent(1, 2).forEach(function (s) { p3.push(s); });
+    m.cardSent(2, 3).forEach(function (s) { p3.push(s); });
+    push(p3, sAttractFallback(m, '特に'), 2);
     paras.push(p3);
 
     const p4 = [];
-    if (m.mustReason) p4.push(S(m.mustReason, 2));
+    push(p4, sEffortIntro(m), 1);
+    push(p4, sEffortAction(m), 2);
+    push(p4, sEffortResult(m), 2);
+    push(p4, sEffortLearned(m), 1);
+    push(p4, sContribution(m), 1);
     paras.push(p4);
 
     const p5 = [];
-    if (m.after.length) p5.push(S(L.joinAfter + 'は、' + joinNouns(m.after, 3) + 'に取り組みたいと考えています。', 1));
-    if (m.afterEnterDetail) p5.push(S(m.afterEnterDetail, 2));
-    if (m.afterGrad) p5.push(S(m.afterGrad, 3));
+    push(p5, sMust(m), 2);
     paras.push(p5);
+
+    const p6 = [];
+    push(p6, sAfter(m), 1);
+    push(p6, sAfterAction(m), 2);
+    push(p6, sAfterGrad(m), 3);
+    paras.push(p6);
 
     paras.push([S('以上の理由から、私は' + m.nameFull + 'を志望します。', 0)]);
     return paras;
@@ -395,38 +489,36 @@
 
   // ── テンプレート2: エピソード型 ────────────────────────
   function buildStory(m) {
-    const L = m.L;
     const paras = [];
 
     const p1 = [];
-    p1.push(S('私は高校の3年間、' + m.effortTop + 'に力を注いできました。', 0));
-    if (m.effortDetail) p1.push(S(m.effortDetail, 2));
-    if (m.effortLearned) p1.push(S('この経験を通して、' + bare(m.effortLearned) + '。', 1));
+    push(p1, sEffortIntro(m), 0);
+    push(p1, sEffortAction(m), 2);
+    push(p1, sEffortResult(m), 2);
+    push(p1, sEffortLearned(m), 1);
     paras.push(p1);
 
     const p2 = [];
-    p2.push(S((m.knewBy ? m.knewBy + 'で' : '') + m.nameFull + 'を知り、' + L.metPhrase + 'と感じました。', 1));
+    push(p2, (m.knewBy ? m.knewBy + 'で' : '') + m.nameFull + 'を知りました。', 1);
+    push(p2, m.L.metPhrase + 'と感じたことを、今でも覚えています。', 1);
     m.cardSent(0, 0).forEach(function (s) { p2.push(s); });
     m.cardSent(1, 2).forEach(function (s) { p2.push(s); });
-    if (!m.cards.length && m.attract.length) {
-      p2.push(S('中でも' + joinNouns(m.attract, 3) + 'は、私が' + L.lifeNoun + 'で最も大切にしたい点です。', 2));
-    }
+    push(p2, sAttractFallback(m, '中でも'), 2);
     paras.push(p2);
 
     const p3 = [];
-    if (m.feature) p3.push(S('特に魅力を感じたのは、' + bare(m.feature) + 'です。', 1));
-    if (m.job && m.jobUnderstanding) p3.push(S(m.jobUnderstanding, 2));
-    if (!m.job && m.studyWant) p3.push(S(m.studyWant, 2));
-    if (m.deepReason) p3.push(S('なぜなら、' + asReason(m.deepReason) + 'です。', 2));
-    if (m.mustReason) p3.push(S(m.mustReason, 2));
-    if (m.policy) p3.push(S(bare(m.policy) + 'という方針も、私の考えと重なります。', 3));
+    push(p3, sFeature(m), 1);
+    push(p3, sLearnOrTask(m), 2);
+    push(p3, sDeep(m, 'なぜなら、'), 2);
+    push(p3, sMust(m), 2);
+    push(p3, sPolicy(m), 3);
     paras.push(p3);
 
     const p4 = [];
-    if (m.after.length) p4.push(S(L.joinAfter + 'は' + joinNouns(m.after, 3) + 'に力を入れたいです。', 1));
-    if (m.afterEnterDetail) p4.push(S(m.afterEnterDetail, 2));
-    if (m.job && m.contribution) p4.push(S(m.contribution, 2));
-    if (m.afterGrad) p4.push(S(m.afterGrad, 3));
+    push(p4, sAfter(m), 1);
+    push(p4, sAfterAction(m), 2);
+    push(p4, sContribution(m), 1);
+    push(p4, sAfterGrad(m), 3);
     paras.push(p4);
 
     paras.push([S('高校で身につけたことを土台に、' + m.name + 'でさらに成長したいと考え、志望しました。', 0)]);
@@ -435,52 +527,39 @@
 
   // ── テンプレート3: 将来目標型 ──────────────────────────
   function buildFuture(m) {
-    const L = m.L;
     const paras = [];
 
     const p1 = [];
-    p1.push(S('私は将来、' +
-      (m.futureDream || (m.job ? '任された仕事をやり切れる社会人になること' : 'やりたいことを見つけ、社会に貢献する仕事に就くこと')) +
-      'を目指しています。', 0));
-    if (m.futureWhy) p1.push(S(m.futureWhy, 2));
+    push(p1, m.futureLine || '私は将来の進路について考える中で、進みたい方向が見えてきました。', 0);
+    push(p1, m.whyLine, 2);
     paras.push(p1);
 
     const p2 = [];
-    p2.push(S('その目標に近づくために、' + (m.job ? '働くうえでは' : '進学先では') +
-      (m.mainReason ? asWish(m.mainReason) : '主体的に学ぶ力を身につける必要があると考えました') + '。', 1));
-    if (m.deepReason) p2.push(S('そう考えたのは、' + asReason(m.deepReason) + 'です。', 2));
+    push(p2, 'その目標に近づくために、' + (m.job ? '働くうえでは' : '進学先では')
+      + m.want + 'と考えました。', 1);
+    push(p2, sDeep(m, 'そう考えたのは、'), 2);
     paras.push(p2);
 
     const p3 = [];
-    if (m.feature) {
-      p3.push(S(m.job
-        ? m.name + 'の、' + bare(m.feature) + 'は、私の目標に直接つながると考えています。'
-        : m.nameFull + 'には' + bare(m.feature) + 'があり、私の目標に直接つながると考えています。', 1));
-    }
-    if (m.job && m.jobUnderstanding) p3.push(S(m.jobUnderstanding, 3));
-    if (!m.job && m.studyWant) p3.push(S(m.studyWant, 3));
+    push(p3, sFeature(m), 1);
+    push(p3, sFeatureDetail(m), 3);
+    push(p3, sLearnOrTask(m), 3);
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 3).forEach(function (s) { p3.push(s); });
-    if (!m.cards.length && m.attract.length) {
-      p3.push(S('また、' + joinNouns(m.attract, 3) + 'も志望の大きな理由です。', 3));
-    }
-    if (m.mustReason) p3.push(S(m.mustReason, 2));
+    push(p3, sMust(m), 2);
     paras.push(p3);
 
     const p4 = [];
-    p4.push(S('私は高校で' + m.effortTop + 'に取り組んできました。', 1));
-    if (m.effortDetail) p4.push(S(m.effortDetail, 3));
-    if (m.effortLearned) {
-      p4.push(S('この経験から、' + bare(m.effortLearned) + '。', 2));
-      p4.push(S('ここで得たものを、' + (m.job ? '仕事の場でも' : '進学先でも') + '活かしたいです。', 3));
-    }
-    if (m.job && m.contribution) p4.push(S(m.contribution, 2));
+    push(p4, sEffortIntro(m), 1);
+    push(p4, sEffortAction(m), 3);
+    push(p4, sEffortLearned(m), 2);
+    push(p4, sContribution(m), 2);
     paras.push(p4);
 
     const p5 = [];
-    if (m.after.length) p5.push(S(L.joinAfter + 'は' + joinNouns(m.after, 3) + 'に取り組みます。', 1));
-    if (m.afterEnterDetail) p5.push(S(m.afterEnterDetail, 2));
-    if (m.afterGrad) p5.push(S(m.afterGrad, 3));
+    push(p5, sAfter(m), 1);
+    push(p5, sAfterAction(m), 2);
+    push(p5, sAfterGrad(m), 2);
     paras.push(p5);
 
     paras.push([S('目標を実現できる環境がそろっていると考え、私は' + m.nameFull + 'を志望します。', 0)]);
@@ -490,43 +569,36 @@
   // ── テンプレート4: 場面描写型 ──────────────────────────
   // 魅力カードの一番の場面から書き出し、読み手をその場に連れて行く。
   function buildScene(m) {
-    const L = m.L;
     const paras = [];
 
     const p1 = m.cardSent(0, 0);
-    if (!p1.length) {
-      // カードが1枚もないときは、結論から入る形にたおす
-      p1.push(S('私は' + m.nameFull + 'を志望しています。', 0));
-    }
+    if (!p1.length) push(p1, sHead(m), 0);
     paras.push(p1);
 
     const p2 = [];
-    p2.push(S(m.cards.length
+    push(p2, m.cards.length
       ? 'この場面が、私が' + m.nameFull + 'を志望する出発点になっています。'
-      : m.nameFull + 'を志望した理由は、' + asReason(m.mainReason) + 'です。', 0));
-    if (m.mainReason && m.cards.length) p2.push(S('私は' + bare(m.mainReason) + 'と考えるようになりました。', 2));
-    if (m.feature) {
-      p2.push(S(m.job
-        ? m.name + 'の、' + bare(m.feature) + 'も、私の気持ちを後押ししました。'
-        : m.name + 'には' + bare(m.feature) + 'があり、私の気持ちを後押ししました。', 2));
-    }
+      : sHead(m), 0);
+    if (m.cards.length) push(p2, '私は' + m.want + 'と考えるようになりました。', 2);
+    push(p2, sDeep(m, 'そう思うようになったのは、'), 2);
+    push(p2, sFeature(m), 2);
+    push(p2, sFeatureDetail(m), 3);
     m.cardSent(1, 2).forEach(function (s) { p2.push(s); });
     m.cardSent(2, 3).forEach(function (s) { p2.push(s); });
     paras.push(p2);
 
     const p3 = [];
-    p3.push(S('私は高校で' + m.effortTop + 'に力を入れてきました。', 1));
-    if (m.effortDetail) p3.push(S(m.effortDetail, 3));
-    if (m.effortLearned) p3.push(S('この経験から、' + bare(m.effortLearned) + '。', 2));
-    if (m.deepReason) p3.push(S('そう感じたのは、' + asReason(m.deepReason) + 'です。', 2));
-    if (m.job && m.contribution) p3.push(S(m.contribution, 2));
+    push(p3, sEffortIntro(m), 1);
+    push(p3, sEffortAction(m), 3);
+    push(p3, sEffortLearned(m), 1);
+    push(p3, sContribution(m), 1);
     paras.push(p3);
 
     const p4 = [];
-    if (m.mustReason) p4.push(S(m.mustReason, 2));
-    if (m.after.length) p4.push(S(L.joinAfter + 'は、' + joinNouns(m.after, 3) + 'に取り組みたいと考えています。', 1));
-    if (m.afterEnterDetail) p4.push(S(m.afterEnterDetail, 2));
-    if (m.afterGrad) p4.push(S(m.afterGrad, 3));
+    push(p4, sMust(m), 2);
+    push(p4, sAfter(m), 1);
+    push(p4, sAfterAction(m), 2);
+    push(p4, sAfterGrad(m), 3);
     paras.push(p4);
 
     paras.push([S('あの日に感じた気持ちを大切に、' + m.nameFull + 'を志望します。', 0)]);
@@ -536,42 +608,37 @@
   // ── テンプレート5: 成長課題型 ──────────────────────────
   // 「今の自分に足りないこと」を出発点にする。背伸びせずに意欲を示せる。
   function buildGap(m) {
-    const L = m.L;
     const paras = [];
 
     const p1 = [];
-    if (m.gapNow) {
-      p1.push(S(m.gapNow, 0));
-    } else {
-      p1.push(S('私には、高校生活の中で「もっとこうなりたい」と感じるようになったことがあります。', 0));
-    }
-    p1.push(S('その気持ちが、' + m.nameFull + 'を志望するきっかけになりました。', 0));
+    push(p1, m.gapNow
+      ? '私には今、' + m.gapNow + 'が足りないと感じています。'
+      : '私には、高校生活の中で「もっとこうなりたい」と感じるようになったことがあります。', 0);
+    push(p1, 'その気持ちが、' + m.nameFull + 'を志望するきっかけになりました。', 0);
     paras.push(p1);
 
     const p2 = [];
-    p2.push(S('私は高校で' + m.effortTop + 'に取り組んできました。', 1));
-    if (m.effortDetail) p2.push(S(m.effortDetail, 2));
-    if (m.effortLearned) p2.push(S('この経験から、' + bare(m.effortLearned) + '。', 1));
-    p2.push(S('同時に、まだ自分に足りない部分があることにも気づきました。', 2));
+    push(p2, sEffortIntro(m), 1);
+    push(p2, sEffortAction(m), 2);
+    push(p2, sEffortResult(m), 3);
+    push(p2, sEffortLearned(m), 1);
+    push(p2, '同時に、自分にはまだ足りない部分もあります。', 2);
     paras.push(p2);
 
     const p3 = [];
-    p3.push(S('そこで、' + (m.mainReason ? asWish(m.mainReason) : '足りない力を身につける必要があると考えました') + '。', 1));
-    if (m.feature) {
-      p3.push(S(m.job
-        ? m.name + 'の、' + bare(m.feature) + 'は、その力を身につけられる場だと感じています。'
-        : m.name + 'の' + bare(m.feature) + 'は、その力を身につけられる場だと感じています。', 1));
-    }
+    push(p3, 'そこで、' + m.want + 'と考えるようになりました。', 1);
+    push(p3, sFeature(m), 1);
+    push(p3, sLearnOrTask(m), 3);
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 3).forEach(function (s) { p3.push(s); });
-    if (m.mustReason) p3.push(S(m.mustReason, 2));
+    push(p3, sMust(m), 2);
     paras.push(p3);
 
     const p4 = [];
-    if (m.after.length) p4.push(S(L.joinAfter + 'は、' + joinNouns(m.after, 3) + 'に取り組みます。', 1));
-    if (m.afterEnterDetail) p4.push(S(m.afterEnterDetail, 1));
-    if (m.job && m.contribution) p4.push(S(m.contribution, 2));
-    if (m.afterGrad) p4.push(S(m.afterGrad, 2));
+    push(p4, sAfter(m), 1);
+    push(p4, sAfterAction(m), 1);
+    push(p4, sContribution(m), 2);
+    push(p4, sAfterGrad(m), 2);
     paras.push(p4);
 
     paras.push([S('今の自分を変えたいという気持ちを持って、' + m.nameFull + 'を志望します。', 0)]);
@@ -581,46 +648,40 @@
   // ── テンプレート6: 三つの理由型 ────────────────────────
   // 面接で「志望動機を教えてください」と聞かれたとき、そのまま話せる形。
   function buildThree(m) {
-    const L = m.L;
     const paras = [];
 
     paras.push([S('私が' + m.nameFull + 'を志望する理由は、大きく三つあります。', 0)]);
 
     const p2 = [];
-    p2.push(S('一つ目は、' + asReason(m.mainReason || (m.job ? 'この仕事に取り組みたい' : 'ここで学びたい')) + 'です。', 0));
-    if (m.feature) {
-      p2.push(S(m.job
-        ? m.name + 'の、' + bare(m.feature) + 'に強く関心を持ちました。'
-        : m.name + 'には' + bare(m.feature) + 'があります。', 1));
-    }
-    if (m.job && m.jobUnderstanding) p2.push(S(m.jobUnderstanding, 2));
-    if (!m.job && m.studyWant) p2.push(S(m.studyWant, 2));
+    push(p2, '一つ目は、' + m.want + 'からです。', 0);
+    push(p2, sDeep(m, 'そう考えるようになったのは、'), 2);
+    push(p2, sFeature(m), 1);
+    push(p2, sLearnOrTask(m), 2);
+    push(p2, sFeatureDetail(m), 3);
     paras.push(p2);
 
     const p3 = [];
-    p3.push(S('二つ目は、実際に自分の目で見て感じたことがあるからです。', 0));
+    push(p3, '二つ目は、実際に自分の目で見て感じたことがあるからです。', 0);
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 2).forEach(function (s) { p3.push(s); });
-    if (!m.cards.length && m.attract.length) {
-      p3.push(S('特に' + joinNouns(m.attract, 3) + 'に魅力を感じました。', 2));
-    }
-    if (m.policy) p3.push(S(bare(m.policy) + 'という考え方にも共感しています。', 3));
+    push(p3, sAttractFallback(m, '特に'), 2);
+    push(p3, sPolicy(m), 3);
     paras.push(p3);
 
     const p4 = [];
-    p4.push(S('三つ目は、私自身の経験とつながっているからです。', 0));
-    p4.push(S('私は高校で' + m.effortTop + 'に力を入れてきました。', 1));
-    if (m.effortDetail) p4.push(S(m.effortDetail, 3));
-    if (m.effortLearned) p4.push(S('この経験から、' + bare(m.effortLearned) + '。', 1));
-    if (m.deepReason) p4.push(S('そう考えるのは、' + asReason(m.deepReason) + 'です。', 2));
-    if (m.job && m.contribution) p4.push(S(m.contribution, 1));
+    push(p4, '三つ目は、私自身の経験とつながっているからです。', 0);
+    push(p4, sEffortIntro(m), 1);
+    push(p4, sEffortAction(m), 3);
+    push(p4, sEffortResult(m), 3);
+    push(p4, sEffortLearned(m), 1);
+    push(p4, sContribution(m), 1);
     paras.push(p4);
 
     const p5 = [];
-    if (m.mustReason) p5.push(S(m.mustReason, 2));
-    if (m.after.length) p5.push(S(L.joinAfter + 'は、' + joinNouns(m.after, 3) + 'に取り組みたいと考えています。', 1));
-    if (m.afterEnterDetail) p5.push(S(m.afterEnterDetail, 2));
-    if (m.afterGrad) p5.push(S(m.afterGrad, 3));
+    push(p5, sMust(m), 2);
+    push(p5, sAfter(m), 1);
+    push(p5, sAfterAction(m), 2);
+    push(p5, sAfterGrad(m), 3);
     paras.push(p5);
 
     paras.push([S('以上の三つの理由から、私は' + m.nameFull + 'を志望します。', 0)]);
@@ -719,13 +780,13 @@
       return { id: 'scene', reason: '★★★の魅力カードに、その場の様子がくわしく書けています。場面から書き出す型が活きます。' };
     }
     if (bare(d.gapNow)) {
-      return { id: 'gap', reason: '「今の自分に足りないこと」が書けています。そこから始める型が向いています。' };
+      return { id: 'gap', reason: '「今の自分に足りない力」が書けています。そこから始める型が向いています。' };
     }
-    if (bare(d.futureDream) && bare(d.futureWhy)) {
+    if (bare(d.futureDream) && bare(d.futureWhyWhat)) {
       return { id: 'future', reason: '将来の目標と、そのきっかけの両方が書けています。逆算する型が向いています。' };
     }
-    if (countChars(d.effortDetail) >= 60) {
-      return { id: 'story', reason: 'がんばったことがくわしく書けています。体験から語り始める型が向いています。' };
+    if (bare(d.effortAction) && bare(d.effortResult)) {
+      return { id: 'story', reason: '取り組んだことと結果の両方が書けています。体験から語り始める型が向いています。' };
     }
     if (Number(d.targetChars) >= 600) {
       return { id: 'three', reason: '字数が多いので、理由を3つに整理する型が読みやすくなります。' };
@@ -755,15 +816,18 @@
     });
 
     [
-      ['がんばったこと（くわしく）', d.effortDetail],
+      ['取り組んだこと', d.effortAction],
+      ['その結果', d.effortResult],
       ['そこから学んだこと', d.effortLearned],
-      ['将来の目標のきっかけ', d.futureWhy],
-      ['今の自分に足りないこと', d.gapNow],
-      [job ? '仕事の理解' : '特に学びたいこと', job ? d.jobUnderstanding : d.studyWant],
-      ['ここでなければの理由', d.mustReason],
+      ['将来の目標のきっかけ', d.futureWhyWhat],
+      ['今の自分に足りない力', d.gapNow],
+      ['志望先の特色（名前）', d.featureName],
+      ['そこでできること', d.featureDetail],
+      [job ? '仕事の理解' : '受けたい授業', job ? d.jobTask : d.studyWant],
+      ['ここでなければの違い', d.mustPoint],
       [job ? '活かせる力' : null, job ? d.contribution : null],
-      ['入学後・入社後の取り組み', d.afterEnterDetail],
-      [job ? '5年後・10年後の姿' : '卒業後の目標', d.afterGrad],
+      ['まず始めること', d.afterAction],
+      [job ? '将来の姿' : '卒業後の目標', d.afterGradWhat],
       ['共感した理念', d.targetPolicy],
       ['資格・免許', d.licenses]
     ].forEach(function (row) {
