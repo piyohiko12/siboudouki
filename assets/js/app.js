@@ -22,6 +22,7 @@
       manualChecks: []
     },
     custom: {},          // チップの自由追加分 { fieldId: [..] }
+    helpOpen: true,      // 設問の「書き方のヒント」を開いておくか
     bodyEdited: false,   // 本文を手で直したか（自動再生成の上書き確認に使う）
     submitted: null
   };
@@ -59,7 +60,8 @@
   function save() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        data: state.data, custom: state.custom, index: state.index, bodyEdited: state.bodyEdited
+        data: state.data, custom: state.custom, index: state.index,
+        bodyEdited: state.bodyEdited, helpOpen: state.helpOpen
       }));
       flashSaved();
     } catch (e) {
@@ -82,6 +84,7 @@
       migrate();
       state.custom = saved.custom || {};
       state.bodyEdited = !!saved.bodyEdited;
+      state.helpOpen = saved.helpOpen !== false;
       state.index = Math.min(saved.index || 0, views().length - 1);
       return true;
     } catch (e) {
@@ -180,7 +183,7 @@
     return (field.options || []).concat(state.custom[field.id] || []);
   }
 
-  function renderField(field) {
+  function renderField(field, no) {
     const wrap = h('div', { class: 'field', 'data-field': field.id });
 
     // 「それは」「その中で」が何を指すのかを、前の答えを引用して示す
@@ -197,16 +200,30 @@
       wrap.appendChild(line);
     }
 
+    // 番号とバッジを1行目、質問文を2行目にすると、長い質問でも形が崩れない
+    wrap.appendChild(h('div', { class: 'field__meta' }, [
+      no ? h('span', { class: 'field__no', text: 'Q' + no }) : null,
+      field.required
+        ? h('span', { class: 'badge badge--required', text: '必須' })
+        : h('span', { class: 'badge badge--optional', text: '任意' }),
+      h('span', { class: 'field__done', title: '入力ずみ', text: '✓ 入力ずみ' })
+    ]));
     wrap.appendChild(h('label', { class: 'field__label', for: 'f_' + field.id }, [
-      document.createTextNode(field.label),
-      field.required ? h('span', { class: 'badge badge--required', text: '必須' }) : null
+      h('span', { class: 'field__q', text: field.label })
     ]));
 
-    if (field.hint) wrap.appendChild(h('p', { class: 'field__hint', text: field.hint }));
+    // 答え終わった設問には印をつけ、残りを見つけやすくする
+    const markDone = function () { wrap.classList.toggle('is-answered', answered(field)); };
+    markDone();
+    onDataChange(markDone);
+
+    // 説明・例・注意はひとまとめにして、たためるようにする
+    const help = [];
+    if (field.hint) help.push(h('p', { class: 'field__hint', text: field.hint }));
 
     // 書き方の例。押せないようにしてあるのは、写して終わりにしないため
     if ((field.examples || []).length) {
-      wrap.appendChild(h('div', { class: 'field__ex' }, [
+      help.push(h('div', { class: 'field__ex' }, [
         h('span', { class: 'field__exCap', text: 'こんな書き方' })
       ].concat(field.examples.map(function (e) {
         return h('span', { class: 'field__exItem', text: e });
@@ -214,10 +231,19 @@
     }
 
     if (field.avoid) {
-      wrap.appendChild(h('p', { class: 'field__avoid' }, [
+      help.push(h('p', { class: 'field__avoid' }, [
         h('span', { class: 'field__avoidCap', text: '注意' }),
         document.createTextNode(field.avoid)
       ]));
+    }
+
+    if (help.length && state.helpOpen) {
+      wrap.appendChild(h('div', { class: 'field__help' }, help));
+    } else if (help.length) {
+      const box = h('details', { class: 'field__help field__help--fold' }, [
+        h('summary', { class: 'field__helpSum', text: '書き方のヒント' })
+      ].concat(help));
+      wrap.appendChild(box);
     }
 
     let input;
@@ -289,15 +315,21 @@
       default:
         input = h('input', {
           id: 'f_' + field.id, class: 'input', type: 'text',
+          maxlength: field.maxChars || null,
           placeholder: field.placeholder || ''
         });
         input.value = val || '';
         input.addEventListener('input', function () {
           state.data[field.id] = input.value;
+          updateCounter(wrap, input.value, field.maxChars);
           emitChange(field.id);
           scheduleSave();
         });
         wrap.appendChild(input);
+        if (field.maxChars) {
+          wrap.appendChild(h('div', { class: 'field__count' }));
+          updateCounter(wrap, val || '', field.maxChars);
+        }
     }
 
     // 入力した言葉が、本文でどんな一文になるかをその場で見せる
@@ -321,28 +353,57 @@
     return wrap;
   }
 
-  function updateCounter(wrap, value) {
+  function updateCounter(wrap, value, max) {
     const c = wrap.querySelector('.field__count');
-    if (c) c.textContent = String(value || '').length + '字';
+    if (!c) return;
+    const n = String(value || '').length;
+    c.textContent = max ? n + ' / ' + max + '字' : n + '字';
+    c.classList.toggle('is-full', !!max && n >= max);
   }
 
+  /**
+   * 選択肢のチップ。
+   * 選びすぎると文章がぼやけるので、設問ごとに上限を決めて止める。
+   * 上限に達したら未選択のチップを押せなくし、いま何個選んでいるかを常に出す。
+   */
   function renderChips(field) {
+    const outer = h('div', { class: 'chipsBox' });
+    const meter = h('p', { class: 'chips__meter' });
     const box = h('div', { class: 'chips' });
-    const selected = state.data[field.id] || [];
+    const max = field.max || 0;
+
+    function full() {
+      return max > 0 && (state.data[field.id] || []).length >= max;
+    }
+
+    function paintMeter() {
+      const n = (state.data[field.id] || []).length;
+      if (!max) { meter.textContent = n ? n + '個えらびました' : ''; return; }
+      meter.textContent = n + ' / ' + max + '個';
+      meter.classList.toggle('is-full', n >= max);
+      meter.title = n >= max ? 'これ以上は選べません。変えるときは、選んだものを押して外してください。' : '';
+    }
 
     function repaint() {
       box.innerHTML = '';
       const cur = state.data[field.id] || [];
+      const locked = full();
+
       optionsFor(field).forEach(function (opt) {
         const on = cur.indexOf(opt) !== -1;
+        const off = locked && !on;
         box.appendChild(h('button', {
           type: 'button',
-          class: 'chip' + (on ? ' is-on' : ''),
+          class: 'chip' + (on ? ' is-on' : '') + (off ? ' is-locked' : ''),
           'aria-pressed': on ? 'true' : 'false',
+          'aria-disabled': off ? 'true' : null,
+          title: off ? max + '個まで選べます' : null,
           onclick: function () {
             const list = (state.data[field.id] || []).slice();
             const i = list.indexOf(opt);
-            if (i === -1) list.push(opt); else list.splice(i, 1);
+            if (i !== -1) list.splice(i, 1);
+            else if (locked) { flashLimit(meter); return; }
+            else list.push(opt);
             state.data[field.id] = list;
             emitChange(field.id);
             scheduleSave();
@@ -353,8 +414,11 @@
 
       if (field.allowFree) {
         box.appendChild(h('button', {
-          type: 'button', class: 'chip chip--add',
+          type: 'button',
+          class: 'chip chip--add' + (locked ? ' is-locked' : ''),
+          'aria-disabled': locked ? 'true' : null,
           onclick: function () {
+            if (locked) { flashLimit(meter); return; }
             const v = (prompt('追加したい内容を入力してください') || '').trim();
             if (!v) return;
             state.custom[field.id] = (state.custom[field.id] || []).concat([v]);
@@ -365,11 +429,26 @@
           }
         }, ['＋ 自分で追加']));
       }
+      paintMeter();
     }
 
-    if (!state.data[field.id]) state.data[field.id] = selected;
+    if (!state.data[field.id]) state.data[field.id] = [];
+    // 上限を後から下げた場合に備えて、あふれた分は落とす
+    if (max && state.data[field.id].length > max) {
+      state.data[field.id] = state.data[field.id].slice(0, max);
+    }
     repaint();
-    return box;
+
+    outer.appendChild(meter);
+    outer.appendChild(box);
+    return outer;
+  }
+
+  /** 上限に当たったことを、その場で短く知らせる */
+  function flashLimit(el) {
+    el.classList.add('is-hit');
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.classList.remove('is-hit'); }, 600);
   }
 
   // ── 魅力カード ────────────────────────────────────
@@ -439,7 +518,9 @@
           ])
         ]));
         const what = h('textarea', {
-          class: 'input input--area', rows: 2, placeholder: field.whatPlaceholder || ''
+          class: 'input input--area', rows: 2,
+          maxlength: field.whatChars || 100,
+          placeholder: field.whatPlaceholder || ''
         });
         what.value = card.what || '';
         what.addEventListener('input', function () {
@@ -451,7 +532,10 @@
 
         // ③ そのときの気持ち
         el.appendChild(h('label', { class: 'attrCard__label', text: '③ そのとき、どう思いましたか' }));
-        el.appendChild(h('p', { class: 'attrCard__hint', text: '近いものを2つまで選びます。文の中で自然な言い方に直されます。' }));
+        el.appendChild(h('p', {
+          class: 'attrCard__hint',
+          text: '近いものを' + (field.feelMax || 2) + 'つまで選びます。文の中で自然な言い方に直されます。'
+        }));
         el.appendChild(renderFeelChips(card, field));
 
         // ④ 自分とのつながり
@@ -462,7 +546,9 @@
             + 'ここが書けると「その学校でなければならない理由」がぐっと強くなります。'
         }));
         const link = h('textarea', {
-          class: 'input input--area', rows: 2, placeholder: field.linkPlaceholder || ''
+          class: 'input input--area', rows: 2,
+          maxlength: field.linkChars || 100,
+          placeholder: field.linkPlaceholder || ''
         });
         link.value = card.link || '';
         link.addEventListener('input', function () { card.link = link.value; scheduleSave(); });
@@ -523,9 +609,10 @@
           class: 'chip' + (card.feel.indexOf(opt) !== -1 ? ' is-on' : ''),
           onclick: function () {
             const i = card.feel.indexOf(opt);
+            const feelMax = field.feelMax || 2;
             if (i !== -1) card.feel.splice(i, 1);
-            else if (card.feel.length < 2) card.feel.push(opt);
-            else return; // 2つまで
+            else if (card.feel.length < feelMax) card.feel.push(opt);
+            else return; // 上限まで選んでいる
             btn.className = 'chip' + (card.feel.indexOf(opt) !== -1 ? ' is-on' : '');
             chips.querySelectorAll('.chip').forEach(function (c, k) {
               c.className = 'chip' + (card.feel.indexOf(field.feelOptions[k]) !== -1 ? ' is-on' : '');
@@ -589,17 +676,23 @@
 
       const ta = h('textarea', {
         class: 'input input--area', rows: 2,
+        maxlength: 60,
         placeholder: ['文化祭で、自分たちで決めて動くのが楽しかったから',
           '任されたほうが責任を感じて力が出たから',
           '自分で考えて動ける環境'][i]
       });
       ta.value = chain[key] || '';
+      const count = h('div', { class: 'field__count', text: (chain[key] || '').length + ' / 60字' });
       ta.addEventListener('input', function () {
         chain[key] = ta.value;
+        count.textContent = ta.value.length + ' / 60字';
+        count.classList.toggle('is-full', ta.value.length >= 60);
         refreshQuotes();
+        emitChange('whyChain');
         scheduleSave();
       });
       step.appendChild(ta);
+      step.appendChild(count);
       box.appendChild(step);
     }
 
@@ -607,6 +700,16 @@
     onDataChange(function (id) { if (id === field.source) refreshQuotes(); });
 
     return box;
+  }
+
+  /** その設問に答えが入っているか */
+  function answered(f) {
+    if (f.type === 'chips') return (state.data[f.id] || []).length > 0;
+    if (f.type === 'whychain') return !!String(state.data.whyChain.why1 || '').trim();
+    if (f.type === 'cards') {
+      return (state.data[f.id] || []).some(function (c) { return c && String(c.what || '').trim(); });
+    }
+    return !!String(state.data[f.id] == null ? '' : state.data[f.id]).trim();
   }
 
   // ── バリデーション ────────────────────────────────
@@ -897,33 +1000,70 @@
       step.note ? h('div', { class: 'notice notice--tip' }, [h('p', { text: step.note })]) : null
     ]);
 
+    card.appendChild(renderStepBar(step));
+
     // 同じ話題の設問はひとまとまりにして、見出しをつける。
     // 「それは」「その中で」が何を指すのかを、囲みで示すため。
     let openId = null;
     let openBox = null;
-    let no = 0;
+    let groupNo = 0;
+    let qNo = 0;
 
     step.fields.forEach(function (f) {
-      if (!f.group) { openId = null; openBox = null; card.appendChild(renderField(f)); return; }
+      qNo += 1;
+      if (!f.group) { openId = null; openBox = null; card.appendChild(renderField(f, qNo)); return; }
 
       if (f.group !== openId) {
         const g = (step.groups || []).find(function (x) { return x.id === f.group; })
           || { id: f.group, name: f.group };
-        no += 1;
+        groupNo += 1;
         openId = f.group;
         openBox = h('section', { class: 'qgroup' }, [
           h('h3', { class: 'qgroup__head' }, [
-            h('span', { class: 'qgroup__no', text: String(no) }),
+            h('span', { class: 'qgroup__no', text: String(groupNo) }),
             h('span', { class: 'qgroup__name', text: g.name })
           ]),
           g.desc ? h('p', { class: 'qgroup__desc', text: g.desc }) : null
         ]);
         card.appendChild(openBox);
       }
-      openBox.appendChild(renderField(f));
+      openBox.appendChild(renderField(f, qNo));
     });
 
     return card;
+  }
+
+  /**
+   * ステップの上に出す、進み具合と表示の切り替え。
+   * 「あと何問か」が見えるだけで、途中で投げ出しにくくなる。
+   */
+  function renderStepBar(step) {
+    const bar = h('div', { class: 'stepBar' });
+    const count = h('span', { class: 'stepBar__count' });
+    const track = h('div', { class: 'stepBar__track' });
+    const fill = h('i', { class: 'stepBar__fill' });
+    track.appendChild(fill);
+
+    const need = step.fields.filter(function (f) { return f.required; });
+
+    function paint() {
+      const done = step.fields.filter(answered).length;
+      const all = step.fields.length;
+      const left = need.filter(function (f) { return !answered(f); }).length;
+      count.textContent = '答えた質問 ' + done + ' / ' + all + '問'
+        + (left ? '（必須があと' + left + '問）' : '（必須はすべて入力ずみ）');
+      fill.style.width = Math.round((done / all) * 100) + '%';
+      fill.classList.toggle('is-done', left === 0);
+    }
+    paint();
+    onDataChange(paint);
+
+    bar.appendChild(h('div', { class: 'stepBar__body' }, [count, track]));
+    bar.appendChild(h('button', {
+      type: 'button', class: 'btn btn--ghost btn--sm',
+      onclick: function () { state.helpOpen = !state.helpOpen; save(); render(); }
+    }, [state.helpOpen ? '説明をたたむ' : '説明を表示']));
+    return bar;
   }
 
   function viewCompose() {
