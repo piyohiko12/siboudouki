@@ -124,6 +124,20 @@
 
 ---
 
+## テスト
+
+生成される日本語が壊れていないかを、Node で確かめられます（ビルド不要）。
+
+```
+node test/rough.js     荒い入力での非文パターン22種（72通り）★まずこれ
+node test/smoke.js     ふつうに答えたときの文章（12通り）
+node test/options.js   全選択肢を1文ずつ書き出して目で確認
+node test/ui.js        ブラウザでの通し操作（Playwright が必要）
+```
+
+設問・選択肢・文の枠を足したら `rough` と `options` を回してください。
+くわしくは [test/README.md](test/README.md)。
+
 ## ドキュメント
 
 | ファイル | 内容 |
@@ -155,6 +169,7 @@ assets/
 gas/
   Code.gs               ★ Apps Script に貼り付けるコード
 docs/                   構想・調査・手順書
+test/                   生成される日本語を確かめるテスト
 ```
 
 ---
