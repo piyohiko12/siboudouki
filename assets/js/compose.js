@@ -258,7 +258,7 @@
    * 観察部分は生徒の言葉のまま使いたいので、語尾だけ常体にそろえてから枠にはめる。
    * （「話し合っていました」と書かれても「話し合っていたのが印象に残りました」になる）
    */
-  function cardSentences(card, mode, base, idx) {
+  function cardSentences(card, mode, base, idx, offset) {
     const Q = global.QUESTIONS;
     const raw = bare(card.what);
     if (!raw) return [];
@@ -273,7 +273,8 @@
     // 場面・気持ち・つながりは1つのまとまりとして扱う。
     // 別々の文にすると、字数調整で場面だけが消えて「そのとき私は安心しました。」
     // だけが残る、という壊れ方をするため。
-    const i = idx || 0;
+    // 開始位置を生徒ごとにずらすので、1枚目の枠も人によって変わる
+    const i = (idx || 0) + (offset || 0);
     let text = lead + what + frames[i % frames.length];
     if (feel) text += FEEL_LEAD[i % FEEL_LEAD.length] + feel + '。';
     if (link) text += link;
@@ -319,11 +320,13 @@
       sub: sub,
 
       cards: cards,
+      cardOffset: 0, // generate() で生徒ごとの値に差し替える
       /** i 番目のカードの文を、指定した優先度で取り出す */
       cardSent: function (i, base) {
-        return cards[i] ? cardSentences(cards[i], mode, base, i) : [];
+        return cards[i] ? cardSentences(cards[i], mode, base, i, this.cardOffset) : [];
       },
 
+      studentName: bare(d.studentName),
       efforts: efforts,
       effortTop: efforts[0] || '学校生活',
       effortWhen: bare(d.effortWhen),
@@ -385,16 +388,54 @@
   //  生徒が書いた名詞を受け取り、助詞と語尾をつけて1文にする。
   // ══════════════════════════════════════════════════════
 
+  // ══════════════════════════════════════════════════════
+  //  言い回しのばらつき
+  //
+  //  アプリが供給する定型句が全員同じだと、同じ回答をした2人の文章が
+  //  1文もちがわない、という状態になる。それではこのアプリの意味がない。
+  //  そこで、意味の変わらない言い回しを複数持ち、生徒ごとに選び分ける。
+  //  乱数ではなく回答から作った数で選ぶので、同じ生徒なら毎回同じ文になる。
+  // ══════════════════════════════════════════════════════
+  function hashOf(str) {
+    // FNV-1a。「seed + salt」方式だと、2人の差が6の倍数のときに
+    // すべての箇所で同じ選択になってしまうので、箇所ごとに独立に計算する。
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h * 16777619) >>> 0;
+    }
+    return h;
+  }
+
+  /** salt を変えると、同じ生徒でも別の箇所では独立に選ばれる */
+  function variant(m, list, salt) {
+    const src = (m.studentName || '') + '|' + (m.name || '') + '|' + (m.wantObject || '')
+      + '#' + (salt || 0);
+    return list[hashOf(src) % list.length];
+  }
+
   /** 志望理由のひとこと */
   function sHead(m) {
-    return '私が' + m.nameFull + 'を志望した理由は、' + m.want + 'からです。';
+    return variant(m, [
+      '私が' + m.nameFull + 'を志望した理由は、' + m.want + 'からです。',
+      '私が' + m.nameFull + 'を志望するのは、' + m.want + 'からです。',
+      m.want + 'と考えています。これが、私が' + m.nameFull + 'を志望した理由です。'
+    ], 1);
   }
 
   /**
    * なぜなぜ深掘りの答え。名詞止めでも文でも成り立つ形にする。
    * 「〜から」「〜ので」まで書く生徒が多いので、いったん外してから語尾をつけ直す。
    */
-  function sDeep(m, lead) {
+  const DEEP_LEAD = {
+    think: ['そう考えるようになったのは、', 'そう思うようになったのは、', 'この考えに至ったのは、'],
+    why: ['なぜなら、', 'その理由は、', 'というのも、'],
+    felt: ['そう思うようになったのは、', 'この気持ちの根にあるのは、', 'そう感じるようになったのは、'],
+    decided: ['そう考えたのは、', 'そう判断したのは、', 'そこまで思うようになったのは、']
+  };
+
+  function sDeep(m, kind) {
+    const lead = variant(m, DEEP_LEAD[kind] || DEEP_LEAD.think, 9);
     const t = bare(m.deepReason).replace(/(からです|から|ので|ため)$/, '');
     return fit(t, lead + '{X}があるからです。', lead + '{X}からです。');
   }
@@ -403,7 +444,11 @@
   function sFeature(m) {
     if (!m.featureName) return '';
     const kind = m.featureKind || (m.job ? '取り組み' : '学び');
-    const lead = '私が特に関心を持ったのは、' + m.name + 'の';
+    const lead = variant(m, [
+      '私が特に関心を持ったのは、',
+      '中でも強く心を引かれたのは、',
+      'とりわけ関心を持ったのは、'
+    ], 2) + m.name + 'の';
     // 固有名詞はかぎかっこで、特徴を書いた人は「という◯◯」で受ける
     return m.featureNamed
       ? lead + kind + '「' + m.featureName + '」です。'
@@ -411,9 +456,12 @@
   }
 
   function sFeatureDetail(m) {
-    return fit(m.featureDetail,
-      'そこでは{X}に関わることができると知りました。',
-      'そこでは{X}ことを知りました。');
+    const pair = variant(m, [
+      ['そこでは{X}に関わることができると知りました。', 'そこでは{X}ことを知りました。'],
+      ['調べていくうちに、{X}に関われることが分かりました。', '調べていくうちに、{X}ことが分かりました。'],
+      ['{X}に関われる点にも、強くひかれました。', '{X}という点にも、強くひかれました。']
+    ], 10);
+    return fit(m.featureDetail, pair[0], pair[1]);
   }
 
   /** 進学＝学びたい科目 ／ 就職＝仕事の理解 */
@@ -422,63 +470,89 @@
       return fit(m.jobTask, '{X}を行う仕事だと理解しています。', '{X}という仕事だと理解しています。');
     }
     // 科目名はかぎかっこで囲むので、どう書かれても文が壊れない
-    return m.studyWant ? '特に「' + m.studyWant + '」を学びたいと考えています。' : '';
+    if (!m.studyWant) return '';
+    return variant(m, [
+      '特に「' + m.studyWant + '」を学びたいと考えています。',
+      // 「中でも」は特色の文でも使うので、ここでは重ならない言い方にする
+      '「' + m.studyWant + '」は、いちばん受けてみたい授業です。',
+      'とりわけ「' + m.studyWant + '」に強い関心があります。'
+    ], 11);
   }
 
   function sPolicy(m) {
-    return m.policy ? '「' + m.policy + '」という考え方にも共感しています。' : '';
+    if (!m.policy) return '';
+    return variant(m, [
+      '「' + m.policy + '」という考え方にも共感しています。',
+      '「' + m.policy + '」という言葉にも、強く共感しました。',
+      '「' + m.policy + '」という姿勢にも心を動かされました。'
+    ], 12);
   }
 
   function sEffortIntro(m) {
     // 前後の段落と「ました」が並びやすいので、ここは体言で受ける
-    const lead = (m.effortWhen || '高校生活で') + '、いちばん力を入れてきたのは';
+    const lead = (m.effortWhen || '高校生活で') + '、' + variant(m, [
+      'いちばん力を入れてきたのは',
+      '私がもっとも打ち込んだのは',
+      'いちばん時間をかけてきたのは'
+    ], 4);
     return fit(m.effortTop, lead + '{X}です。', lead + '{X}ことです。')
       || lead + '学校生活です。';
   }
 
   function sEffortAction(m) {
-    const lead = m.effortRole ? m.effortRole + 'として、' : 'その中で、';
+    const lead = m.effortRole ? m.effortRole + 'として、'
+      // 「取り組む中で、〜に取り組みました」と重ならない言い回しにしておく
+      : variant(m, ['その中で、', 'その活動では、', '日々の活動の中で、'], 7);
     return m.effortMade
       ? fit(m.effortAction, lead + '{X}を作りました。', lead + '{X}ものを作りました。')
       : fit(m.effortAction, lead + '{X}に取り組みました。', lead + '{X}ことに力を注ぎました。');
   }
 
   function sEffortResult(m) {
-    // ここを「〜ました」にすると語尾が4つ続いて単調になるため、体言で受ける
-    return fit(m.effortResult,
-      '{X}は、その中で生まれた成果です。',
-      '{X}ことが、その中で生まれた成果です。');
+    // 直前の文がすでに「その中で」を使うので、ここでは繰り返さない。
+    // また「〜ました」を続けると語尾が4つ並ぶため、体言で受ける形も混ぜる。
+    const pair = variant(m, [
+      ['{X}は、そこで生まれた成果です。', '{X}ことが、そこで生まれた成果です。'],
+      ['{X}という結果につながりました。', '{X}という結果につながりました。'],
+      ['{X}が、目に見える形での成果です。', '{X}ことが、目に見える形での成果です。']
+    ], 8);
+    return fit(m.effortResult, pair[0], pair[1]);
   }
 
   function sEffortLearned(m) {
-    return fit(m.effortLearned,
-      'この経験から、{X}を学びました。',
-      'この経験から、{X}ということを学びました。');
+    const lead = variant(m, ['この経験から、', 'この取り組みを通して、', 'ここから私は、'], 5);
+    return fit(m.effortLearned, lead + '{X}を学びました。', lead + '{X}ということを学びました。');
   }
 
   function sMust(m) {
-    const lead = '同じような' + m.L.org + 'は他にもありますが、' + m.name + 'には';
-    // 「という」で受けるので、名詞でも述語でも文になる
-    return fit(m.mustPoint, lead + '{X}という違いがあります。');
+    // どの枠も「という」で受けるので、名詞でも述語でも文になる
+    return fit(m.mustPoint, variant(m, [
+      '同じような' + m.L.org + 'は他にもありますが、' + m.name + 'には{X}という違いがあります。',
+      'ほかにも' + m.L.org + 'はありますが、' + m.name + 'にしかない{X}という点にひかれました。',
+      '私が' + m.name + 'でなければならないと考えるのは、{X}という点があるからです。'
+    ], 3));
   }
 
   function sAfter(m) {
     const lead = m.L.joinAfter + 'は、';
+    const tail = variant(m, ['に取り組みたいと考えています。', 'に力を入れたいと考えています。'], 6);
     return fit(joinNouns(m.after, 3),
-      lead + '{X}に取り組みたいと考えています。',
-      lead + '{X}ことに取り組みたいと考えています。');
+      lead + '{X}' + tail,
+      lead + '{X}こと' + tail);
   }
 
   function sAfterAction(m) {
+    const lead = variant(m, ['まずは', 'はじめの一歩として、', 'そのために、まずは'], 13);
     return fitWish(m.afterAction,
-      'まずは{X}から始めたいです。',
-      'まずは{X}ことから始めたいです。',
-      'まずは{X}と思っています。');
+      lead + '{X}から始めたいです。',
+      lead + '{X}ことから始めたいです。',
+      lead + '{X}と思っています。');
   }
 
   function sContribution(m) {
     if (!m.job) return '';
-    const lead = (m.contributionFrom || '高校生活') + 'で身につけた';
+    const lead = (m.contributionFrom || '高校生活')
+      + variant(m, ['で身につけた', 'で培った', 'を通して身につけた'], 14);
     return fit(m.contribution,
       lead + '{X}は、この仕事でも活かせると考えています。',
       lead + '「{X}」という姿勢は、この仕事でも活かせると考えています。');
@@ -591,7 +665,7 @@
 
     const p1 = [];
     push(p1, sHead(m), 0);
-    push(p1, sDeep(m, 'そう考えるようになったのは、'), 2);
+    push(p1, sDeep(m, 'think'), 2);
     paras.push(p1);
 
     const p2 = [];
@@ -630,7 +704,11 @@
     push(p6, sAfterGrad(m), 3);
     paras.push(p6);
 
-    paras.push([S('以上の理由から、私は' + m.nameFull + 'を志望します。', 0)]);
+    paras.push([S(variant(m, [
+      '以上の理由から、私は' + m.nameFull + 'を志望します。',
+      '以上が、私が' + m.nameFull + 'を志望する理由です。',
+      'これらの理由から、私は' + m.nameFull + 'を志望します。'
+    ], 20), 0)]);
     return paras;
   }
 
@@ -649,7 +727,11 @@
 
     const p2 = [];
     push(p2, sBridge(m, 'story'), 0);
-    push(p2, m.L.metPhrase + 'と感じたことを、今でも覚えています。', 2);
+    push(p2, variant(m, [
+      m.L.metPhrase + 'と感じたことを、今でも覚えています。',
+      m.L.metPhrase + '。そう感じたことを、今でもよく覚えています。',
+      'そのとき' + m.L.metPhrase + 'と思ったことは、今も心に残っています。'
+    ], 26), 2);
     push(p2, sVisited(m), 3);
     m.cardSent(0, 0).forEach(function (s) { p2.push(s); });
     m.cardSent(1, 2).forEach(function (s) { p2.push(s); });
@@ -659,7 +741,7 @@
     const p3 = [];
     push(p3, sFeature(m), 1);
     push(p3, sLearnOrTask(m), 2);
-    push(p3, sDeep(m, 'なぜなら、'), 2);
+    push(p3, sDeep(m, 'why'), 2);
     push(p3, sMust(m), 2);
     push(p3, sPolicy(m), 3);
     paras.push(p3);
@@ -671,7 +753,11 @@
     push(p4, sAfterGrad(m), 3);
     paras.push(p4);
 
-    paras.push([S('高校で身につけたことを土台に、' + m.name + 'でさらに成長したいと考え、志望しました。', 0)]);
+    paras.push([S(variant(m, [
+      '高校で身につけたことを土台に、' + m.name + 'でさらに成長したいと考え、志望しました。',
+      'ここまでの経験を活かし、' + m.name + 'でさらに力を伸ばしたいと考えています。',
+      '高校での3年間で得たものを持って、' + m.name + 'の門をたたきたいと考えています。'
+    ], 21), 0)]);
     return paras;
   }
 
@@ -685,9 +771,12 @@
     paras.push(p1);
 
     const p2 = [];
-    push(p2, 'その目標に近づくために、' + (m.job ? '働くうえでは' : '進学先では')
-      + m.want + 'と考えました。', 1);
-    push(p2, sDeep(m, 'そう考えたのは、'), 2);
+    push(p2, variant(m, [
+      'その目標に近づくために、' + (m.job ? '働くうえでは' : '進学先では') + m.want + 'と考えました。',
+      'この目標に近づくには、' + m.want + 'ことが欠かせないと考えています。',
+      'そのためにまず、' + m.want + 'と考えました。'
+    ], 30), 1);
+    push(p2, sDeep(m, 'decided'), 2);
     paras.push(p2);
 
     const p3 = [];
@@ -714,7 +803,11 @@
     push(p5, sAfterGrad(m), 2);
     paras.push(p5);
 
-    paras.push([S('目標を実現できる環境がそろっていると考え、私は' + m.nameFull + 'を志望します。', 0)]);
+    paras.push([S(variant(m, [
+      '目標を実現できる環境がそろっていると考え、私は' + m.nameFull + 'を志望します。',
+      'この目標に近づける場所だと確信し、' + m.nameFull + 'を志望します。',
+      '目標に向かって進める場所だと考え、私は' + m.nameFull + 'を志望します。'
+    ], 22), 0)]);
     return paras;
   }
 
@@ -730,10 +823,15 @@
 
     const p2 = [];
     push(p2, m.cards.length
-      ? '調べるほど、私は' + m.want + 'と考えるようになりました。'
+      ? variant(m, [
+        '調べるほど、私は' + m.want + 'と考えるようになりました。',
+        '調べれば調べるほど、' + m.want + 'という気持ちが強くなりました。',
+        'それから調べていくうちに、' + m.want + 'と思うようになりました。'
+      ], 27)
       : sHead(m), 0);
-    push(p2, sDeep(m, 'そう思うようになったのは、'), 2);
-    push(p2, sFeature(m), 2);
+    push(p2, sDeep(m, 'felt'), 2);
+    // 志望先の固有名詞は「調べた証拠」そのもの。字数が苦しくても最後まで残す
+    push(p2, sFeature(m), 1);
     push(p2, sFeatureDetail(m), 3);
     push(p2, sVisited(m), 3);
     m.cardSent(1, 2).forEach(function (s) { p2.push(s); });
@@ -756,7 +854,11 @@
     push(p4, sAfterGrad(m), 3);
     paras.push(p4);
 
-    paras.push([S('あの日に感じた気持ちを大切に、' + m.nameFull + 'を志望します。', 0)]);
+    paras.push([S(variant(m, [
+      'あの日に感じた気持ちを大切に、' + m.nameFull + 'を志望します。',
+      'あのときの気持ちは今も変わりません。だからこそ、' + m.nameFull + 'を志望します。',
+      'あの場面で動いた気持ちを胸に、' + m.nameFull + 'を志望します。'
+    ], 23), 0)]);
     return paras;
   }
 
@@ -770,7 +872,11 @@
       '私には今、{X}が足りないと感じています。',
       '私には今、{X}ところがあると感じています。')
       || '私には、高校生活の中で「もっとこうなりたい」と感じるようになったことがあります。', 0);
-    push(p1, 'その気持ちが、' + m.nameFull + 'を志望するきっかけになりました。', 0);
+    push(p1, variant(m, [
+      'その気持ちが、' + m.nameFull + 'を志望するきっかけになりました。',
+      'この足りなさをどこで埋めるかを考えたとき、たどり着いたのが' + m.nameFull + 'でした。',
+      'だからこそ、' + m.nameFull + 'を志望します。'
+    ], 28), 0);
     paras.push(p1);
 
     const p2 = [];
@@ -784,7 +890,11 @@
     paras.push(p2);
 
     const p3 = [];
-    push(p3, 'そこで、' + m.want + 'と考えるようになりました。', 1);
+    push(p3, variant(m, [
+      'そこで、' + m.want + 'と考えるようになりました。',
+      'この課題を越えるために、' + m.want + 'と考えました。',
+      'だから私は、' + m.want + 'と考えています。'
+    ], 29), 1);
     push(p3, sFeature(m), 1);
     push(p3, sLearnOrTask(m), 3);
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
@@ -800,7 +910,11 @@
     push(p4, sAfterGrad(m), 2);
     paras.push(p4);
 
-    paras.push([S('今の自分を変えたいという気持ちを持って、' + m.nameFull + 'を志望します。', 0)]);
+    paras.push([S(variant(m, [
+      '今の自分を変えたいという気持ちを持って、' + m.nameFull + 'を志望します。',
+      '足りないところを埋めたいという気持ちで、' + m.nameFull + 'を志望します。',
+      '今の自分から一歩進みたいと考え、' + m.nameFull + 'を志望します。'
+    ], 24), 0)]);
     return paras;
   }
 
@@ -809,18 +923,26 @@
   function buildThree(m) {
     const paras = [];
 
-    paras.push([S('私が' + m.nameFull + 'を志望する理由は、大きく三つあります。', 0)]);
+    paras.push([S(variant(m, [
+      '私が' + m.nameFull + 'を志望する理由は、大きく三つあります。',
+      '私が' + m.nameFull + 'を志望する理由を、三つに整理しました。',
+      '私が' + m.nameFull + 'を志望するのには、三つの理由があります。'
+    ], 31), 0)]);
 
     const p2 = [];
     push(p2, '一つ目は、' + m.want + 'からです。', 0);
-    push(p2, sDeep(m, 'そう考えるようになったのは、'), 2);
+    push(p2, sDeep(m, 'think'), 2);
     push(p2, sFeature(m), 1);
     push(p2, sLearnOrTask(m), 2);
     push(p2, sFeatureDetail(m), 3);
     paras.push(p2);
 
     const p3 = [];
-    push(p3, '二つ目は、実際に自分の目で見て感じたことがあるからです。', 0);
+    push(p3, variant(m, [
+      '二つ目は、実際に自分の目で見て感じたことです。',
+      '二つ目は、自分の足で確かめたことがあるという点です。',
+      '二つ目は、この目で見て心が動いた場面があることです。'
+    ], 32), 0);
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 2).forEach(function (s) { p3.push(s); });
     push(p3, sAttractFallback(m, '特に'), 2);
@@ -829,7 +951,11 @@
     paras.push(p3);
 
     const p4 = [];
-    push(p4, '三つ目は、私自身の経験とつながっているからです。', 0);
+    push(p4, variant(m, [
+      '三つ目は、私自身の経験とのつながりです。',
+      '三つ目は、これまでの自分の経験と重なる点があることです。',
+      '三つ目は、高校で積み重ねてきたことが活かせるという点です。'
+    ], 33), 0);
     push(p4, sEffortIntro(m), 1);
     push(p4, sEffortAction(m), 3);
     push(p4, sEffortResult(m), 3);
@@ -846,7 +972,11 @@
     push(p5, sAfterGrad(m), 3);
     paras.push(p5);
 
-    paras.push([S('以上の三つの理由から、私は' + m.nameFull + 'を志望します。', 0)]);
+    paras.push([S(variant(m, [
+      '以上の三つの理由から、私は' + m.nameFull + 'を志望します。',
+      'この三つの理由から、私は' + m.nameFull + 'を志望します。',
+      '以上の三点が、私が' + m.nameFull + 'を志望する理由です。'
+    ], 25), 0)]);
     return paras;
   }
 
@@ -890,13 +1020,18 @@
    * 名詞から文を組み立てる以上、「〜と考えています。」が並びやすい。
    * 長くなる置きかえは字数を押し出すので、目標字数を超えない場合だけ使う。
    */
+  // family が同じものは「同じ語尾」として数える。
+  // 「取り組みたいと考えています」と「活かせると考えています」は
+  // 別の語尾に見えて、読むと同じ響きになるため。
   const ENDING_VARIANTS = [
-    { key: 'たいと考えています。', alts: ['たいと思っています。', 'たいです。'] },
-    { key: 'と考えています。', alts: ['と思っています。', 'と考えました。'] },
-    { key: 'と考えました。', alts: ['と思いました。'] },
-    { key: 'と思いました。', alts: ['と感じました。'] },
-    { key: 'に残りました。', alts: ['に残っています。'] },
-    { key: 'があります。', alts: ['がありました。'] }
+    { key: 'たいと考えています。', family: 'kangae', alts: ['たいと思っています。', 'たいです。'] },
+    { key: 'と考えています。', family: 'kangae', alts: ['と思っています。', 'と考えました。'] },
+    { key: 'と考えました。', family: 'kangae', alts: ['と思いました。'] },
+    { key: 'と思いました。', family: 'omoi', alts: ['と感じました。'] },
+    { key: 'に残りました。', family: 'nokori', alts: ['に残っています。'] },
+    { key: 'があります。', family: 'aru', alts: ['がありました。'] },
+    { key: 'があるからです。', family: 'kara', alts: ['があるためです。'] },
+    { key: 'からです。', family: 'kara', alts: ['からでした。'] }
   ];
 
   function endingOf(sentence) {
@@ -908,24 +1043,48 @@
     return null;
   }
 
+  /**
+   * 同じ語尾が続いたとき、または文章全体で3回以上出てきたときに言いかえる。
+   *
+   * 隣り合っていなくても、「〜と考えています。」が4回出てくれば単調に読める。
+   * 長くなる言いかえは字数を押し出すので、目標に余裕があるときだけ使う。
+   */
   function varyEndings(text, target) {
+    // まず文章全体で数える（同じ響きのものはまとめて数える）
+    const seen = {};
+    (text.match(/[^。\n]*。/g) || []).forEach(function (x) {
+      const v = endingOf(x);
+      if (v) seen[v.family] = (seen[v.family] || 0) + 1;
+    });
+
+    const used = {};
+    let prev = '';
+
     return text.split('\n\n').map(function (para) {
       const sents = para.match(/[^。]*。/g);
       if (!sents) return para;
 
-      let prev = '';
       const out = sents.map(function (sent) {
         const v = endingOf(sent);
-        const key = v ? v.key : sent.slice(-5);
-        if (key !== prev) { prev = key; return sent; }
+        const key = v ? v.family : sent.slice(-5);
+        if (v) used[v.family] = (used[v.family] || 0) + 1;
 
-        // 直前と同じ語尾。長さが増えない言いかえがあれば使う
+        // 直前と同じか、全体で3回以上出るうちの3回目以降なら言いかえる
+        const tooMany = v && seen[v.family] >= 3 && used[v.family] >= 3;
+        if (key !== prev && !tooMany) { prev = key; return sent; }
+
         if (v) {
-          const alt = v.alts.find(function (a) { return a.length <= v.key.length; }) || v.alts[0];
+          // 言いかえたら family が変わるものを優先する（同じ響きを避けるため）
+          const alt = v.alts.find(function (a) {
+            const hit = ENDING_VARIANTS.find(function (x) { return x.key === a; });
+            return (!hit || hit.family !== v.family) && a.length <= v.key.length;
+          }) || v.alts.find(function (a) { return a.length <= v.key.length; }) || v.alts[0];
+
           if (alt) {
             const fixed = sent.slice(0, sent.length - v.key.length) + alt;
             if (countChars(fixed) <= countChars(sent) || countChars(text) < target) {
-              prev = alt;
+              const hit = ENDING_VARIANTS.find(function (x) { return x.key === alt; });
+              prev = hit ? hit.family : alt;
               return fixed;
             }
           }
@@ -935,6 +1094,49 @@
       });
       return out.join('');
     }).join('\n\n');
+  }
+
+  /**
+   * 「私」が多すぎるときだけ、外しても意味が変わらない主語を落とす。
+   *
+   * 志望理由書に「私」は何度か出てよいが、17文で6回は目につく。
+   * 主語がなくても誰の話か分かる文だけを対象にする。
+   */
+  const WATASHI_DROP = [
+    [/私が特に関心を持ったのは、/, '特に関心を持ったのは、'],
+    [/私は将来、/, '将来、'],
+    [/私がもっとも打ち込んだのは/, 'もっとも打ち込んだのは']
+  ];
+
+  function trimWatashi(text) {
+    let out = text;
+    WATASHI_DROP.forEach(function (r) {
+      if ((out.match(/私/g) || []).length <= 3) return;
+      out = out.replace(r[0], r[1]);
+    });
+    return out;
+  }
+
+  /**
+   * 一文だけの段落を、次の段落の先頭につなぐ。
+   *
+   * 字数調整で文が削られると「同じような学校は他にもありますが……。」が
+   * 1行だけの段落として残ることがある。志望理由書としては見た目が悪く、
+   * 話のまとまりも見えにくい。
+   * 書き出しと結びは、1文でもそのまま独立させる（そういう型なので）。
+   */
+  function mergeLoneParagraphs(paras) {
+    const out = paras.map(function (p) { return p.filter(Boolean); })
+      .filter(function (p) { return p.length; });
+
+    for (let i = 1; i < out.length - 1; i++) {
+      if (out[i].length === 1 && countChars(out[i][0].text) < 70) {
+        out[i + 1] = out[i].concat(out[i + 1]);
+        out.splice(i, 1);
+        i--;
+      }
+    }
+    return out;
   }
 
   // ── 字数調整 ─────────────────────────────────────────
@@ -948,6 +1150,32 @@
   function countChars(text) {
     // 改行と空白は字数に数えない（原稿用紙換算に近づける）
     return String(text || '').replace(/[\s　]/g, '').length;
+  }
+
+  /** 固有名詞（かぎかっこ）や数字を含む文か。削る順を決めるのに使う */
+  function hasConcrete(text) {
+    return /「[^」]{2,}」|[0-9０-９]/.test(text);
+  }
+
+  /**
+   * 削る文を1つ選ぶ。
+   * 基本は「削れば上限内に収まる中で、いちばん短い文」。削りすぎを防ぐため。
+   * ただし同じくらいの長さなら、固有名詞や数字を含まない文のほうを先に削る。
+   * 「貴校の演習「◯◯」です」のような具体語こそ、志望動機の説得力そのものなので。
+   */
+  function choose(cands, need) {
+    if (!cands.length) return null;
+
+    const enough = cands.filter(function (c) { return c.len >= need; })
+      .sort(function (a, b) { return a.len - b.len; });
+    if (enough.length) {
+      const min = enough[0].len;
+      return enough.find(function (c) { return !c.concrete && c.len <= min * 1.3; }) || enough[0];
+    }
+
+    // どれ1つでは足りないので、いちばん長い文を削って次の回に回す
+    const rest = cands.slice().sort(function (a, b) { return b.len - a.len; });
+    return rest.find(function (c) { return !c.concrete; }) || rest[0];
   }
 
   /** 目標字数を超えていたら、優先度の低い文から削る */
@@ -968,14 +1196,16 @@
         const cands = [];
         work.forEach(function (para, i) {
           para.forEach(function (s, k) {
-            if (s.p === priority) cands.push({ i: i, k: k, len: countChars(s.text) });
+            if (s.p === priority) {
+              cands.push({ i: i, k: k, len: countChars(s.text), concrete: hasConcrete(s.text) });
+            }
           });
         });
         if (!cands.length) continue;
 
-        const enough = cands.filter(function (c) { return c.len >= need; })
-          .sort(function (a, b) { return a.len - b.len; });
-        picked = enough[0] || cands.sort(function (a, b) { return b.len - a.len; })[0];
+        // 同じ優先度なら、固有名詞や数字を含まない文から先に削る。
+        // 「貴校の演習「◯◯」です」のような具体語こそ、志望動機の説得力そのものなので。
+        picked = choose(cands, need);
       }
 
       if (!picked) break; // これ以上削れる文がない
@@ -995,12 +1225,15 @@
     const m = materials(data);
     const target = Number(data.targetChars) || 400;
 
+    m.cardOffset = hashOf((m.studentName || '') + '|cards') % 3;
     let paras = tpl.build(m);
     paras = fitToLength(paras, target);
+    paras = mergeLoneParagraphs(paras);
 
     let text = render(paras);
     text = useHonorific(text, m);
     text = varyEndings(text, target);
+    text = trimWatashi(text);
     if (data.tone === 'だ・である調') text = toPlainTone(text);
 
     const chars = countChars(text);

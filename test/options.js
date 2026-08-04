@@ -107,7 +107,7 @@ head('志望先の種類（敬称・「入学後」の言い方）');
 head('取り組んだことが行動か、作ったものか');
 [['自分がやった行動', '練習メニューの見直し'], ['自分が作ったもの・仕組み', '練習メニュー表']].forEach(([k, w]) => {
   const d = { course: 'shingaku', effortActionKind: k, effortAction: w, efforts: ['部活動'], whyChain: {} };
-  const t = C.generate(d, 'story').text.match(/その中で、[^。]*。/);
+  const t = C.generate(d, 'story').text.match(/[^。]*(に取り組みました|を作りました|に力を注ぎました)。/);
   console.log('  ' + k + '：' + (t ? t[0] : '（なし）'));
 });
 
