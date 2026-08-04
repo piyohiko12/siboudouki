@@ -190,6 +190,22 @@
 
     if (field.hint) wrap.appendChild(h('p', { class: 'field__hint', text: field.hint }));
 
+    // 書き方の例。押せないようにしてあるのは、写して終わりにしないため
+    if ((field.examples || []).length) {
+      wrap.appendChild(h('div', { class: 'field__ex' }, [
+        h('span', { class: 'field__exCap', text: 'こんな書き方' })
+      ].concat(field.examples.map(function (e) {
+        return h('span', { class: 'field__exItem', text: e });
+      }))));
+    }
+
+    if (field.avoid) {
+      wrap.appendChild(h('p', { class: 'field__avoid' }, [
+        h('span', { class: 'field__avoidCap', text: '注意' }),
+        document.createTextNode(field.avoid)
+      ]));
+    }
+
     let input;
     const val = state.data[field.id];
 
@@ -205,6 +221,7 @@
         input.addEventListener('input', function () {
           state.data[field.id] = input.value;
           updateCounter(wrap, input.value);
+          emitChange(field.id);
           scheduleSave();
         });
         wrap.appendChild(input);
@@ -220,6 +237,7 @@
         input.value = val || field.default || '';
         input.addEventListener('change', function () {
           state.data[field.id] = input.value;
+          emitChange(field.id);
           scheduleSave();
         });
         if (!state.data[field.id] && field.default) state.data[field.id] = field.default;
@@ -236,6 +254,7 @@
         if (state.data[field.id] == null || state.data[field.id] === '') state.data[field.id] = field.default;
         input.addEventListener('input', function () {
           state.data[field.id] = Number(input.value);
+          emitChange(field.id);
           scheduleSave();
         });
         wrap.appendChild(input);
@@ -267,6 +286,23 @@
         wrap.appendChild(input);
     }
 
+    // 入力した言葉が、本文でどんな一文になるかをその場で見せる
+    if (typeof field.preview === 'function') {
+      const box = h('div', { class: 'field__preview' });
+      const paint = function () {
+        let line = '';
+        try { line = field.preview(state.data, isJob()) || ''; } catch (e) { line = ''; }
+        box.innerHTML = '';
+        box.classList.toggle('is-on', !!line);
+        if (!line) return;
+        box.appendChild(h('span', { class: 'field__previewCap', text: 'こう文になります' }));
+        box.appendChild(h('p', { class: 'field__previewText', text: line }));
+      };
+      paint();
+      onDataChange(paint);
+      wrap.appendChild(box);
+    }
+
     wrap.appendChild(h('p', { class: 'field__error', text: '' }));
     return wrap;
   }
@@ -294,6 +330,7 @@
             const i = list.indexOf(opt);
             if (i === -1) list.push(opt); else list.splice(i, 1);
             state.data[field.id] = list;
+            emitChange(field.id);
             scheduleSave();
             repaint();
           }
@@ -308,6 +345,7 @@
             if (!v) return;
             state.custom[field.id] = (state.custom[field.id] || []).concat([v]);
             state.data[field.id] = (state.data[field.id] || []).concat([v]);
+            emitChange(field.id);
             save();
             repaint();
           }
@@ -356,7 +394,8 @@
         ]));
 
         // ① どこで感じたか
-        el.appendChild(h('label', { class: 'attrCard__label', text: '① どこで感じた？' }));
+        el.appendChild(h('label', { class: 'attrCard__label', text: '① それは、どこでのことですか' }));
+        el.appendChild(h('p', { class: 'attrCard__hint', text: '選んだ場面が、そのまま文章の書き出しになります。' }));
         const sel = h('select', { class: 'input' });
         sel.appendChild(h('option', { value: '', text: '選んでください' }));
         (field.whereOptions || []).forEach(function (w) {
@@ -367,8 +406,24 @@
         el.appendChild(sel);
 
         // ② 何を見た・聞いた
-        el.appendChild(h('label', { class: 'attrCard__label', text: '② 何を見た・聞いた？' }));
-        el.appendChild(h('p', { class: 'attrCard__hint', text: 'ここがいちばん大事。「すごかった」ではなく、その場の様子をそのまま書く。' }));
+        el.appendChild(h('label', { class: 'attrCard__label', text: '② そこで、何を見ましたか・聞きましたか' }));
+        el.appendChild(h('p', {
+          class: 'attrCard__hint',
+          text: 'ここがいちばん大事です。感想ではなく、目に見えたこと・耳で聞いたことを、'
+            + 'そのまま書いてください。この欄だけは、短い文で書いて構いません（語尾はアプリが直します）。'
+        }));
+        el.appendChild(h('div', { class: 'attrCard__ex' }, [
+          h('p', { class: 'attrCard__exGood' }, [
+            h('span', { class: 'attrCard__exMark', text: '○' }),
+            document.createTextNode(field.whatPlaceholder || '')
+          ]),
+          h('p', { class: 'attrCard__exBad' }, [
+            h('span', { class: 'attrCard__exMark', text: '×' }),
+            document.createTextNode(isJob()
+              ? '雰囲気がとても良かった（＝感想だけで、何を見たのか分からない）'
+              : '授業がとても良かった（＝感想だけで、何を見たのか分からない）')
+          ])
+        ]));
         const what = h('textarea', {
           class: 'input input--area', rows: 2, placeholder: field.whatPlaceholder || ''
         });
@@ -381,12 +436,17 @@
         el.appendChild(what);
 
         // ③ そのときの気持ち
-        el.appendChild(h('label', { class: 'attrCard__label', text: '③ そのとき、どう感じた？' }));
-        el.appendChild(h('p', { class: 'attrCard__hint', text: '近いものを2つまで。文章の中で自然な形に変換されます。' }));
+        el.appendChild(h('label', { class: 'attrCard__label', text: '③ そのとき、どう思いましたか' }));
+        el.appendChild(h('p', { class: 'attrCard__hint', text: '近いものを2つまで選びます。文の中で自然な言い方に直されます。' }));
         el.appendChild(renderFeelChips(card, field));
 
         // ④ 自分とのつながり
-        el.appendChild(h('label', { class: 'attrCard__label', text: '④ 自分の何とつながる？（書けたら）' }));
+        el.appendChild(h('label', { class: 'attrCard__label', text: '④ 自分のどんな経験と重なりますか' }));
+        el.appendChild(h('p', {
+          class: 'attrCard__hint',
+          text: '②とよく似た自分の体験を思い出して書きます。空でも進めますが、'
+            + 'ここが書けると「その学校でなければならない理由」がぐっと強くなります。'
+        }));
         const link = h('textarea', {
           class: 'input input--area', rows: 2, placeholder: field.linkPlaceholder || ''
         });
@@ -423,7 +483,7 @@
     }
 
     function previewOf(card) {
-      return global.COMPOSE.cardPreview(card, state.data.course) || '（②を書くと、ここに文章が出ます）';
+      return global.COMPOSE.cardPreview(card, state.data.course) || '（②を書くと、ここに本文の文が出ます）';
     }
 
     function renderWeight(card, onChange) {
@@ -470,9 +530,15 @@
   }
 
   const WHY_LABELS = [
-    'なぜ、そう思ったのですか？',
-    'では、なぜそう感じるようになったのですか？',
-    'さらに、それはあなたにとってどういう意味がありますか？'
+    'なぜ、そう思うのですか？',
+    'では、そう思うようになったきっかけは何ですか？',
+    'それは、あなたにとってどういう意味がありますか？'
+  ];
+
+  const WHY_HINTS = [
+    'まずは思いついたままで大丈夫です。',
+    '「そのとき何があったか」を思い出して書きます。',
+    'ここが本文に使われます。短くて構いません。'
   ];
 
   function renderWhyChain(field) {
@@ -481,8 +547,8 @@
     const quotes = [];
 
     function quoteOf(i) {
-      if (i === 0) return state.data[field.source] || '（前のらんに志望理由を書いてください）';
-      return chain['why' + i] || '（上のらんに答えてください）';
+      if (i === 0) return state.data[field.source] || '（上の「手に入れたいもの」を書くと、ここに出ます）';
+      return chain['why' + i] || '（ひとつ前の「なぜ？」に答えると、ここに出ます）';
     }
 
     // 入力のたびにDOMを作り直すとフォーカスが外れるので、引用部分だけを書き換える
@@ -503,13 +569,15 @@
         h('div', { class: 'why__ask' }, [
           h('span', { class: 'why__no', text: 'なぜ？' + (i + 1) }),
           h('span', { text: WHY_LABELS[i] })
-        ])
+        ]),
+        h('p', { class: 'why__hint', text: WHY_HINTS[i] })
       ]);
 
       const ta = h('textarea', {
         class: 'input input--area', rows: 2,
-        placeholder: i === 2 ? '例）自分で決めて動ける環境のほうが、力を発揮できると気づいたから'
-          : '例）文化祭で、生徒が自分たちで企画を運営していたから'
+        placeholder: ['文化祭で、自分たちで決めて動くのが楽しかったから',
+          '任されたほうが責任を感じて力が出たから',
+          '自分で考えて動ける環境'][i]
       });
       ta.value = chain[key] || '';
       ta.addEventListener('input', function () {

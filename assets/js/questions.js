@@ -158,6 +158,23 @@
     return job(mode) ? WANT_VERB_SHUSHOKU : WANT_VERB_SHINGAKU;
   }
 
+  /** 入力された値を、前後の空白と句点を落として取り出す（プレビュー用） */
+  function txt(v) {
+    return String(v == null ? '' : v).trim().replace(/[。．\s]+$/, '');
+  }
+
+  /**
+   * プレビュー用の志望先の呼び方。
+   * 進学は「〇〇大学経済学部」、就職は「株式会社〇〇の製造職」とつなぐ（生成側と同じ規則）。
+   */
+  function fullName(d, mode) {
+    const isJob = job(mode);
+    const name = txt(d.targetName) || (isJob ? '貴社' : '貴校');
+    const sub = txt(d.targetSub);
+    if (!sub) return name;
+    return isJob ? name + 'の' + sub : name + sub;
+  }
+
   /** {X} に単語を入れて文の断片を作る */
   function fill(frame, word) {
     return String(frame || '').replace('{X}', String(word || '').trim());
@@ -327,179 +344,267 @@
     }
 
     return [
-      // ───────────────────────────── STEP 1
+      // ───────────────────────────── 基本情報
       {
         id: 'basic',
         no: 1,
         title: '基本情報',
         lead: isJob
-          ? 'まずは、どの会社に向けた志望動機かをはっきりさせよう。'
-          : 'まずは、どの学校に向けた志望理由書かをはっきりさせよう。',
+          ? 'まず、どの会社に出す志望動機かをはっきりさせます。ここは事務的な内容なので、さっと埋めてしまいましょう。'
+          : 'まず、どの学校に出す志望理由書かをはっきりさせます。ここは事務的な内容なので、さっと埋めてしまいましょう。',
         fields: [
           {
-            id: 'studentName', type: 'text', label: '名前', required: true,
-            placeholder: '例）山田 太郎',
-            hint: '先生が誰の下書きか分かるように書きます。'
+            id: 'studentName', type: 'text', label: 'あなたの名前', required: true,
+            placeholder: '山田 太郎',
+            hint: '先生が「誰の下書きか」を見分けるために使います。本文には出ません。'
           },
           {
-            id: 'highSchool', type: 'text', label: '在籍している高校名',
-            placeholder: '例）〇〇県立△△高等学校'
+            id: 'highSchool', type: 'text', label: '高校の名前',
+            placeholder: '〇〇県立△△高等学校',
+            hint: '略さずに書きます。'
           },
           {
             id: 'className', type: 'text', label: 'クラス・出席番号',
-            placeholder: '例）3年2組 15番'
+            placeholder: '3年2組 15番'
           },
           {
             id: 'targetName', type: 'text', required: true,
-            label: isJob ? '志望する会社名' : '志望校名',
-            placeholder: isJob ? '例）株式会社〇〇製作所' : '例）〇〇大学 / △△専門学校',
+            label: isJob ? '志望する会社の名前' : '志望する学校の名前',
+            placeholder: isJob ? '株式会社〇〇製作所' : '〇〇大学',
+            examples: isJob
+              ? ['株式会社〇〇製作所', '〇〇工業株式会社', '〇〇市役所']
+              : ['〇〇大学', '学校法人△△ □□専門学校', '〇〇短期大学'],
             hint: isJob
-              ? '正式名称で書きます。「株式会社」を前につけるか後ろにつけるかも求人票どおりに。'
-              : '正式名称で書きます。「〇〇大学」「学校法人△△ □□専門学校」など。'
+              ? '求人票に書いてある正式名称を、そのまま写します。「株式会社」が前につくか後ろにつくかも求人票どおりに。'
+              : '募集要項やパンフレットの正式名称を、そのまま写します。',
+            avoid: isJob ? '「〇〇製作所」と略さない' : '「〇〇大」と略さない',
+            preview: function (d) {
+              return '私が' + fullName(d, mode) + 'を志望した理由は、……';
+            }
           },
           {
             id: 'targetSub', type: 'text',
             label: isJob ? '希望する職種' : '学部・学科・コース',
-            placeholder: isJob ? '例）製造職 / 総合職 / 事務職'
-              : '例）経済学部 経済学科 / 情報処理科 / 看護学科'
+            placeholder: isJob ? '製造職' : '経済学部 経済学科',
+            examples: isJob
+              ? ['製造職', '総合職', '事務職']
+              : ['経済学部 経済学科', '情報処理科', '看護学科'],
+            hint: isJob
+              ? '求人票に書いてある職種名です。分からなければ空のままでも進めます。'
+              : '募集要項の書き方に合わせます。分からなければ空のままでも進めます。'
           },
           {
             id: 'examType', type: 'select',
-            label: isJob ? '応募の方法' : '入試の方式',
+            label: isJob ? 'どうやって応募しますか' : 'どの入試を受けますか',
             options: isJob
               ? ['学校斡旋（求人票）', '自己開拓', '公務員試験', '縁故', 'その他・未定']
               : ['総合型選抜（AO）', '学校推薦型選抜（公募）', '指定校推薦', '一般選抜', 'その他・未定'],
             hint: isJob
-              ? '学校斡旋の場合は、学校の名前を背負って応募することを意識して書きます。'
-              : '推薦なら、その学校の「求める学生像」に寄せると効果的です。'
+              ? '学校斡旋なら、高校の名前を背負って応募することになります。読み手は先生でもあると思って書きましょう。'
+              : '推薦なら、その学校が出している「求める学生像」に寄せると効果的です。'
           },
           {
             id: 'targetChars', type: 'number', label: '目標の文字数', required: true,
             default: isJob ? 300 : 500, min: 100, max: 2000, step: 50,
-            hint: isJob
-              ? '履歴書の志望動機欄なら200〜300字、エントリーシートなら400字前後が目安です。'
-              : '募集要項に指定があればその数字を。指定がなければ500〜800字が目安です。'
+            hint: 'STEP 1 で選んだ長さが入っています。'
+              + (isJob
+                ? '履歴書の志望動機欄なら200〜300字、エントリーシートなら400字前後が目安です。'
+                : '募集要項に字数の指定があれば、その数字に直してください。')
+              + '指定の字数を超えると、それだけで減点されることがあります。'
           },
           {
-            id: 'tone', type: 'select', label: '文体',
+            id: 'tone', type: 'select', label: '文の終わり方',
             options: ['です・ます調', 'だ・である調'],
             default: 'です・ます調',
-            hint: isJob
-              ? '応募書類は「です・ます調」が基本です。途中で混ぜないこと。'
-              : '志望理由書は「です・ます調」が一般的ですが、指定があればそれに従います。'
+            hint: '迷ったら「です・ます調」。指定があるときだけ変えます。途中で混ざらないよう、アプリが最後まで統一します。',
+            preview: function (d) {
+              return d.tone === 'だ・である調'
+                ? '「……を志望する。」という終わり方になります。'
+                : '「……を志望します。」という終わり方になります。';
+            }
           }
         ]
       },
 
-      // ───────────────────────────── STEP 2
+      // ───────────────────────────── 自分を知る
       {
         id: 'self',
         no: 2,
         title: '自分を知る',
-        lead: '答えるのは単語だけで大丈夫です。文にするのはアプリの仕事なので、文末は気にせず書いてください。',
+        lead: 'ここから材料集めです。答えるのは単語だけで大丈夫。'
+          + '助詞や語尾はアプリがつけるので、文の形にしようとしなくて構いません。',
+        note: '入力すると、その下に「こう文になります」が出ます。それを見ながら言葉を選んでください。',
         fields: [
           {
-            id: 'efforts', type: 'chips', label: '高校生活でがんばったこと', required: true,
+            id: 'efforts', type: 'chips', label: '高校生活で、いちばん時間をかけたことは？', required: true,
             options: ['部活動', '生徒会', '委員会', 'クラス役員', '学校行事', '課題研究・探究学習',
               '資格・検定の取得', '実習・実験', '勉強・定期考査', 'アルバイト', 'ボランティア',
               '皆勤・無遅刻無欠席', '地域の活動'],
             allowFree: true,
-            hint: '当てはまるものを押します。いちばん上に押したものが文章の中心になります。'
+            hint: 'いくつ選んでも大丈夫です。最初に押したものが文章の中心になります。'
+              + '当てはまるものがなければ、「＋ 自分で追加」から書き足せます。'
           },
           {
             id: 'effortWhen', type: 'select', label: 'それは、いつのことですか', required: true,
             options: EFFORT_WHEN,
             default: '1年生から3年間',
-            hint: '「私は◯◯、〜に力を入れてきました。」という文になります。'
+            preview: function (d) {
+              const top = (d.efforts || [])[0] || '部活動';
+              return (d.effortWhen || '1年生から3年間') + '、いちばん力を入れてきたのは' + top + 'です。';
+            }
           },
           {
-            id: 'effortRole', type: 'text', label: '役割があれば、その名前だけ',
-            placeholder: '例）副キャプテン',
-            hint: '単語だけで大丈夫です。なければ空のままで構いません。'
+            id: 'effortRole', type: 'text', label: 'その中での役割（あれば）',
+            placeholder: '副キャプテン',
+            examples: ['副キャプテン', '会計', '班長', 'パートリーダー'],
+            hint: '肩書きの名前だけ書きます。役割がなければ、空のままで構いません。',
+            preview: function (d) {
+              if (!txt(d.effortRole) || !txt(d.effortAction)) return '';
+              return txt(d.effortRole) + 'として、' + txt(d.effortAction) + 'に取り組みました。';
+            }
           },
           {
-            id: 'effortAction', type: 'text', label: '具体的に取り組んだこと', required: true,
-            placeholder: '例）練習メニューの見直し',
-            hint: '「〜すること」ではなく「◯◯の△△」という形の短い言葉で。数を入れると強くなります（例：週3回の朝練習）。'
+            id: 'effortAction', type: 'text', label: 'その中で、自分がやったこと', required: true,
+            placeholder: '練習メニューの見直し',
+            examples: ['練習メニューの見直し', '週3回の朝練習の記録', '1年生への声かけ', '地元商店街での聞き取り調査'],
+            hint: '「何をしたか」を、ものごとの名前で短く書きます。'
+              + '数（週3回・50人・3か月）が入ると、いっきに具体的になります。',
+            avoid: '「がんばりました」「一生懸命やりました」のような文は書きません',
+            preview: function (d) {
+              return txt(d.effortAction)
+                ? (txt(d.effortRole) ? txt(d.effortRole) + 'として、' : 'その中で、')
+                  + txt(d.effortAction) + 'に取り組みました。'
+                : '';
+            }
           },
           {
-            id: 'effortResult', type: 'text', label: 'その結果どうなったか',
+            id: 'effortResult', type: 'text', label: 'その結果、どうなりましたか',
             only: ['prep', 'story', 'gap', 'three'],
-            placeholder: '例）県大会ベスト8',
-            hint: '数字や順位が入ると説得力が出ます。単語で構いません。'
+            placeholder: '県大会ベスト8',
+            examples: ['県大会ベスト8', '来場者200人', 'ミスの件数が半分に', '新しく入った人への引き継ぎ'],
+            hint: '数字・順位・回数が入ると説得力が出ます。'
+              + '大きな結果でなくて構いません。「前より良くなったこと」で十分です。',
+            preview: function (d) {
+              return txt(d.effortResult) ? txt(d.effortResult) + 'は、その中で生まれた成果です。' : '';
+            }
           },
           {
             id: 'effortLearned', type: 'text', label: 'そこから学んだこと', required: true,
-            placeholder: '例）役割を分けることの大切さ',
-            hint: '「この経験から、◯◯を学びました。」という文になります。「〜の大切さ」「〜する力」のような形が入れやすいです。'
+            placeholder: '役割を分けることの大切さ',
+            examples: ['役割を分けることの大切さ', '人に合わせて説明を変える力', '手順を共有することの大切さ'],
+            hint: '「〜の大切さ」「〜する力」の形にすると、そのまま文に入ります。',
+            avoid: '「成長できました」だけでは、何を学んだか伝わりません',
+            preview: function (d) {
+              return txt(d.effortLearned) ? 'この経験から、' + txt(d.effortLearned) + 'を学びました。' : '';
+            }
           },
           {
             id: 'strengths', type: 'chips',
-            label: isJob ? '仕事で活かせそうな得意なこと' : '得意な教科・好きなこと',
+            label: isJob ? '仕事で活かせそうな、自分の得意なこと' : '得意な教科・好きなこと',
             options: isJob
               ? ['体力がある', '手先が器用', '正確に作業できる', 'コツコツ続けられる', '人と話すこと',
                 'パソコン操作', '計算', 'ものづくり', '整理整頓', '早起き・時間を守る', '力仕事', '接客']
               : ['国語', '数学', '英語', '理科', '地歴・公民', '情報', '商業', '工業', '家庭', '保健体育',
                 'プログラミング', 'ものづくり', '調べること', '発表すること'],
-            allowFree: true
+            allowFree: true,
+            hint: '2〜3個で十分です。下の「性格」を書いた場合は、そちらが優先して使われます。',
+            preview: function (d) {
+              const a = (d.strengths || []).slice(0, 3);
+              if (!a.length || (d.personality || []).length) return '';
+              const q = a.map(function (x) { return '「' + x + '」'; }).join('');
+              return isJob ? '仕事で活かせそうな点は' + q + 'です。' : '得意なのは' + q + 'です。';
+            }
           },
           {
             id: 'licenses', type: 'text',
-            label: isJob ? '持っている資格・免許' : '持っている資格・検定',
-            placeholder: isJob ? '例）危険物取扱者乙種4類' : '例）実用英語技能検定2級',
-            hint: '名前だけで大丈夫です。複数あるときは「、」で区切ってください。'
+            label: '持っている資格・検定',
+            placeholder: isJob ? '危険物取扱者乙種4類' : '実用英語技能検定2級',
+            examples: isJob
+              ? ['危険物取扱者乙種4類', '第二種電気工事士', '普通自動車第一種運転免許']
+              : ['実用英語技能検定2級', '日本語検定3級', '情報処理検定2級'],
+            hint: '名前だけで大丈夫です。2つ以上あるときは「、」で区切ります。まだなければ空のままで構いません。',
+            preview: function (d) {
+              return txt(d.licenses) ? 'また、' + txt(d.licenses) + 'を取得しています。' : '';
+            }
           },
           {
-            id: 'personality', type: 'chips', label: '自分の性格（人から言われることでもOK）',
+            id: 'personality', type: 'chips', label: '自分の性格',
             options: ['まじめ', 'こつこつ続けられる', '責任感が強い', '好奇心が強い', '人の話をよく聞く',
               'まわりを見て動ける', 'リーダーシップがある', '前向き', '落ち着いている', '明るい'],
-            allowFree: true
+            allowFree: true,
+            hint: '自分で思うものでも、人からよく言われるものでも構いません。2〜3個まで。',
+            preview: function (d) {
+              const a = (d.personality || []).slice(0, 3);
+              if (!a.length) return '';
+              return '自分では' + a.map(function (x) { return '「' + x + '」'; }).join('')
+                + 'という点が持ち味だと思っています。';
+            }
           },
           {
-            id: 'futureKind', type: 'select', label: '将来について、今いえるのはどれですか', required: true,
+            id: 'futureKind', type: 'select', label: '将来のことで、今いえるのはどれですか', required: true,
             only: ['future'],
             options: FUTURE_KIND.map(function (k) { return k.label; }),
             default: '興味のある分野がある',
-            hint: '選んだ内容に合わせて、次の欄の言葉が文章に組み込まれます。'
+            hint: 'ここで選んだ形に合わせて、次の欄の言葉が文に組み込まれます。'
+              + '「まだ決まっていない」を選んでも、ちゃんと文章になります。'
           },
           {
-            id: 'futureDream', type: 'text', label: 'その職業名・分野名', required: true,
+            id: 'futureDream', type: 'text', label: 'その職業名・分野の名前', required: true,
             only: ['future'],
-            placeholder: isJob ? '例）ものづくり' : '例）看護師 / 情報 / 地域づくり',
-            hint: '単語だけで大丈夫です。「〜になりたい」までは書かなくて構いません。'
+            placeholder: isJob ? 'ものづくり' : '看護師',
+            examples: isJob
+              ? ['ものづくり', '機械の整備', '人の生活を支える仕事']
+              : ['看護師', '情報', '地域づくり', '保育'],
+            hint: '名前だけで大丈夫です。「〜になりたい」まで書く必要はありません。',
+            preview: function (d) {
+              return futureSentence(d.futureKind, d.futureDream);
+            }
           },
           {
             id: 'futureWhySource', type: 'select', label: 'そう思ったきっかけは、どこにありましたか',
             only: ['future'],
             options: WHY_SOURCE.map(function (s) { return s.label; }),
-            hint: '選ばなくても進めますが、選ぶと文章に厚みが出ます。'
+            hint: '選ばなくても先へ進めますが、選ぶと「なぜそう思ったか」が伝わる文章になります。'
           },
           {
             id: 'futureWhyWhat', type: 'text', label: 'そのとき見たこと・経験したこと',
             only: ['future'],
-            placeholder: isJob ? '例）先輩が新人に教えている姿' : '例）祖母の入院',
-            hint: '出来事を短い言葉で。上で選んだきっかけと組み合わせて文になります。'
+            placeholder: isJob ? '先輩が新人に教えている姿' : '祖母の入院',
+            examples: isJob
+              ? ['先輩が新人に教えている姿', '工場見学で見た組み立ての様子']
+              : ['祖母の入院', '商店街の空き店舗の増加', '文化祭のポスター作り'],
+            hint: 'その場面を、短い言葉で。上で選んだきっかけと組み合わさって1つの文になります。',
+            preview: function (d) {
+              return whySourceSentence(d.futureWhySource, d.futureWhyWhat);
+            }
           },
           {
             id: 'gapNow', type: 'text', label: '今の自分に足りないと感じている力', required: true,
             only: ['gap'],
-            placeholder: isJob ? '例）自分から動く力' : '例）人に伝える力',
-            hint: 'この構成の出発点になります。「◯◯する力」の形で書くと入れやすいです。'
+            placeholder: isJob ? '自分から動く力' : '人に伝える力',
+            examples: isJob
+              ? ['自分から動く力', '手順を説明する力', '最後までやり切る力']
+              : ['人に伝える力', '深く調べる力', '初対面の人と話す力'],
+            hint: 'この構成は、ここが出発点になります。「〜する力」の形にすると入れやすいです。'
+              + '弱みを書くのではなく、「これから伸ばしたいこと」を書くつもりで。',
+            preview: function (d) {
+              return txt(d.gapNow) ? '私には今、' + txt(d.gapNow) + 'が足りないと感じています。' : '';
+            }
           }
         ].filter(usable)
       },
 
-      // ───────────────────────────── STEP 3
+      // ───────────────────────────── 学校／会社を知る
       {
         id: 'research',
         no: 3,
         title: isJob ? '会社を知る' : '学校を知る',
         lead: isJob
-          ? 'その会社を「調べた証拠」を集めよう。ここが薄いと、どの会社にも出せる文章になってしまう。'
-          : 'その学校を「調べた証拠」を集めよう。ここが薄いと、どの学校にも出せる文章になってしまう。',
+          ? 'ここがいちばん大事なステップです。「調べた証拠」と「自分の目で見たこと」を集めます。ここが薄いと、どの会社にも出せる文章になってしまいます。'
+          : 'ここがいちばん大事なステップです。「調べた証拠」と「自分の目で見たこと」を集めます。ここが薄いと、どの学校にも出せる文章になってしまいます。',
         note: isJob
-          ? '調べ方のヒント：求人票／会社のホームページ／会社説明会・職場見学／進路指導室の資料／その会社で働く先輩の話'
-          : '調べ方のヒント：学校のホームページ／オープンキャンパス・体験授業／学校案内パンフレット／進学ガイダンス／在校生や卒業生の話',
+          ? '手元に用意すると早いもの：求人票／会社のホームページ／会社案内／説明会や職場見学のメモ'
+          : '手元に用意すると早いもの：学校案内のパンフレット／学校のホームページ／オープンキャンパスのメモ',
         fields: [
           {
             id: 'knewBy', type: 'select',
@@ -508,32 +613,42 @@
               ? ['学校に届いた求人票', '会社説明会', '職場見学', 'インターンシップ', '先生からの紹介',
                 '先輩・家族から聞いた', '会社のホームページ', 'その他']
               : ['オープンキャンパス', '体験授業', '進学ガイダンス', '学校案内・ホームページ',
-                '先生からの紹介', '先輩・家族から聞いた', 'その他']
+                '先生からの紹介', '先輩・家族から聞いた', 'その他'],
+            hint: 'エピソード型では、ここが「出会いの場面」として文章に出てきます。'
           },
           {
             id: 'visited', type: 'chips',
-            label: '実際に行った・体験したこと',
+            label: '実際に行った・参加したこと',
             options: isJob
               ? ['会社説明会', '職場見学', 'インターンシップ', '個別面談', '先輩訪問', 'まだ行っていない']
               : ['オープンキャンパス', '体験授業', '学校見学', '個別相談会', '学園祭', '進学説明会', 'まだ行っていない'],
-            allowFree: true
+            allowFree: true,
+            hint: '足を運んだ事実そのものが、志望の本気度を示します。まだなら「まだ行っていない」を選んでください（文章には出ません）。',
+            preview: function (d) {
+              const been = (d.visited || []).filter(function (v) { return String(v).indexOf('まだ') !== 0; });
+              if (!been.length) return '';
+              const two = been.slice(0, 2);
+              return (two.length === 2 ? two[0] + 'や' + two[1] : two[0]) + 'にも参加し、自分の目で確かめました。';
+            }
           },
           {
             id: 'attractCards', type: 'cards', required: true,
-            label: '魅力カード',
+            label: '魅力カード（この文章の主役です）',
             max: 3,
             whereOptions: whereList(mode),
             feelOptions: FEELINGS.map(function (f) { return f.label; }),
-            hint: 'あなたが「いいな」と思った瞬間を、1枚ずつカードにします。ここに書いたことが、そのまま本文の中心になります。まず1枚、できれば2〜3枚。',
+            hint: '「いいな」と心が動いた瞬間を、1枚ずつカードにします。'
+              + 'ここに書いたことが、そのまま本文の中心になります。まず1枚。できれば2〜3枚。'
+              + '立派なことを書く必要はありません。小さくても、あなたが実際に見た場面ほど強い材料になります。',
             whatPlaceholder: isJob
-              ? '例）社員の方が、作業を始める前に必ずおたがいに声をかけ合っていた'
-              : '例）学生同士が、答えではなく考え方のほうを話し合っていた',
+              ? '社員の方が、作業を始める前に必ずおたがいに声をかけ合っていた'
+              : '学生同士が、答えではなく考え方のほうを話し合っていた',
             linkPlaceholder: isJob
-              ? '例）アルバイトで、声をかけ合うとミスが減った経験と重なります'
-              : '例）課題研究で、人と話すほど自分の考えが整理された経験と重なります'
+              ? 'アルバイトで、声をかけ合うとミスが減った経験と重なります'
+              : '課題研究で、人と話すほど自分の考えが整理された経験と重なります'
           },
           {
-            id: 'attractPoints', type: 'chips', label: '魅力を感じた点（分類）', required: true,
+            id: 'attractPoints', type: 'chips', label: 'その魅力は、どの種類のものですか', required: true,
             options: isJob
               ? ['仕事の内容', '会社の製品・サービス', '技術力', '地域への貢献', '研修・人材育成',
                 '資格取得の支援', '職場の雰囲気', '会社の理念', '安定性', '働き方・休日', '若手の活躍']
@@ -542,123 +657,211 @@
                 '学校の雰囲気', '通学のしやすさ'],
             allowFree: true,
             hint: '2〜3個にしぼると、文章がぼやけません。'
+              + '魅力カードを書いていれば、ここは分類のためだけに使われます。'
           },
           {
             id: 'featureKind', type: 'select', required: true,
-            label: isJob ? '関心を持ったのは、どの種類のものですか' : '関心を持ったのは、どの種類のものですか',
+            label: isJob ? '調べていて、いちばん心をひかれたのは何でしたか' : '調べていて、いちばん心をひかれたのは何でしたか',
             options: isJob ? FEATURE_KIND_SHUSHOKU : FEATURE_KIND_SHINGAKU,
             default: isJob ? '技術' : '授業',
-            hint: isJob
-              ? '「株式会社◯◯の技術「△△」に強く関心を持ちました。」という文になります。'
-              : '「◯◯大学の授業「△△」に強く関心を持ちました。」という文になります。'
+            hint: '種類を選ぶと、次の欄に書く名前がこの言葉で受けられます。'
           },
           {
             id: 'featureName', type: 'text', required: true,
-            label: 'その名前（正確に）',
-            placeholder: isJob ? '例）〇〇部品の精密加工' : '例）地域経済フィールドワーク',
-            hint: 'ここに固有名詞が入るかどうかで、文章の説得力が決まります。パンフレットや求人票の表記どおりに。'
+            label: 'その名前を、正確に',
+            placeholder: isJob ? '〇〇部品の精密加工' : '地域経済フィールドワーク',
+            examples: isJob
+              ? ['〇〇部品の精密加工', '自社ブランド「△△」', '24時間体制の保守サービス']
+              : ['地域経済フィールドワーク', '海外研修プログラム', '医療事務コース'],
+            hint: 'ここに固有名詞が入るかどうかで、文章の説得力が決まります。'
+              + (isJob ? '求人票や会社案内の表記どおりに写します。' : 'パンフレットやシラバスの表記どおりに写します。'),
+            avoid: '「いろいろな授業」「幅広い仕事」のような、どこでも言えることは書かない',
+            preview: function (d) {
+              if (!txt(d.featureName)) return '';
+              const kind = txt(d.featureKind) || (isJob ? '取り組み' : '学び');
+              const n = txt(d.targetName) || (isJob ? '貴社' : '貴校');
+              return '私が特に関心を持ったのは、' + n + 'の' + kind + '「' + txt(d.featureName) + '」です。';
+            }
           },
           {
             id: 'featureDetail', type: 'text',
             only: ['prep', 'future', 'scene', 'three'],
-            label: 'そこでできること・特徴',
-            placeholder: isJob ? '例）検査から出荷までの一貫生産' : '例）自治体と組んだ課題調査',
-            hint: '「〜すること」「〜の◯◯」のように、ものごとの名前で書いてください。'
-              + '「そこでは◯◯に関わることができると知りました。」という文になります。'
+            label: 'そこで何ができますか',
+            placeholder: isJob ? '検査から出荷までの一貫生産' : '自治体と組んだ課題調査',
+            examples: isJob
+              ? ['検査から出荷までの一貫生産', '海外向け製品の設計', '若手のうちからの現場配属']
+              : ['自治体と組んだ課題調査', '2年次からの少人数ゼミ', '現場の病院での実習'],
+            hint: '「〜すること」「〜の◯◯」のように、ものごとの名前で書きます。',
+            avoid: '「〜を担当」「〜ができる」のように文の形で書くと、うまくつながりません',
+            preview: function (d) {
+              return txt(d.featureDetail)
+                ? 'そこでは' + txt(d.featureDetail) + 'に関わることができると知りました。' : '';
+            }
           },
           isJob
             ? {
-              id: 'jobTask', type: 'text', label: 'その仕事は、何をする仕事ですか',
-              placeholder: '例）部品の加工と寸法の確認',
-              hint: '「◯◯を行う仕事だと理解しています。」という文になります。仕事内容を正しく書けていると、面接でも強いです。'
+              id: 'jobTask', type: 'text', label: 'その仕事は、毎日どんなことをする仕事ですか',
+              placeholder: '部品の加工と寸法の確認',
+              examples: ['部品の加工と寸法の確認', '注文の受付と在庫の管理', '機械の点検と修理'],
+              hint: '求人票の「仕事の内容」欄を、自分の言葉で短くまとめます。'
+                + 'ここを正しく書けている人は、面接でも強いです。',
+              preview: function (d) {
+                return txt(d.jobTask) ? txt(d.jobTask) + 'を行う仕事だと理解しています。' : '';
+              }
             }
             : {
               id: 'studyWant', type: 'text', label: '特に受けたい授業・科目の名前',
-              placeholder: '例）地域経済論',
-              hint: 'シラバスや学校案内に載っている名前をそのまま。「特に「◯◯」を学びたいと考えています。」という文になります。'
+              placeholder: '地域経済論',
+              examples: ['地域経済論', '基礎看護学実習', 'プログラミング演習'],
+              hint: 'シラバスや学校案内に載っている名前を、そのまま写します。',
+              preview: function (d) {
+                return txt(d.studyWant) ? '特に「' + txt(d.studyWant) + '」を学びたいと考えています。' : '';
+              }
             },
           {
             id: 'targetPolicy', type: 'text',
             only: ['prep', 'story', 'three'],
-            label: isJob ? '共感した理念の言葉' : '共感した教育目標の言葉',
-            placeholder: isJob ? '例）安全第一、品質第二' : '例）自ら学び、自ら考える',
-            hint: 'ホームページに載っている言葉をそのまま。かぎかっこは自動でつきます。'
+            label: isJob ? '共感した理念・社訓の言葉' : '共感した教育目標・校訓の言葉',
+            placeholder: isJob ? '安全第一、品質第二' : '自ら学び、自ら考える',
+            examples: isJob
+              ? ['安全第一、品質第二', '地域とともに歩む', '人を育てる']
+              : ['自ら学び、自ら考える', '実学重視', '地域に開かれた学び'],
+            hint: 'ホームページに書いてある言葉を、そのまま写します。かぎかっこは自動でつきます。',
+            preview: function (d) {
+              return txt(d.targetPolicy)
+                ? '「' + txt(d.targetPolicy) + '」という考え方にも共感しています。' : '';
+            }
           }
         ].filter(usable)
       },
 
-      // ───────────────────────────── STEP 4
+      // ───────────────────────────── つなげる
       {
         id: 'connect',
         no: 4,
         title: 'つなげる',
         lead: isJob
-          ? '「自分」と「会社」をつなぐ、いちばん大事なステップ。ここが志望動機の心臓部です。'
-          : '「自分」と「学校」をつなぐ、いちばん大事なステップ。ここが志望理由の心臓部です。',
+          ? '「自分」と「会社」を1本の線でつなぎます。ここが志望動機の心臓部です。'
+          : '「自分」と「学校」を1本の線でつなぎます。ここが志望理由の心臓部です。',
         fields: [
           {
-            id: 'wantObject', type: 'text', label: 'そこで何を得たいですか', required: true,
-            placeholder: isJob ? '例）正確さを求められるものづくり' : '例）地域の課題を調べる力',
-            hint: '名詞で書いてください。次の欄で選ぶ言葉とつないで、志望理由の一文になります。'
+            id: 'wantObject', type: 'text', label: isJob
+              ? 'その会社で、いちばん手に入れたいものは何ですか'
+              : 'その学校で、いちばん手に入れたいものは何ですか',
+            required: true,
+            placeholder: isJob ? '正確さを求められるものづくり' : '地域の課題を調べる力',
+            examples: isJob
+              ? ['正確さを求められるものづくり', '人の生活を支える技術', '現場で通用する知識']
+              : ['地域の課題を調べる力', '看護の専門知識', '人前で説明する力'],
+            hint: '「力」「知識」「技術」「仕事」など、ものの名前で書きます。'
+              + '次の欄で選ぶ言葉とつながって、志望理由の中心になる一文ができます。',
+            avoid: '「〜したい」まで書くと二重になります。名前だけで止めてください',
+            preview: function (d) {
+              const w = wantPhrase(d.wantVerb, d.wantObject, mode);
+              if (!w) return '';
+              return '私が' + fullName(d, mode) + 'を志望した理由は、' + w + 'からです。';
+            }
           },
           {
             id: 'wantVerb', type: 'select', label: 'それを、どうしたいですか', required: true,
             options: wantVerbList(mode).map(function (v) { return v.label; }),
             default: wantVerbList(mode)[0].label,
-            hint: '「私が◯◯を志望した理由は、△△を□□したいからです。」という文になります。'
+            hint: '上の欄の言葉と、いちばん自然につながるものを選びます。'
           },
           {
-            id: 'whyChain', type: 'whychain', label: 'なぜ？を3回くり返して深掘りしよう', required: true,
+            id: 'whyChain', type: 'whychain', label: '「なぜ？」を3回くり返します', required: true,
             source: 'wantObject',
-            hint: '表面的な理由から、あなたにしか書けない本当の動機へ降りていきます。短い言葉で構いません。'
+            hint: '同じ理由でも、3回掘り下げると「あなたにしか書けない動機」に変わります。'
+              + '短い言葉で構いません。3つ目の答えが本文に使われます。',
+            avoid: '3つとも同じことを書き直すと、掘り下げになりません'
           },
           {
             id: 'mustPoint', type: 'text', required: true,
-            label: isJob ? '他の会社にはない、この会社の違い' : '他の学校にはない、この学校の違い',
-            placeholder: isJob ? '例）検査工程まで自社で行う体制' : '例）提言まで行う地域連携',
-            hint: isJob
-              ? '「同じような会社は他にもありますが、◯◯には△△という違いがあります。」という文になります。'
-              : '「同じような学校は他にもありますが、◯◯には△△という違いがあります。」という文になります。'
+            label: isJob ? '他の会社ではなく、この会社でなければならない理由' : '他の学校ではなく、この学校でなければならない理由',
+            placeholder: isJob ? '検査工程まで自社で行う体制' : '提言まで行う地域連携',
+            examples: isJob
+              ? ['検査工程まで自社で行う体制', '入社1年目からの現場配属', '地元にこだわった生産']
+              : ['提言まで行う地域連携', '1学年30人の少人数制', '附属病院での実習'],
+            hint: 'パンフレットや求人票で見つけた「ここだけ」を、ものの名前で書きます。'
+              + '読み手がいちばん知りたいのは、この一文です。',
+            avoid: '「雰囲気が良い」「家から近い」は、他でも言えてしまいます',
+            preview: function (d) {
+              if (!txt(d.mustPoint)) return '';
+              const n = txt(d.targetName) || (isJob ? '貴社' : '貴校');
+              return '同じような' + (isJob ? '会社' : '学校') + 'は他にもありますが、'
+                + n + 'には' + txt(d.mustPoint) + 'という違いがあります。';
+            }
           },
           {
             id: 'afterEnter', type: 'chips', required: true,
-            label: isJob ? '入社したらがんばりたいこと' : '入学したらやりたいこと',
+            label: isJob ? '入社したら、がんばりたいこと' : '入学したら、やりたいこと',
             options: isJob
               ? ['仕事を早く覚えること', '資格の取得', '専門技術の習得', 'チームでの仕事', '安全の徹底',
                 '改善の提案', '後輩の指導', '幅広い工程の経験']
               : ['専門分野の勉強', '資格取得', '研究・ゼミ活動', '実習・インターンシップ', '留学・語学',
                 'サークル・部活動', 'ボランティア活動', '学園祭などの行事'],
             allowFree: true,
-            hint: '文章の中で「〜に取り組みたい」とつなげます。'
+            hint: '2〜3個まで。多く選びすぎると、かえって熱意が薄く見えます。',
+            preview: function (d) {
+              const a = (d.afterEnter || []).slice(0, 3);
+              if (!a.length) return '';
+              const j = a.length === 1 ? a[0]
+                : a.length === 2 ? a[0] + 'や' + a[1]
+                  : a.slice(0, -1).join('、') + '、' + a[a.length - 1];
+              return (isJob ? '入社後' : '入学後') + 'は、' + j + 'に取り組みたいと考えています。';
+            }
           },
           {
-            id: 'afterAction', type: 'text', label: 'まず何から始めますか', required: true,
-            placeholder: isJob ? '例）先輩への質問' : '例）地域の方への取材',
-            hint: '短い言葉で。「まずは◯◯から始めたいです。」という文になります。'
+            id: 'afterAction', type: 'text', label: 'その中で、まず何から始めますか', required: true,
+            placeholder: isJob ? '先輩への質問' : '地域の方への取材',
+            examples: isJob
+              ? ['先輩への質問', '作業手順のメモ取り', 'あいさつと報告']
+              : ['地域の方への取材', '毎日の予習', '先生への質問'],
+            hint: '入学・入社したその日からできる、小さなことで構いません。'
+              + '小さいほど、本当にやるつもりだと伝わります。',
+            preview: function (d) {
+              return txt(d.afterAction) ? 'まずは' + txt(d.afterAction) + 'から始めたいです。' : '';
+            }
           },
           isJob ? {
-            id: 'contributionFrom', type: 'select', label: '仕事で活かせる力は、どこで身につけましたか',
+            id: 'contributionFrom', type: 'select', label: 'その力は、どこで身につけましたか',
             options: CONTRIB_FROM,
-            default: 'アルバイト'
+            default: 'アルバイト',
+            hint: '次の欄とセットで、「自分が会社に何を返せるか」を示す一文になります。'
           } : null,
           isJob ? {
-            id: 'contribution', type: 'text', label: 'その力の名前',
-            placeholder: '例）手順を崩さずに作業を続ける力',
-            hint: '「アルバイトで身につけた◯◯は、この仕事でも活かせると考えています。」という文になります。'
+            id: 'contribution', type: 'text', label: '仕事で活かせる、自分の力の名前',
+            placeholder: '手順を崩さずに作業を続ける力',
+            examples: ['手順を崩さずに作業を続ける力', '初対面の人と話す力', '体力と早起きの習慣'],
+            hint: '大げさな力でなくて構いません。実際に続けてきたことほど信じてもらえます。',
+            preview: function (d) {
+              return txt(d.contribution)
+                ? (txt(d.contributionFrom) || '高校生活') + 'で身につけた' + txt(d.contribution)
+                  + 'は、この仕事でも活かせると考えています。' : '';
+            }
           } : null,
           {
             id: 'afterGradWhen', type: 'select',
-            label: isJob ? 'いつの自分の話をしますか' : 'いつの話をしますか',
+            label: isJob ? '何年後の自分の話をしますか' : 'いつの話で締めくくりますか',
             options: isJob ? AFTER_WHEN_SHUSHOKU : AFTER_WHEN_SHINGAKU,
-            default: isJob ? '5年後' : '卒業後'
+            default: isJob ? '5年後' : '卒業後',
+            hint: '最後の段落で「その先」を示すと、文章に前向きな余韻が残ります。'
           },
           {
             id: 'afterGradWhat', type: 'text',
-            label: isJob ? 'そのとき身につけていたいもの' : 'そのとき目指していること',
-            placeholder: isJob ? '例）後輩に教えられる技術' : '例）地域づくりに関わる仕事',
-            hint: isJob
-              ? '「5年後には、◯◯を身につけていたいです。」という文になります。'
-              : '「卒業後は、◯◯を目指したいと考えています。」という文になります。'
+            label: isJob ? 'そのとき、身につけていたいもの' : 'そのとき、目指していること',
+            placeholder: isJob ? '後輩に教えられる技術' : '地域づくりに関わる仕事',
+            examples: isJob
+              ? ['後輩に教えられる技術', '任せてもらえる担当', '現場をまとめる力']
+              : ['地域づくりに関わる仕事', '看護師として働くこと', '地元での就職'],
+            hint: '志望先で身につけた先の話にすると、志望理由と一本の線でつながります。',
+            preview: function (d) {
+              if (!txt(d.afterGradWhat)) return '';
+              const when = txt(d.afterGradWhen) || (isJob ? '5年後' : '卒業後');
+              return isJob
+                ? when + 'には、' + txt(d.afterGradWhat) + 'を身につけていたいです。'
+                : when + 'は、' + txt(d.afterGradWhat) + 'を目指したいと考えています。';
+            }
           }
         ].filter(usable)
       }

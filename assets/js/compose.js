@@ -218,6 +218,9 @@
   const CARD_FRAME_PREDICATE = ['のが印象に残りました。', 'ことも心に残っています。', 'という場面もありました。'];
   const CARD_FRAME_NOUN = ['が印象に残りました。', 'も心に残っています。', 'も印象的でした。'];
 
+  // 気持ちの文の書き出し。カードが2枚3枚と続いても同じ形にならないようにする。
+  const FEEL_LEAD = ['そのとき私は', 'その様子を見て、私は', 'このときも私は'];
+
   /** 動詞・形容詞で終わっているか（名詞止めと区別する） */
   const PREDICATE_END = /[たるういくすつぬふむぐずぶぷだ]$/;
 
@@ -240,8 +243,9 @@
     // 場面・気持ち・つながりは1つのまとまりとして扱う。
     // 別々の文にすると、字数調整で場面だけが消えて「そのとき私は安心しました。」
     // だけが残る、という壊れ方をするため。
-    let text = lead + what + frames[(idx || 0) % frames.length];
-    if (feel) text += 'そのとき私は' + feel + '。';
+    const i = idx || 0;
+    let text = lead + what + frames[i % frames.length];
+    if (feel) text += FEEL_LEAD[i % FEEL_LEAD.length] + feel + '。';
     if (link) text += link;
 
     return [S(text, base)];
@@ -760,6 +764,93 @@
     return paras;
   }
 
+  // ══════════════════════════════════════════════════════
+  //  仕上げ：組み上がった文章を、読みやすい日本語に整える
+  // ══════════════════════════════════════════════════════
+
+  /**
+   * 2回目以降の志望先名を「貴校」「貴社」に置きかえる。
+   *
+   * 実際の志望理由書では、学校名を何度も繰り返さず敬称で受けるのがふつう。
+   * ただし最初の1回と、結びの段落は正式名称のままにする。
+   * （読み手が「どこの話か」を見失わないため。自動チェックの志望先名も残る）
+   */
+  function useHonorific(text, m) {
+    if (!m.name || m.name === m.L.honorific) return text;
+
+    const paras = text.split('\n\n');
+    const last = paras.length - 1;
+    let seen = false;
+
+    const swapped = paras.map(function (para, i) {
+      if (i === last) return para; // 結びは正式名称のまま
+      return para.replace(/[^。]*。/g, function (sent) {
+        return sent.replace(new RegExp(escapeRe(m.nameFull) + '|' + escapeRe(m.name), 'g'), function (hit) {
+          if (!seen) { seen = true; return hit; } // 最初の1回はそのまま
+          return m.L.honorific;
+        });
+      });
+    });
+    return swapped.join('\n\n');
+  }
+
+  function escapeRe(s) {
+    return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
+   * 同じ語尾が続いたら、意味の変わらない別の言い方に替える。
+   *
+   * 名詞から文を組み立てる以上、「〜と考えています。」が並びやすい。
+   * 長くなる置きかえは字数を押し出すので、目標字数を超えない場合だけ使う。
+   */
+  const ENDING_VARIANTS = [
+    { key: 'たいと考えています。', alts: ['たいと思っています。', 'たいです。'] },
+    { key: 'と考えています。', alts: ['と思っています。', 'と考えました。'] },
+    { key: 'と考えました。', alts: ['と思いました。'] },
+    { key: 'と思いました。', alts: ['と感じました。'] },
+    { key: 'に残りました。', alts: ['に残っています。'] },
+    { key: 'があります。', alts: ['がありました。'] }
+  ];
+
+  function endingOf(sentence) {
+    for (let i = 0; i < ENDING_VARIANTS.length; i++) {
+      if (sentence.slice(-ENDING_VARIANTS[i].key.length) === ENDING_VARIANTS[i].key) {
+        return ENDING_VARIANTS[i];
+      }
+    }
+    return null;
+  }
+
+  function varyEndings(text, target) {
+    return text.split('\n\n').map(function (para) {
+      const sents = para.match(/[^。]*。/g);
+      if (!sents) return para;
+
+      let prev = '';
+      const out = sents.map(function (sent) {
+        const v = endingOf(sent);
+        const key = v ? v.key : sent.slice(-5);
+        if (key !== prev) { prev = key; return sent; }
+
+        // 直前と同じ語尾。長さが増えない言いかえがあれば使う
+        if (v) {
+          const alt = v.alts.find(function (a) { return a.length <= v.key.length; }) || v.alts[0];
+          if (alt) {
+            const fixed = sent.slice(0, sent.length - v.key.length) + alt;
+            if (countChars(fixed) <= countChars(sent) || countChars(text) < target) {
+              prev = alt;
+              return fixed;
+            }
+          }
+        }
+        prev = key;
+        return sent;
+      });
+      return out.join('');
+    }).join('\n\n');
+  }
+
   // ── 字数調整 ─────────────────────────────────────────
   function render(paras) {
     return paras
@@ -822,6 +913,8 @@
     paras = fitToLength(paras, target);
 
     let text = render(paras);
+    text = useHonorific(text, m);
+    text = varyEndings(text, target);
     if (data.tone === 'だ・である調') text = toPlainTone(text);
 
     const chars = countChars(text);

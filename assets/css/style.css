@@ -648,6 +648,76 @@ h1, h2, h3 { line-height: 1.5; letter-spacing: .01em; }
 .field__hint { margin: 0 0 9px; font-size: 12.5px; color: var(--ink-3); line-height: 1.8; }
 .field__count { text-align: right; font-size: 11.5px; color: var(--ink-3); margin-top: 5px; font-variant-numeric: tabular-nums; }
 
+/* 書き方の例。押せない見た目にして、選択肢と区別する */
+.field__ex {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 9px;
+}
+.field__exCap {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: var(--ink-3);
+}
+.field__exItem {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  padding: 3px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px dashed var(--line);
+}
+
+.field__avoid {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 0 0 9px;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+.field__avoidCap {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid var(--warn-line);
+}
+
+/* 入力した言葉が本文でどんな一文になるか、その場で見せる */
+.field__preview {
+  display: none;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px dashed var(--accent-line);
+}
+.field__preview.is-on { display: block; }
+.field__previewCap {
+  display: block;
+  font-size: 10.5px;
+  letter-spacing: .12em;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.field__previewText {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  line-height: 1.95;
+  color: var(--ink);
+}
+
 .field__error {
   margin: 7px 0 0;
   font-size: 13px;
@@ -823,6 +893,35 @@ select.input {
   color: var(--ink);
 }
 
+/* 魅力カード②の、良い例とよくない例 */
+.attrCard__ex {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 10px;
+}
+.attrCard__exGood,
+.attrCard__exBad {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.8;
+}
+.attrCard__exGood { color: var(--ink-2); }
+.attrCard__exBad { color: var(--ink-3); }
+.attrCard__exMark {
+  flex: none;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+.attrCard__exGood .attrCard__exMark { background: var(--ok-soft, var(--surface-2)); color: var(--ok, var(--accent)); }
+.attrCard__exBad .attrCard__exMark { background: var(--err-soft); color: var(--err); }
+
 .attrCard__add {
   width: 100%;
   font-family: inherit;
@@ -907,8 +1006,9 @@ select.input {
   gap: 9px;
   font-weight: 700;
   font-size: 14.5px;
-  margin-bottom: 7px;
+  margin-bottom: 4px;
 }
+.why__hint { margin: 0 0 8px; font-size: 12px; color: var(--ink-3); line-height: 1.8; }
 .why__no {
   flex: none;
   background: var(--accent);
