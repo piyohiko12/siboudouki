@@ -183,6 +183,20 @@
   function renderField(field) {
     const wrap = h('div', { class: 'field', 'data-field': field.id });
 
+    // 「それは」「その中で」が何を指すのかを、前の答えを引用して示す
+    if (typeof field.refer === 'function') {
+      const line = h('p', { class: 'field__refer' });
+      const paint = function () {
+        let t = '';
+        try { t = field.refer(state.data) || ''; } catch (e) { t = ''; }
+        line.textContent = t;
+        line.classList.toggle('is-on', !!t);
+      };
+      paint();
+      onDataChange(paint);
+      wrap.appendChild(line);
+    }
+
     wrap.appendChild(h('label', { class: 'field__label', for: 'f_' + field.id }, [
       document.createTextNode(field.label),
       field.required ? h('span', { class: 'badge badge--required', text: '必須' }) : null
@@ -882,7 +896,33 @@
       h('p', { class: 'lead', text: step.lead }),
       step.note ? h('div', { class: 'notice notice--tip' }, [h('p', { text: step.note })]) : null
     ]);
-    step.fields.forEach(function (f) { card.appendChild(renderField(f)); });
+
+    // 同じ話題の設問はひとまとまりにして、見出しをつける。
+    // 「それは」「その中で」が何を指すのかを、囲みで示すため。
+    let openId = null;
+    let openBox = null;
+    let no = 0;
+
+    step.fields.forEach(function (f) {
+      if (!f.group) { openId = null; openBox = null; card.appendChild(renderField(f)); return; }
+
+      if (f.group !== openId) {
+        const g = (step.groups || []).find(function (x) { return x.id === f.group; })
+          || { id: f.group, name: f.group };
+        no += 1;
+        openId = f.group;
+        openBox = h('section', { class: 'qgroup' }, [
+          h('h3', { class: 'qgroup__head' }, [
+            h('span', { class: 'qgroup__no', text: String(no) }),
+            h('span', { class: 'qgroup__name', text: g.name })
+          ]),
+          g.desc ? h('p', { class: 'qgroup__desc', text: g.desc }) : null
+        ]);
+        card.appendChild(openBox);
+      }
+      openBox.appendChild(renderField(f));
+    });
+
     return card;
   }
 
