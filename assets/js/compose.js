@@ -221,8 +221,29 @@
   // 気持ちの文の書き出し。カードが2枚3枚と続いても同じ形にならないようにする。
   const FEEL_LEAD = ['そのとき私は', 'その様子を見て、私は', 'このときも私は'];
 
-  /** 動詞・形容詞で終わっているか（名詞止めと区別する） */
-  const PREDICATE_END = /[たるういくすつぬふむぐずぶぷだ]$/;
+  /** 動詞・形容詞で終わっているか（判定は questions.js に持たせている） */
+  function isPredicate(t) {
+    return global.QUESTIONS.isPredicate(t);
+  }
+
+  /**
+   * 名詞で答えてほしい欄を、文の枠にはめる。
+   * 述語で書かれていたら述語用の枠を使うので、どちらで書かれても文になる。
+   */
+  function fit(word, noun, pred) {
+    return global.QUESTIONS.frame(word, noun, pred);
+  }
+
+  /**
+   * 「〜たい」まで書かれているときは、意欲の言葉が二重にならない枠を使う。
+   * （「仕事がしたいことを目指したい」を防ぐ）
+   */
+  function fitWish(word, noun, pred, wish) {
+    if (wish && global.QUESTIONS.isWish(word)) {
+      return wish.replace('{X}', global.QUESTIONS.plainWord(word));
+    }
+    return fit(word, noun, pred);
+  }
 
   /**
    * 魅力カード1枚を、場面 → 気持ち → 自分とのつながり の3文にする。
@@ -235,10 +256,11 @@
     if (!raw) return [];
 
     const what = toPlainTone(raw);
-    const frames = PREDICATE_END.test(what) ? CARD_FRAME_PREDICATE : CARD_FRAME_NOUN;
+    const frames = isPredicate(what) ? CARD_FRAME_PREDICATE : CARD_FRAME_NOUN;
     const lead = Q.whereLead(card.where, mode);
     const feel = Q.feelPhrase(card.feel);
-    const link = flow(card.link);
+    // ④は「〜と重なります」まで書く人と、体験の名前だけ書く人がいる
+    const link = cardLink(card.link);
 
     // 場面・気持ち・つながりは1つのまとまりとして扱う。
     // 別々の文にすると、字数調整で場面だけが消えて「そのとき私は安心しました。」
@@ -362,9 +384,8 @@
    * 「〜から」「〜ので」まで書く生徒が多いので、いったん外してから語尾をつけ直す。
    */
   function sDeep(m, lead) {
-    let t = bare(m.deepReason).replace(/(からです|から|ので|ため)$/, '');
-    if (!t) return '';
-    return lead + (PREDICATE_END.test(t) ? t + 'からです。' : t + 'があるからです。');
+    const t = bare(m.deepReason).replace(/(からです|から|ので|ため)$/, '');
+    return fit(t, lead + '{X}があるからです。', lead + '{X}からです。');
   }
 
   /** 志望先の特色。固有名詞をかぎかっこで囲んで示す */
@@ -375,12 +396,17 @@
   }
 
   function sFeatureDetail(m) {
-    return m.featureDetail ? 'そこでは' + m.featureDetail + 'に関わることができると知りました。' : '';
+    return fit(m.featureDetail,
+      'そこでは{X}に関わることができると知りました。',
+      'そこでは{X}ことを知りました。');
   }
 
   /** 進学＝学びたい科目 ／ 就職＝仕事の理解 */
   function sLearnOrTask(m) {
-    if (m.job) return m.jobTask ? m.jobTask + 'を行う仕事だと理解しています。' : '';
+    if (m.job) {
+      return fit(m.jobTask, '{X}を行う仕事だと理解しています。', '{X}という仕事だと理解しています。');
+    }
+    // 科目名はかぎかっこで囲むので、どう書かれても文が壊れない
     return m.studyWant ? '特に「' + m.studyWant + '」を学びたいと考えています。' : '';
   }
 
@@ -390,55 +416,84 @@
 
   function sEffortIntro(m) {
     // 前後の段落と「ました」が並びやすいので、ここは体言で受ける
-    return (m.effortWhen || '高校生活で') + '、いちばん力を入れてきたのは' + m.effortTop + 'です。';
+    const lead = (m.effortWhen || '高校生活で') + '、いちばん力を入れてきたのは';
+    return fit(m.effortTop, lead + '{X}です。', lead + '{X}ことです。')
+      || lead + '学校生活です。';
   }
 
   function sEffortAction(m) {
-    if (!m.effortAction) return '';
-    return (m.effortRole ? m.effortRole + 'として、' : 'その中で、') + m.effortAction + 'に取り組みました。';
+    const lead = m.effortRole ? m.effortRole + 'として、' : 'その中で、';
+    return fit(m.effortAction, lead + '{X}に取り組みました。', lead + '{X}ことに力を注ぎました。');
   }
 
   function sEffortResult(m) {
     // ここを「〜ました」にすると語尾が4つ続いて単調になるため、体言で受ける
-    return m.effortResult ? m.effortResult + 'は、その中で生まれた成果です。' : '';
+    return fit(m.effortResult,
+      '{X}は、その中で生まれた成果です。',
+      '{X}ことが、その中で生まれた成果です。');
   }
 
   function sEffortLearned(m) {
-    return m.effortLearned ? 'この経験から、' + m.effortLearned + 'を学びました。' : '';
+    return fit(m.effortLearned,
+      'この経験から、{X}を学びました。',
+      'この経験から、{X}ということを学びました。');
   }
 
   function sMust(m) {
-    if (!m.mustPoint) return '';
-    return '同じような' + m.L.org + 'は他にもありますが、' + m.name + 'には'
-      + m.mustPoint + 'という違いがあります。';
+    const lead = '同じような' + m.L.org + 'は他にもありますが、' + m.name + 'には';
+    // 「という」で受けるので、名詞でも述語でも文になる
+    return fit(m.mustPoint, lead + '{X}という違いがあります。');
   }
 
   function sAfter(m) {
-    return m.after.length
-      ? m.L.joinAfter + 'は、' + joinNouns(m.after, 3) + 'に取り組みたいと考えています。' : '';
+    const lead = m.L.joinAfter + 'は、';
+    return fit(joinNouns(m.after, 3),
+      lead + '{X}に取り組みたいと考えています。',
+      lead + '{X}ことに取り組みたいと考えています。');
   }
 
   function sAfterAction(m) {
-    return m.afterAction ? 'まずは' + m.afterAction + 'から始めたいです。' : '';
+    return fitWish(m.afterAction,
+      'まずは{X}から始めたいです。',
+      'まずは{X}ことから始めたいです。',
+      'まずは{X}と思っています。');
   }
 
   function sContribution(m) {
-    if (!m.job || !m.contribution) return '';
-    return (m.contributionFrom || '高校生活') + 'で身につけた' + m.contribution
-      + 'は、この仕事でも活かせると考えています。';
+    if (!m.job) return '';
+    const lead = (m.contributionFrom || '高校生活') + 'で身につけた';
+    return fit(m.contribution,
+      lead + '{X}は、この仕事でも活かせると考えています。',
+      lead + '「{X}」という姿勢は、この仕事でも活かせると考えています。');
+  }
+
+  /**
+   * 魅力カードの④。
+   * 「〜と重なります」まで文で書く人はその言葉を尊重し（本文はです・ます調で
+   * 組み立てるので、ここだけは常体に直さない）、体験の名前だけの人には枠をつける。
+   */
+  function cardLink(text) {
+    const t = bare(text);
+    if (!t) return '';
+    return global.QUESTIONS.isPredicate(t) ? flow(t) : t + 'と重なる部分があります。';
   }
 
   function sAfterGrad(m) {
-    if (!m.afterGradWhat) return '';
     const when = m.afterGradWhen || (m.job ? '5年後' : '卒業後');
     return m.job
-      ? when + 'には、' + m.afterGradWhat + 'を身につけていたいです。'
-      : when + 'は、' + m.afterGradWhat + 'を目指したいと考えています。';
+      ? fitWish(m.afterGradWhat,
+        when + 'には、{X}を身につけていたいです。',
+        when + 'には、{X}ようになっていたいです。',
+        when + 'には、{X}と考えています。')
+      : fitWish(m.afterGradWhat,
+        when + 'は、{X}を目指したいと考えています。',
+        when + 'は、{X}ことを目指したいと考えています。',
+        when + 'は、{X}と考えています。');
   }
 
   /** 資格・検定。名前だけ答えてもらっているので、ここで文にする */
   function sLicenses(m) {
-    return m.licenses ? 'また、' + m.licenses + 'を取得しています。' : '';
+    return fit(m.licenses, 'また、{X}を取得しています。', 'また、「{X}」という資格を持っています。');
   }
 
   /**
@@ -468,8 +523,9 @@
     const been = (m.visited || []).filter(function (v) {
       return String(v).indexOf('まだ') !== 0 && said.indexOf(v) === -1;
     });
-    if (!been.length) return '';
-    return joinNouns(been, 2) + 'にも参加し、自分の目で確かめました。';
+    return fit(joinNouns(been, 2),
+      '{X}にも参加し、自分の目で確かめました。',
+      '{X}など、自分の目で確かめる機会も持ちました。');
   }
 
   /**
@@ -478,8 +534,10 @@
    */
   function sBridge(m, kind) {
     if (kind === 'story') {
-      return m.knewBy
-        ? 'そんな私が' + m.nameFull + 'を知ったのは、' + m.knewBy + 'がきっかけでした。'
+      // 「その他」を選んだ人は、きっかけの言葉を持っていない
+      const by = m.knewBy && m.knewBy !== 'その他' ? m.knewBy : '';
+      return by
+        ? 'そんな私が' + m.nameFull + 'を知ったのは、' + by + 'がきっかけでした。'
         : 'そんな中で出会ったのが、' + m.nameFull + 'でした。';
     }
     if (kind === 'scene') {
@@ -490,8 +548,10 @@
 
   /** 魅力カードが1枚もないときだけ使う、分類チップからの代替文 */
   function sAttractFallback(m, lead) {
-    if (m.cards.length || !m.attract.length) return '';
-    return lead + joinNouns(m.attract, 3) + 'に魅力を感じました。';
+    if (m.cards.length) return '';
+    return fit(joinNouns(m.attract, 3),
+      lead + '{X}に魅力を感じました。',
+      lead + '{X}という点に魅力を感じました。');
   }
 
   /** 配列に文を積む小道具（空文字は捨てる） */
@@ -681,9 +741,10 @@
     const paras = [];
 
     const p1 = [];
-    push(p1, m.gapNow
-      ? '私には今、' + m.gapNow + 'が足りないと感じています。'
-      : '私には、高校生活の中で「もっとこうなりたい」と感じるようになったことがあります。', 0);
+    push(p1, fit(m.gapNow,
+      '私には今、{X}が足りないと感じています。',
+      '私には今、{X}ところがあると感じています。')
+      || '私には、高校生活の中で「もっとこうなりたい」と感じるようになったことがあります。', 0);
     push(p1, 'その気持ちが、' + m.nameFull + 'を志望するきっかけになりました。', 0);
     paras.push(p1);
 
