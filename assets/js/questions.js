@@ -101,6 +101,36 @@
     }
   ];
 
+  /**
+   * 志望先の種類。
+   * 大学あてに「貴校」と書くのは本来まちがい（正しくは「貴学」）。
+   * 役所あてなら「貴庁」、病院なら「貴院」で、入社後という言い方も変わる。
+   * ここを2〜4択で聞くだけで、本文じゅうの呼び方が正しくなる。
+   */
+  const ORG_TYPES = {
+    shingaku: [
+      { label: '大学・短期大学', honorific: '貴学', org: '大学', join: '入学', joinAfter: '入学後' },
+      { label: '専門学校', honorific: '貴校', org: '専門学校', join: '入学', joinAfter: '入学後' },
+      { label: '高等専門学校・その他の学校', honorific: '貴校', org: '学校', join: '入学', joinAfter: '入学後' }
+    ],
+    shushoku: [
+      { label: '会社（民間企業）', honorific: '貴社', org: '会社', join: '入社', joinAfter: '入社後' },
+      { label: '役所・公的機関（公務員）', honorific: '貴庁', org: '職場', join: '採用', joinAfter: '採用後' },
+      { label: '病院・医療機関', honorific: '貴院', org: '職場', join: '就職', joinAfter: '就職後' },
+      { label: '福祉施設・団体など', honorific: '貴施設', org: '職場', join: '就職', joinAfter: '就職後' }
+    ]
+  };
+
+  function orgTypeList(mode) {
+    return ORG_TYPES[job(mode) ? 'shushoku' : 'shingaku'];
+  }
+
+  /** 選ばれた種類を返す（未選択なら先頭＝いちばん多いもの） */
+  function orgTypeOf(mode, label) {
+    const list = orgTypeList(mode);
+    return list.find(function (o) { return o.label === label; }) || list[0];
+  }
+
   function courseOf(mode) {
     return COURSES.find(function (c) { return c.id === mode; }) || COURSES[0];
   }
@@ -538,6 +568,21 @@
             }
           },
           {
+            id: 'orgType', group: 'target', type: 'select', required: true,
+            label: isJob ? 'そこは、どういう組織ですか' : 'そこは、どの種類の学校ですか',
+            refer: function (d) { return about(d.targetName); },
+            options: orgTypeList(mode).map(function (o) { return o.label; }),
+            default: orgTypeList(mode)[0].label,
+            hint: isJob
+              ? 'ここで「貴社」「貴庁」「貴院」の呼び分けと、「入社後」「採用後」の言い方が決まります。'
+              : '大学あてに「貴校」と書くのは、じつはまちがいです（正しくは「貴学」）。ここで呼び方が決まります。',
+            preview: function (d) {
+              const o = orgTypeOf(mode, d.orgType);
+              return '本文では「' + o.honorific + '」「' + o.joinAfter + '」という言い方になります。'
+                + '（例：同じような' + o.org + 'は他にもありますが、' + o.honorific + 'には……）';
+            }
+          },
+          {
             id: 'targetSub', group: 'target', type: 'text', maxChars: 30,
             label: isJob ? '希望する職種' : '学部・学科・コース',
             refer: function (d) { return about(d.targetName); },
@@ -663,6 +708,23 @@
                 ? (txt(d.effortRole) ? txt(d.effortRole) + 'として、' : 'その中で、')
                   + txt(d.effortAction) + 'に取り組みました。'
                 : '';
+            }
+          },
+          {
+            id: 'effortActionKind', group: 'effort', type: 'select', required: true,
+            label: 'それは、どちらに近いですか',
+            refer: function (d) { return about(d.effortAction); },
+            options: ['自分がやった行動', '自分が作ったもの・仕組み'],
+            default: '自分がやった行動',
+            hint: '選んだほうに合わせて、文の受け方が変わります。'
+              + '「メモ作り」なら行動、「手順表」なら作ったもの、というくらいの区別で大丈夫です。',
+            preview: function (d) {
+              const t = txt(d.effortAction);
+              if (!t) return '';
+              const lead = txt(d.effortRole) ? txt(d.effortRole) + 'として、' : 'その中で、';
+              return d.effortActionKind === '自分が作ったもの・仕組み'
+                ? frame(t, lead + '{X}を作りました。', lead + '{X}ものを作りました。')
+                : frame(t, lead + '{X}に取り組みました。', lead + '{X}ことに力を注ぎました。');
             }
           },
           {
@@ -926,6 +988,25 @@
             }
           },
           {
+            id: 'featureNamed', group: 'found', type: 'select', required: true,
+            label: 'それには、決まった名前がついていますか',
+            refer: function (d) { return about(d.featureName); },
+            options: ['決まった名前がある', '名前はなく、特徴を書いた'],
+            default: '決まった名前がある',
+            hint: 'パンフレットにその名前で載っているなら「決まった名前がある」。'
+              + '「少人数で進める」のように特徴のほうを書いたなら、もう一方を選びます。'
+              + 'かぎかっこを付けるかどうかが変わります。',
+            preview: function (d) {
+              const n = txt(d.featureName);
+              if (!n) return '';
+              const kind = txt(d.featureKind) || (isJob ? '取り組み' : '学び');
+              const org = txt(d.targetName) || orgTypeOf(mode, d.orgType).honorific;
+              return d.featureNamed === '名前はなく、特徴を書いた'
+                ? '私が特に関心を持ったのは、' + org + 'の' + n + 'という' + kind + 'です。'
+                : '私が特に関心を持ったのは、' + org + 'の' + kind + '「' + n + '」です。';
+            }
+          },
+          {
             id: 'featureKind', group: 'found', type: 'select', required: true,
             label: 'それは、どの種類のものですか',
             refer: function (d) { return about(d.featureName); },
@@ -1142,6 +1223,16 @@
             hint: '最後の段落で「その先」を示すと、文章に前向きな余韻が残ります。'
           },
           {
+            id: 'afterGradKind', group: 'after', type: 'select', required: true,
+            label: 'そのときのことを、どちらで書きますか',
+            options: isJob
+              ? ['身につけていたい力・技術', 'なっていたい自分の姿']
+              : ['目指していること', 'なっていたい自分の姿'],
+            default: isJob ? '身につけていたい力・技術' : '目指していること',
+            hint: '「後輩に教えられる技術」なら前者、「後輩に頼られる先輩」なら後者です。'
+              + '選びまちがえると「先輩を身につけていたいです」という文になってしまいます。'
+          },
+          {
             id: 'afterGradWhat', group: 'after', type: 'text', maxChars: 30,
             label: isJob ? 'そのとき、身につけていたいもの' : 'そのとき、目指していること',
             refer: function (d) { return about(d.afterGradWhen); },
@@ -1151,11 +1242,17 @@
               : ['地域づくりに関わる仕事', '看護師として働くこと', '地元での就職'],
             hint: '志望先で身につけた先の話にすると、志望理由と一本の線でつながります。',
             preview: function (d) {
-              if (!txt(d.afterGradWhat)) return '';
               const when = txt(d.afterGradWhen) || (isJob ? '5年後' : '卒業後');
+              const lead = when + (isJob ? 'には、' : 'は、');
+              if (d.afterGradKind === 'なっていたい自分の姿') {
+                return frame(d.afterGradWhat,
+                  lead + '{X}になっていたいです。', lead + '{X}ようになっていたいです。');
+              }
               return isJob
-                ? when + 'には、' + txt(d.afterGradWhat) + 'を身につけていたいです。'
-                : when + 'は、' + txt(d.afterGradWhat) + 'を目指したいと考えています。';
+                ? frame(d.afterGradWhat,
+                  lead + '{X}を身につけていたいです。', lead + '{X}ようになっていたいです。')
+                : frame(d.afterGradWhat,
+                  lead + '{X}を目指したいと考えています。', lead + '{X}ことを目指したいと考えています。');
             }
           }
         ].filter(usable)
@@ -1170,6 +1267,8 @@
     COURSES: COURSES,
     isPredicate: isPredicate,
     isWish: isWish,
+    orgTypeList: orgTypeList,
+    orgTypeOf: orgTypeOf,
     frame: frame,
     plainWord: plainWord,
     PICKER: PICKER,

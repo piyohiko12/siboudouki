@@ -230,12 +230,24 @@
     ['自分は', '私は']
   ];
 
-  // 書類では「御社／御校」は話し言葉。書き言葉は「貴社／貴校」。
-  const NOTATION_SHINGAKU = [['御校', '貴校 または 正式名称'], ['貴社', '貴校（学校あて）']];
-  const NOTATION_SHUSHOKU = [['御社', '貴社 または 正式名称'], ['貴校', '貴社（会社あて）']];
+  // 書類では「御社／御校」は話し言葉。書き言葉は「貴社／貴学」。
+  // 正しい敬称は志望先の種類で変わるので、選ばれた敬称以外を指摘する。
+  const HONORIFIC_SPOKEN = [['御社', '貴社'], ['御校', '貴校'], ['御学', '貴学'],
+    ['御庁', '貴庁'], ['御院', '貴院']];
+  const HONORIFICS = ['貴社', '貴校', '貴学', '貴庁', '貴院', '貴施設'];
+
+  function honorificOf(d) {
+    const Q = (typeof window !== 'undefined' ? window : global).QUESTIONS;
+    if (!Q || !Q.orgTypeOf) return d.course === 'shushoku' ? '貴社' : '貴校';
+    return Q.orgTypeOf(d.course, d.orgType).honorific;
+  }
 
   function checkNotation(text, d) {
-    const list = NOTATION.concat(d.course === 'shushoku' ? NOTATION_SHUSHOKU : NOTATION_SHINGAKU);
+    const right = honorificOf(d);
+    const wrong = HONORIFICS
+      .filter(function (h) { return h !== right; })
+      .map(function (h) { return [h, right + '（志望先の種類に合わせて）']; });
+    const list = NOTATION.concat(HONORIFIC_SPOKEN).concat(wrong);
     const hits = list.filter(function (p) { return text.indexOf(p[0]) !== -1; });
     const marks = /[!！?？♪★☆♡→]/.test(text);
     const out = hits.map(function (p) { return '「' + p[0] + '」→「' + p[1] + '」'; });

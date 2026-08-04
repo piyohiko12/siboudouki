@@ -22,6 +22,7 @@ var COLUMNS = [
   { key: 'className',        label: 'クラス・番号',          width: 110 },
   { key: 'targetName',       label: '志望先（学校・会社）',  width: 190 },
   { key: 'targetSub',        label: '学科・職種',            width: 150 },
+  { key: 'orgType',          label: '志望先の種類',          width: 150 },
   { key: 'examType',         label: '入試方式・応募方法',    width: 130 },
   { key: 'bodyChars',        label: '本文字数',              width: 80 },
   { key: 'targetChars',      label: '目標字数',              width: 80 },
@@ -37,6 +38,7 @@ var COLUMNS = [
   { key: 'effortWhen',       label: 'その時期',              width: 120 },
   { key: 'effortRole',       label: '役割',                  width: 110 },
   { key: 'effortAction',     label: '取り組んだこと',        width: 220 },
+  { key: 'effortActionKind', label: '行動／作ったもの',      width: 130 },
   { key: 'effortResult',     label: 'その結果',              width: 160 },
   { key: 'effortLearned',    label: '学んだこと',            width: 200 },
   { key: 'strengths',        label: '得意なこと',            width: 160 },
@@ -68,6 +70,7 @@ var COLUMNS = [
   { key: 'card3Link',        label: '魅力3 自分とのつながり', width: 240 },
   { key: 'featureKind',      label: '特色の種類',            width: 120 },
   { key: 'featureName',      label: '特色の名前',            width: 220 },
+  { key: 'featureNamed',     label: '名前の有無',            width: 130 },
   { key: 'featureDetail',    label: 'そこでできること',      width: 200 },
   { key: 'studyWant',        label: '受けたい授業（進学）',  width: 200 },
   { key: 'jobTask',          label: '仕事の理解（就職）',    width: 200 },
@@ -77,6 +80,7 @@ var COLUMNS = [
   { key: 'contributionFrom', label: '力の出どころ（就職）',  width: 130 },
   { key: 'contribution',     label: '活かせる力（就職）',    width: 200 },
   { key: 'afterGradWhen',    label: '将来の時期',            width: 100 },
+  { key: 'afterGradKind',    label: '将来の書き方',          width: 130 },
   { key: 'afterGradWhat',    label: '卒業後・将来像',        width: 200 },
   { key: 'tone',             label: '文体',                  width: 90 }
 ];

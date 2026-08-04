@@ -146,8 +146,16 @@
     }
   };
 
-  function lex(mode) {
-    return LEX[mode] || LEX.shingaku;
+  /**
+   * 進路ごとの語彙に、志望先の種類（大学／専門学校／会社／役所…）の
+   * 呼び方をかぶせる。大学あてなら「貴学」「大学」、役所あてなら「貴庁」「採用後」。
+   */
+  function lex(mode, orgType) {
+    const base = LEX[mode] || LEX.shingaku;
+    const o = global.QUESTIONS.orgTypeOf(mode, orgType);
+    return Object.assign({}, base, {
+      org: o.org, honorific: o.honorific, join: o.join, joinAfter: o.joinAfter
+    });
   }
 
   // ── テンプレート定義 ───────────────────────────────────
@@ -285,7 +293,7 @@
   function materials(d) {
     const mode = d.course === 'shushoku' ? 'shushoku' : 'shingaku';
     const Q = global.QUESTIONS;
-    const L = lex(mode);
+    const L = lex(mode, d.orgType);
     const isJob = mode === 'shushoku';
     const name = bare(d.targetName) || L.honorific;
     const sub = bare(d.targetSub);
@@ -321,6 +329,7 @@
       effortWhen: bare(d.effortWhen),
       effortRole: bare(d.effortRole),
       effortAction: bare(d.effortAction),
+      effortMade: d.effortActionKind === '自分が作ったもの・仕組み',
       effortResult: bare(d.effortResult),
       effortLearned: bare(d.effortLearned),
 
@@ -338,6 +347,7 @@
       attract: d.attractPoints || [],
       featureKind: bare(d.featureKind),
       featureName: bare(d.featureName),
+      featureNamed: d.featureNamed !== '名前はなく、特徴を書いた',
       featureDetail: bare(d.featureDetail),
       studyWant: bare(d.studyWant),
       jobTask: bare(d.jobTask),
@@ -355,6 +365,7 @@
       contributionFrom: bare(d.contributionFrom),
       contribution: bare(d.contribution),
       afterGradWhen: bare(d.afterGradWhen),
+      afterGradIsSelf: d.afterGradKind === 'なっていたい自分の姿',
       afterGradWhat: bare(d.afterGradWhat)
     };
   }
@@ -392,7 +403,11 @@
   function sFeature(m) {
     if (!m.featureName) return '';
     const kind = m.featureKind || (m.job ? '取り組み' : '学び');
-    return '私が特に関心を持ったのは、' + m.name + 'の' + kind + '「' + m.featureName + '」です。';
+    const lead = '私が特に関心を持ったのは、' + m.name + 'の';
+    // 固有名詞はかぎかっこで、特徴を書いた人は「という◯◯」で受ける
+    return m.featureNamed
+      ? lead + kind + '「' + m.featureName + '」です。'
+      : fit(m.featureName, lead + '{X}という' + kind + 'です。');
   }
 
   function sFeatureDetail(m) {
@@ -423,7 +438,9 @@
 
   function sEffortAction(m) {
     const lead = m.effortRole ? m.effortRole + 'として、' : 'その中で、';
-    return fit(m.effortAction, lead + '{X}に取り組みました。', lead + '{X}ことに力を注ぎました。');
+    return m.effortMade
+      ? fit(m.effortAction, lead + '{X}を作りました。', lead + '{X}ものを作りました。')
+      : fit(m.effortAction, lead + '{X}に取り組みました。', lead + '{X}ことに力を注ぎました。');
   }
 
   function sEffortResult(m) {
@@ -479,16 +496,24 @@
   }
 
   function sAfterGrad(m) {
-    const when = m.afterGradWhen || (m.job ? '5年後' : '卒業後');
+    const lead = (m.afterGradWhen || (m.job ? '5年後' : '卒業後')) + (m.job ? 'には、' : 'は、');
+
+    // 「なっていたい自分の姿」を選んだ人は、「◯◯を身につけていたい」では受けられない
+    if (m.afterGradIsSelf) {
+      return fitWish(m.afterGradWhat,
+        lead + '{X}になっていたいです。',
+        lead + '{X}ようになっていたいです。',
+        lead + '{X}と考えています。');
+    }
     return m.job
       ? fitWish(m.afterGradWhat,
-        when + 'には、{X}を身につけていたいです。',
-        when + 'には、{X}ようになっていたいです。',
-        when + 'には、{X}と考えています。')
+        lead + '{X}を身につけていたいです。',
+        lead + '{X}ようになっていたいです。',
+        lead + '{X}と考えています。')
       : fitWish(m.afterGradWhat,
-        when + 'は、{X}を目指したいと考えています。',
-        when + 'は、{X}ことを目指したいと考えています。',
-        when + 'は、{X}と考えています。');
+        lead + '{X}を目指したいと考えています。',
+        lead + '{X}ことを目指したいと考えています。',
+        lead + '{X}と考えています。');
   }
 
   /** 資格・検定。名前だけ答えてもらっているので、ここで文にする */
