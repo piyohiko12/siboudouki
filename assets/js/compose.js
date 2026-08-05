@@ -289,6 +289,39 @@
     return sents.map(function (s) { return s.text; }).join('');
   }
 
+  /**
+   * いまの型で聞いていない欄の答えを、本文づくりから外す。
+   *
+   * 型を変える前に答えた内容はデータに残る。それをそのまま使うと、
+   * 「聞かれていないのに文章に出てくる」「答えていない内容で重複判定される」
+   * といったことが起きる。型を変えた時点で、その型の設問だけに絞る。
+   */
+  let ALL_FIELD_IDS = null;
+
+  function allFieldIds(mode) {
+    if (ALL_FIELD_IDS) return ALL_FIELD_IDS;
+    const ids = {};
+    TEMPLATES.forEach(function (t) {
+      global.QUESTIONS.buildSteps(mode, t.id).forEach(function (s) {
+        s.fields.forEach(function (f) { ids[f.id] = true; });
+      });
+    });
+    ALL_FIELD_IDS = Object.keys(ids);
+    return ALL_FIELD_IDS;
+  }
+
+  function scopeToTemplate(d, templateId) {
+    const mode = d.course === 'shushoku' ? 'shushoku' : 'shingaku';
+    const asked = {};
+    global.QUESTIONS.buildSteps(mode, templateId).forEach(function (s) {
+      s.fields.forEach(function (f) { asked[f.id] = true; });
+    });
+
+    const out = Object.assign({}, d);
+    allFieldIds(mode).forEach(function (id) { if (!asked[id]) delete out[id]; });
+    return out;
+  }
+
   // ── 生成の共通材料 ────────────────────────────────────
   // 生徒が答えるのは単語（名詞）だけ。ここから下の関数が、助詞と語尾をつけて文にする。
   function materials(d) {
@@ -649,12 +682,18 @@
     return '';
   }
 
-  /** 魅力カードが1枚もないときだけ使う、分類チップからの代替文 */
-  function sAttractFallback(m, lead) {
-    if (m.cards.length) return '';
-    return fit(joinNouns(m.attract, 3),
-      lead + '{X}に魅力を感じました。',
-      lead + '{X}という点に魅力を感じました。');
+  /**
+   * 魅力の分類チップ。
+   * カードがあるときは「ほかにも見ていた点」として添え、
+   * カードが1枚もないときだけ、魅力そのものを述べる文に使う。
+   * 「魅力を感じました」は使い回し表現の判定に引っかかるので避ける。
+   */
+  function sAttract(m, lead) {
+    const list = joinNouns(m.attract, 3);
+    if (!list) return '';
+    return m.cards.length
+      ? fit(list, '{X}といった点にも、特に注目しました。', '{X}という点にも、特に注目しました。')
+      : fit(list, lead + '{X}に心を引かれました。', lead + '{X}という点に心を引かれました。');
   }
 
   /** 配列に文を積む小道具（空文字は捨てる） */
@@ -685,7 +724,7 @@
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 2).forEach(function (s) { p3.push(s); });
     m.cardSent(2, 3).forEach(function (s) { p3.push(s); });
-    push(p3, sAttractFallback(m, '特に'), 2);
+    push(p3, sAttract(m, '特に'), 3);
     paras.push(p3);
 
     const p4 = [];
@@ -739,7 +778,7 @@
     push(p2, sVisited(m), 3);
     m.cardSent(0, 0).forEach(function (s) { p2.push(s); });
     m.cardSent(1, 2).forEach(function (s) { p2.push(s); });
-    push(p2, sAttractFallback(m, '中でも'), 2);
+    push(p2, sAttract(m, '中でも'), 3);
     paras.push(p2);
 
     const p3 = [];
@@ -796,6 +835,7 @@
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 3).forEach(function (s) { p3.push(s); });
     push(p3, sVisited(m), 3);
+    push(p3, sAttract(m, '特に'), 3);
     push(p3, sMust(m), 2);
     paras.push(p3);
 
@@ -848,6 +888,7 @@
     push(p2, sVisited(m), 3);
     m.cardSent(1, 2).forEach(function (s) { p2.push(s); });
     m.cardSent(2, 3).forEach(function (s) { p2.push(s); });
+    push(p2, sAttract(m, '特に'), 3);
     paras.push(p2);
 
     const p3 = [];
@@ -912,6 +953,7 @@
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 3).forEach(function (s) { p3.push(s); });
     push(p3, sVisited(m), 3);
+    push(p3, sAttract(m, '特に'), 3);
     push(p3, sMust(m), 2);
     paras.push(p3);
 
@@ -957,7 +999,7 @@
     ], 32), 0);
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 2).forEach(function (s) { p3.push(s); });
-    push(p3, sAttractFallback(m, '特に'), 2);
+    push(p3, sAttract(m, '特に'), 3);
     push(p3, sVisited(m), 3);
     push(p3, sPolicy(m), 3);
     paras.push(p3);
@@ -1238,7 +1280,8 @@
    */
   function generate(data, templateId) {
     const tpl = TEMPLATES.find(function (t) { return t.id === templateId; }) || TEMPLATES[0];
-    const m = materials(data);
+    // いまの型で聞いていない欄は使わない（型を変える前の答えが混ざらないように）
+    const m = materials(scopeToTemplate(data, tpl.id));
     const target = Number(data.targetChars) || 400;
 
     m.cardOffset = hashOf((m.studentName || '') + '|cards') % 3;

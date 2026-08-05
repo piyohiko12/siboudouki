@@ -519,6 +519,22 @@
       return !f.only || f.only.indexOf(tpl) !== -1;
     }
 
+    /**
+     * 型ごとに、必須かどうかと説明を調整する。
+     *   requiredIn … この型のときだけ必須にする（骨組みを支える設問）
+     *   noteIn     … この型のときだけ足す一言
+     * 元の定義は書き換えず、複製に手を入れて返す。
+     */
+    function tune(f) {
+      if (!f.requiredIn && !f.noteIn) return f;
+      const out = Object.assign({}, f);
+      if (f.requiredIn) out.required = f.requiredIn.indexOf(tpl) !== -1;
+      if (f.noteIn && f.noteIn[tpl]) out.hint = (out.hint ? out.hint + ' ' : '') + f.noteIn[tpl];
+      delete out.requiredIn;
+      delete out.noteIn;
+      return out;
+    }
+
     return [
       // ───────────────────────────── 基本情報
       {
@@ -730,6 +746,8 @@
           {
             id: 'effortResult', group: 'effort', type: 'text', maxChars: 30,
             label: 'それに取り組んだ結果、どうなりましたか',
+            requiredIn: ['story'],
+            noteIn: { story: 'エピソード型は体験が主役なので、ここが文章の山場になります。' },
             refer: function (d) { return about(d.effortAction); },
             only: ['prep', 'story', 'gap', 'three'],
             placeholder: '県大会ベスト8',
@@ -825,6 +843,7 @@
           {
             id: 'futureWhySource', group: 'future', type: 'select',
             label: 'それを目指すようになったのは、どこでのことですか',
+            requiredIn: ['future'],
             refer: function (d) { return about(d.futureDream); },
             only: ['future'],
             options: WHY_SOURCE.map(function (s) { return s.label; }),
@@ -866,7 +885,7 @@
               return txt(d.gapNow) ? '私には今、' + txt(d.gapNow) + 'が足りないと感じています。' : '';
             }
           }
-        ].filter(usable)
+        ].filter(usable).map(tune)
       },
 
       // ───────────────────────────── 学校／会社を知る
@@ -903,6 +922,7 @@
           {
             id: 'knewBy', group: 'meet', type: 'select',
             only: ['story'],
+            requiredIn: ['story'],
             label: isJob ? 'その会社を知ったきっかけは何ですか' : 'その学校を知ったきっかけは何ですか',
             refer: function (d) { return about(d.targetName); },
             options: isJob
@@ -941,6 +961,11 @@
             max: 3,
             whereOptions: whereList(mode),
             feelOptions: FEELINGS.map(function (f) { return f.label; }),
+            noteIn: {
+              scene: '★ 場面描写型は、この1枚目のカードが文章の書き出しそのものになります。'
+                + 'いちばん心が動いた場面を選んでください。',
+              three: '三つの理由型では、二つ目の理由がまるごとこのカードでできています。'
+            },
             hint: '「いいな」と心が動いた瞬間を、1枚ずつカードにします。'
               + 'ここに書いたことが、そのまま本文の中心になります。まず1枚。できれば2〜3枚。'
               + '立派なことを書く必要はありません。小さくても、あなたが実際に見た場面ほど強い材料になります。',
@@ -953,7 +978,7 @@
           },
           {
             id: 'attractPoints', group: 'card', type: 'chips', max: 3,
-            label: '上のカードに書いた魅力は、どの種類のものですか', required: true,
+            label: '上のカードに書いた魅力は、どの種類のものですか',
             refer: function (d) {
               const c = (d.attractCards || []).find(function (x) { return x && txt(x.what); });
               if (!c) return '';
@@ -969,7 +994,8 @@
                 '少人数教育', '在校生の様子', '留学・国際交流', '奨学金制度',
                 '学校の雰囲気', '通学のしやすさ'],
             allowFree: true,
-            hint: '魅力カードを書いていれば、ここは分類のためだけに使われます。'
+            hint: 'カードを書いていれば、本文では「ほかにも注目した点」として短く添えられます。'
+              + 'カードが1枚もないときは、ここが魅力そのものの文になります。'
           },
           {
             id: 'featureName', group: 'found', type: 'text', maxChars: 40, required: true,
@@ -1022,6 +1048,11 @@
           {
             id: 'featureDetail', group: 'found', type: 'text', maxChars: 30,
             only: ['prep', 'future', 'scene', 'three'],
+            requiredIn: ['prep', 'scene'],
+            noteIn: {
+              prep: '結論先行型では、この一文が結論を支える具体になります。',
+              scene: '場面描写型では、あの場面のあとに続く「調べて分かったこと」になります。'
+            },
             label: 'そこでできること・その特徴',
             refer: function (d) { return about(d.featureName); },
             placeholder: isJob ? '検査から出荷までの一貫生産' : '自治体と組んだ課題調査',
@@ -1063,6 +1094,8 @@
             id: 'targetPolicy', group: 'found', type: 'text', maxChars: 30,
             refer: function (d) { return about(d.targetName); },
             only: ['prep', 'story', 'three'],
+            requiredIn: ['three'],
+            noteIn: { three: '三つの理由型では、二つ目の理由を補う材料になります。' },
             label: isJob ? '共感した理念・社訓の言葉' : '共感した教育目標・校訓の言葉',
             placeholder: isJob ? '安全第一、品質第二' : '自ら学び、自ら考える',
             examples: isJob
@@ -1074,7 +1107,7 @@
                 ? '「' + txt(d.targetPolicy) + '」という考え方にも共感しています。' : '';
             }
           }
-        ].filter(usable)
+        ].filter(usable).map(tune)
       },
 
       // ───────────────────────────── つなげる
@@ -1258,10 +1291,48 @@
                   lead + '{X}を目指したいと考えています。', lead + '{X}ことを目指したいと考えています。');
             }
           }
-        ].filter(usable)
+        ].filter(usable).map(tune)
       }
     ];
   }
+
+  /**
+   * 型による設問のちがいを数える。
+   * 「型を選ぶと質問が変わる」ことを、選ぶ前に見せるために使う。
+   * @returns {{total, required, special, skipped}}
+   *   special … その型でだけ（または少数の型でだけ）聞く設問の数
+   *   skipped … ほかの型では聞くのに、この型では聞かない設問の数
+   */
+  function diffFor(mode, template) {
+    const here = buildSteps(mode, template)
+      .reduce(function (a, s) { return a.concat(s.fields); }, []);
+    const ids = here.map(function (f) { return f.id; });
+
+    let widest = 0;
+    TEMPLATE_IDS.forEach(function (id) {
+      const n = buildSteps(mode, id)
+        .reduce(function (a, s) { return a.concat(s.fields); }, []).length;
+      if (n > widest) widest = n;
+    });
+
+    const all = {};
+    TEMPLATE_IDS.forEach(function (id) {
+      buildSteps(mode, id).forEach(function (s) {
+        s.fields.forEach(function (f) { all[f.id] = true; });
+      });
+    });
+
+    return {
+      total: here.length,
+      required: here.filter(function (f) { return f.required; }).length,
+      special: here.filter(function (f) { return f.only && f.only.length <= 4; }).length,
+      skipped: Object.keys(all).filter(function (id) { return ids.indexOf(id) === -1; }).length,
+      widest: widest
+    };
+  }
+
+  /** 型のID一覧（compose.js を読まずに済むよう、ここに持つ） */
+  const TEMPLATE_IDS = ['scene', 'prep', 'story', 'future', 'gap', 'three'];
 
   /** チップ入力欄のうち、文章生成で「〜や〜」とつなぐ最大数 */
   const CHIP_JOIN_LIMIT = 3;
@@ -1280,6 +1351,7 @@
     FEELINGS: FEELINGS,
     courseOf: courseOf,
     buildSteps: buildSteps,
+    diffFor: diffFor,
     whereList: whereList,
     whereLead: whereLead,
     feelPhrase: feelPhrase,

@@ -1030,10 +1030,19 @@
     card.appendChild(h('h3', { class: 'card__sub', text: 'ほかの型に変えることもできます' }));
     card.appendChild(templateCards(decided.id));
 
-    const n = steps().reduce(function (sum, s) { return sum + s.fields.length; }, 0);
+    const diff = global.QUESTIONS.diffFor(state.data.course || 'shingaku', state.data.template);
+
     card.appendChild(h('div', { class: 'notice' }, [
-      h('strong', { text: 'この型で答える質問：' + n + '問／目標字数：' + (state.data.targetChars || 500) + '字' }),
-      h('p', { text: '型を変えると、聞く質問も入れかわります。ここで決めた字数は STEP 2 で変えられます。' })
+      h('strong', {
+        text: 'この型で答える質問：' + diff.total + '問（うち必須' + diff.required + '問）'
+          + '／目標字数：' + (state.data.targetChars || 500) + '字'
+      }),
+      h('p', {
+        text: 'この型ならではの質問が' + diff.special + '問あり、'
+          + 'ほかの型では聞く' + diff.skipped + '問はここでは出しません。'
+          + '聞いたことはすべて本文に使われます。'
+      }),
+      h('p', { text: 'ここで決めた字数は STEP 2 で変えられます。' })
     ]));
 
     return card;
@@ -1046,6 +1055,17 @@
       h('p', { class: 'lead', text: step.lead }),
       step.note ? h('div', { class: 'notice notice--tip' }, [h('p', { text: step.note })]) : null
     ]);
+
+    const tpl = global.COMPOSE.TEMPLATES.find(function (t) { return t.id === state.data.template; })
+      || global.COMPOSE.TEMPLATES[0];
+    card.appendChild(h('p', { class: 'tplNote' }, [
+      h('span', { class: 'tplNote__name', text: tpl.name }),
+      h('span', { class: 'tplNote__text', text: 'に必要な質問だけを出しています' }),
+      h('button', {
+        type: 'button', class: 'tplNote__link',
+        onclick: function () { state.index = 1; render(); }
+      }, ['型を変える'])
+    ]));
 
     card.appendChild(renderStepBar(step));
 
