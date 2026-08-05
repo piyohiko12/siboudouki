@@ -92,6 +92,9 @@ var COLUMNS = [
  * フロント側は Content-Type: text/plain で JSON 文字列を送ってくる
  * （CORSのプリフライトを避けるため）。
  */
+/** 1つの項目に入れられる最大文字数（本文は2000字を上限に想定） */
+var MAX_FIELD_CHARS = 4000;
+
 function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) {
@@ -108,6 +111,14 @@ function doPost(e) {
     }
     if (!String(payload.body || '').trim()) {
       return json({ ok: false, message: '本文が空です。' });
+    }
+    // 合言葉は公開前提なので、いたずら投稿でシートが壊れないよう長さを見ておく
+    var tooLong = null;
+    Object.keys(payload).forEach(function (k) {
+      if (String(payload[k] || '').length > MAX_FIELD_CHARS) tooLong = k;
+    });
+    if (tooLong) {
+      return json({ ok: false, message: '入力が長すぎます（' + tooLong + '）。' });
     }
 
     var saved = saveRow(payload);

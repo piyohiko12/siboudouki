@@ -535,7 +535,11 @@
 
   function sAfter(m) {
     const lead = m.L.joinAfter + 'は、';
-    const tail = variant(m, ['に取り組みたいと考えています。', 'に力を入れたいと考えています。'], 6);
+    const tail = variant(m, [
+      'に取り組みたいと考えています。',
+      'に力を入れたいと考えています。',
+      'にしっかり取り組んでいきたいです。'
+    ], 6);
     return fit(joinNouns(m.after, 3),
       lead + '{X}' + tail,
       lead + '{X}こと' + tail);
@@ -739,6 +743,12 @@
     paras.push(p2);
 
     const p3 = [];
+    // ここが抜けていると、必須で聞いた「手に入れたいもの」が本文に一度も出ない
+    push(p3, variant(m, [
+      'この出会いから、私は' + m.want + 'と考えるようになりました。',
+      'そして私は、' + m.want + 'と考えるようになりました。',
+      'こうして、' + m.want + 'という思いが固まりました。'
+    ], 34), 1);
     push(p3, sFeature(m), 1);
     push(p3, sLearnOrTask(m), 2);
     push(p3, sDeep(m, 'why'), 2);
@@ -793,6 +803,7 @@
     push(p4, sEffortIntro(m), 1);
     push(p4, sEffortAction(m), 3);
     push(p4, sEffortLearned(m), 2);
+    push(p4, sSelfTraits(m), 3);
     push(p4, sLicenses(m), 3);
     push(p4, sContribution(m), 2);
     paras.push(p4);
@@ -832,6 +843,7 @@
     push(p2, sDeep(m, 'felt'), 2);
     // 志望先の固有名詞は「調べた証拠」そのもの。字数が苦しくても最後まで残す
     push(p2, sFeature(m), 1);
+    push(p2, sLearnOrTask(m), 2);
     push(p2, sFeatureDetail(m), 3);
     push(p2, sVisited(m), 3);
     m.cardSent(1, 2).forEach(function (s) { p2.push(s); });
@@ -1030,8 +1042,12 @@
     { key: 'と思いました。', family: 'omoi', alts: ['と感じました。'] },
     { key: 'に残りました。', family: 'nokori', alts: ['に残っています。'] },
     { key: 'があります。', family: 'aru', alts: ['がありました。'] },
+    // 「〜たいからです」「〜だからです」は「ためです」に置きかえられない
+    // （「取り組みたいためです」「好きだためです」になってしまう）ので、そのままにする
+    { key: 'たいからです。', family: 'kara', alts: [] },
+    { key: 'だからです。', family: 'kara', alts: [] },
     { key: 'があるからです。', family: 'kara', alts: ['があるためです。'] },
-    { key: 'からです。', family: 'kara', alts: ['からでした。'] }
+    { key: 'からです。', family: 'kara', alts: ['ためです。'] }
   ];
 
   function endingOf(sentence) {
@@ -1268,27 +1284,36 @@
     const text = String(body || '');
     const items = [];
 
+    // 型を変えると、前の型で答えた内容がデータに残る。
+    // いまの型で聞いていない欄まで「使われていない」と言うと、
+    // 答えた覚えのない指摘が出てしまうので、聞いている欄だけを見る。
+    const asked = {};
+    global.QUESTIONS.buildSteps(job ? 'shushoku' : 'shingaku', d.template)
+      .forEach(function (step) {
+        step.fields.forEach(function (f) { asked[f.id] = true; });
+      });
+
     (d.attractCards || []).forEach(function (c, i) {
       if (c && bare(c.what)) items.push({ label: '魅力カード' + (i + 1), text: c.what });
     });
 
     [
-      ['取り組んだこと', d.effortAction],
-      ['その結果', d.effortResult],
-      ['そこから学んだこと', d.effortLearned],
-      ['将来の目標のきっかけ', d.futureWhyWhat],
-      ['今の自分に足りない力', d.gapNow],
-      ['志望先の特色（名前）', d.featureName],
-      ['そこでできること', d.featureDetail],
-      [job ? '仕事の理解' : '受けたい授業', job ? d.jobTask : d.studyWant],
-      ['ここでなければの違い', d.mustPoint],
-      [job ? '活かせる力' : null, job ? d.contribution : null],
-      ['まず始めること', d.afterAction],
-      [job ? '将来の姿' : '卒業後の目標', d.afterGradWhat],
-      ['共感した理念', d.targetPolicy],
-      ['資格・免許', d.licenses]
+      ['effortAction', '取り組んだこと', d.effortAction],
+      ['effortResult', 'その結果', d.effortResult],
+      ['effortLearned', 'そこから学んだこと', d.effortLearned],
+      ['futureWhyWhat', '将来の目標のきっかけ', d.futureWhyWhat],
+      ['gapNow', '今の自分に足りない力', d.gapNow],
+      ['featureName', '志望先の特色（名前）', d.featureName],
+      ['featureDetail', 'そこでできること', d.featureDetail],
+      [job ? 'jobTask' : 'studyWant', job ? '仕事の理解' : '受けたい授業', job ? d.jobTask : d.studyWant],
+      ['mustPoint', 'ここでなければの違い', d.mustPoint],
+      ['contribution', job ? '活かせる力' : null, job ? d.contribution : null],
+      ['afterAction', 'まず始めること', d.afterAction],
+      ['afterGradWhat', job ? '将来の姿' : '卒業後の目標', d.afterGradWhat],
+      ['targetPolicy', '共感した理念', d.targetPolicy],
+      ['licenses', '資格・免許', d.licenses]
     ].forEach(function (row) {
-      if (row[0] && bare(row[1])) items.push({ label: row[0], text: row[1] });
+      if (asked[row[0]] && row[1] && bare(row[2])) items.push({ label: row[1], text: row[2] });
     });
 
     return items.filter(function (it) { return !usedIn(text, it.text, 10); })

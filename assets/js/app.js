@@ -297,6 +297,18 @@
           emitChange(field.id);
           scheduleSave();
         });
+        // min/max はフォーム送信時にしか効かないので、離れたときに丸める。
+        // 極端な数を入れると字数調整が働かなくなるため。
+        input.addEventListener('blur', function () {
+          let v = Number(input.value);
+          if (!v) v = field.default;
+          if (field.min != null) v = Math.max(field.min, v);
+          if (field.max != null) v = Math.min(field.max, v);
+          input.value = v;
+          state.data[field.id] = v;
+          emitChange(field.id);
+          save();
+        });
         wrap.appendChild(input);
         break;
 
@@ -749,6 +761,33 @@
     return ok;
   }
 
+  /**
+   * 指定した位置より手前に、必須が空のままのステップがあれば、その位置を返す。
+   * タブで先へ飛ぶときに使う（「次へ進む」だけを見張っていると素通りできてしまう）。
+   */
+  function firstIncompleteView(limit) {
+    const V = views();
+    const all = steps();
+    for (let k = 1; k < Math.min(limit, V.length); k++) {
+      const v = V[k];
+      if (v.id === 'pick') {
+        if (!picksDone()) return k;
+        continue;
+      }
+      const step = all.find(function (x) { return x.id === v.id; });
+      if (!step) continue;
+      if (step.fields.some(function (f) { return f.required && !answered(f); })) return k;
+    }
+    return -1;
+  }
+
+  /** その画面の必須が空なら、赤い注意書きを出す */
+  function showErrors(viewId) {
+    if (viewId === 'pick') { validatePicks(); return; }
+    const step = steps().find(function (s) { return s.id === viewId; });
+    if (step) validateStep(step);
+  }
+
   /** 型をえらぶ3問が埋まっているか */
   function validatePicks() {
     let ok = true;
@@ -775,8 +814,16 @@
 
   // ── 各ビューの描画 ────────────────────────────────
   /** 進路を変えると、選択肢の中身が変わる設問はいったん白紙に戻す */
-  const COURSE_SPECIFIC_FIELDS = ['strengths', 'attractPoints', 'afterEnter', 'visited',
-    'knewBy', 'examType', 'studyWant', 'jobUnderstanding', 'contribution'];
+  // 選択肢の中身が進路でちがう欄。進路を変えたら、前の進路の値が残らないよう白紙に戻す。
+  // 残しておくと、プルダウンには何も選ばれていないのに本文だけ古い値で組まれる。
+  const COURSE_SPECIFIC_FIELDS = [
+    'orgType', 'examType',                       // 志望先の種類・応募方法
+    'strengths', 'attractPoints', 'afterEnter', 'visited', 'knewBy',
+    'featureKind', 'wantVerb',                   // 特色の種類・どうしたいか
+    'studyWant', 'jobTask',                      // 進学だけ／就職だけの欄
+    'contribution', 'contributionFrom',
+    'afterGradWhen', 'afterGradKind'
+  ];
 
   function setCourse(id) {
     if (state.data.course === id) return;
@@ -1477,7 +1524,21 @@
         'aria-current': i === state.index ? 'step' : null,
         class: 'tab' + (i === state.index ? ' is-on' : '') + (i < state.index ? ' is-done' : ''),
         disabled: locked ? 'disabled' : null,
-        onclick: function () { if (!locked) { state.index = i; render(); } }
+        onclick: function () {
+          if (locked) return;
+          // 先へ飛ぶときは、途中の必須が埋まっているかを確かめる
+          if (i > state.index) {
+            const bad = firstIncompleteView(i);
+            if (bad !== -1) {
+              state.index = bad;
+              render();
+              setTimeout(function () { showErrors(views()[bad].id); }, 0);
+              return;
+            }
+          }
+          state.index = i;
+          render();
+        }
       }, [
         h('span', { class: 'tab__no', text: i === 0 ? '◎' : String(i) }),
         h('span', { class: 'tab__label', text: v.short || v.title })

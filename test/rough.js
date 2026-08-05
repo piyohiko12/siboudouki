@@ -135,11 +135,13 @@ const NG = [
 ].filter(function (r) { return r[1]; });
 
 let bad = 0;
+let runs = 0;
 Object.keys(CASES).forEach(name => {
   W.COMPOSE.TEMPLATES.forEach(t => {
     ['です・ます調', 'だ・である調'].forEach(tone => {
       const d = Object.assign({}, CASES[name], { tone: tone });
       const r = W.COMPOSE.generate(d, t.id);
+      runs++;
       const hits = NG.filter(n => n[0].test(r.text)).map(n => n[1]);
       const chk = W.CHECKLIST.run(r.text, d).filter(x => x.level === 'error');
       if (hits.length || chk.length) {
@@ -152,4 +154,5 @@ Object.keys(CASES).forEach(name => {
     });
   });
 });
-console.log(bad ? '\n=== ' + bad + '件 要確認 ===' : '\n=== 48通りすべて、非文パターンなし ===');
+console.log('\n=== ' + runs + '通り × 非文パターン' + NG.length + '種 → ' +
+  (bad ? bad + '件 要確認' : '指摘なし') + ' ===');

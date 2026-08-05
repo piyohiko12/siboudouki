@@ -74,8 +74,9 @@ ws.forEach(w => {
     .filter(v => v.indexOf('まだ') !== 0)
     .forEach(v => console.log('  ' + v + 'にも参加し、自分の目で確かめました。'));
 
-  head((job ? '就職' : '進学') + '：知ったきっかけ（エピソード型の書き出し）');
-  st[2].fields.find(f => f.id === 'knewBy').options.forEach(k => {
+  head((job ? '就職' : '進学') + '：知ったきっかけ（エピソード型でだけ聞く）');
+  const story = Q.buildSteps(mode, 'story');
+  story[2].fields.find(f => f.id === 'knewBy').options.forEach(k => {
     const by = k === 'その他' ? '' : k;
     console.log('  ' + (by
       ? 'そんな私が貴校を知ったのは、' + by + 'がきっかけでした。'

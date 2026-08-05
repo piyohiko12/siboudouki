@@ -902,6 +902,7 @@
         fields: [
           {
             id: 'knewBy', group: 'meet', type: 'select',
+            only: ['story'],
             label: isJob ? 'その会社を知ったきっかけは何ですか' : 'その学校を知ったきっかけは何ですか',
             refer: function (d) { return about(d.targetName); },
             options: isJob
@@ -923,7 +924,9 @@
               : ['オープンキャンパス', '体験授業', '学校見学', '個別相談会', '学園祭',
                 '進学説明会', 'オンライン説明会', '部活動の見学', 'まだ行っていない'],
             allowFree: true,
-            hint: '足を運んだ事実そのものが、志望の本気度を示します。まだなら「まだ行っていない」を選んでください（文章には出ません）。',
+            hint: '足を運んだ事実そのものが、志望の本気度を示します。'
+              + '魅力カードに書いた場面と重なるものは、同じ話をくり返さないよう文章では省かれます。'
+              + 'まだなら「まだ行っていない」を選んでください（文章には出ません）。',
             preview: function (d) {
               const been = (d.visited || []).filter(function (v) { return String(v).indexOf('まだ') !== 0; });
               if (!been.length) return '';
