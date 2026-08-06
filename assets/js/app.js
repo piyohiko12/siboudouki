@@ -1424,6 +1424,8 @@
       why2: d.whyChain.why2 || '',
       why3: d.whyChain.why3 || '',
       valueFound: d.valueFound || '',
+      effort2Learned: d.effort2Learned || '',
+      effort3Learned: d.effort3Learned || '',
       strengthScene: d.strengthScene || '',
       personalityScene: d.personalityScene || '',
       mustPoint: d.mustPoint || '',

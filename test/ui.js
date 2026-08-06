@@ -126,6 +126,43 @@ async function runMode(browser, key, errors) {
   console.log('    選んでいない選択肢が押せなくなった数:', locked);
   await page.fill('#f_effort2Action', 'レジと品出し');
   await page.fill('#f_effort3Action', '毎日30分の問題演習');
+  await page.waitForTimeout(250);
+  console.log('    内容を書くと「身についたこと」が増える:',
+    await page.locator('[data-field="effort2Learned"]').count(),
+    '/', await page.locator('[data-field="effort3Learned"]').count());
+  await page.fill('#f_effort2Learned', '報告・連絡の大切さ');
+  await page.fill('#f_effort3Learned', '毎日少しずつ続けることの力');
+
+  // 選んだ活動によって、聞く設問そのものが変わる
+  const onlyPick = async (name) => {
+    let n = await page.locator('[data-field="efforts"] .chip.is-on').count();
+    while (n--) {
+      await page.click('[data-field="efforts"] .chip.is-on >> nth=0');
+      await page.waitForTimeout(180);
+    }
+    await page.click('[data-field="efforts"] .chip:has-text("' + name + '")');
+    await page.waitForTimeout(250);
+  };
+  await onlyPick('資格・検定の取得');
+  console.log('    「資格・検定の取得」だけ選ぶと 役割:',
+    await page.locator('[data-field="effortRole"]').count(),
+    '問／資格・検定:', await page.locator('[data-field="licenses"]').count(), '問');
+  console.log('      乗り越え方の例:',
+    (await page.locator('[data-field="effortHow"] .field__ex').allTextContents()).join(' ').replace(/\s+/g, ' ').trim() || '（この型では聞かない）');
+  await onlyPick('部活動');
+  console.log('    「部活動」だけ選ぶと     役割:',
+    await page.locator('[data-field="effortRole"]').count(),
+    '問／資格・検定:', await page.locator('[data-field="licenses"]').count(), '問');
+
+  // もとの3つに戻す
+  await page.click('[data-field="efforts"] .chip:has-text("アルバイト")');
+  await page.waitForTimeout(200);
+  await page.click('[data-field="efforts"] .chip:has-text("資格・検定の取得")');
+  await page.waitForTimeout(250);
+  await page.fill('#f_effort2Action', 'レジと品出し');
+  await page.fill('#f_effort2Learned', '報告・連絡の大切さ');
+  await page.fill('#f_effort3Action', '毎日30分の問題演習');
+  await page.fill('#f_effort3Learned', '毎日少しずつ続けることの力');
 
   // 資格・検定は「資格・検定の取得」を選んだ人にだけ出す
   console.log('    資格・検定の欄:', await page.locator('[data-field="licenses"]').count(), '個（3つ目に選んだので出る）');

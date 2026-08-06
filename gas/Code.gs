@@ -46,6 +46,8 @@ var COLUMNS = [
   { key: 'effortHard',       label: '大変だったこと',        width: 200 },
   { key: 'effortHow',        label: '乗り越え方',            width: 200 },
   { key: 'effortLearned',    label: '学んだこと',            width: 200 },
+  { key: 'effort2Learned',   label: '活動2で身についたこと', width: 180 },
+  { key: 'effort3Learned',   label: '活動3で身についたこと', width: 180 },
   { key: 'strengths',        label: '得意なこと',            width: 160 },
   { key: 'strengthScene',    label: '得意を活かせる場面',    width: 200 },
   { key: 'licenses',         label: '資格・免許',            width: 180 },
