@@ -223,20 +223,13 @@
     // 番号とバッジを1行目、質問文を2行目にすると、長い質問でも形が崩れない
     wrap.appendChild(h('div', { class: 'field__meta' }, [
       no ? h('span', { class: 'field__no', text: 'Q' + no }) : null,
-      field.required
-        ? h('span', { class: 'badge badge--required' }, [
-          h('span', { class: 'badge__mark', text: '✱' }),
-          document.createTextNode('必ず答える')
-        ])
-        : h('span', { class: 'badge badge--optional' }, [
-          h('span', { class: 'badge__mark', text: '○' }),
-          document.createTextNode('答えなくてもOK')
-        ]),
       h('span', { class: 'field__done', title: '入力ずみ', text: '✓ 入力ずみ' })
     ]));
     wrap.appendChild(h('label', { class: 'field__label', for: 'f_' + field.id }, [
-      field.required ? h('span', { class: 'field__must', title: '必須', text: '✱' }) : null,
-      h('span', { class: 'field__q', text: val(field.label) })
+      h('span', { class: 'field__q', text: val(field.label) }),
+      field.required
+        ? h('span', { class: 'badge badge--required', text: '必須' })
+        : h('span', { class: 'badge badge--optional', text: '任意' })
     ]));
 
     // 答え終わった設問には印をつけ、残りを見つけやすくする
@@ -1162,11 +1155,11 @@
     const legend = h('div', { class: 'stepBar__legend' }, [
       h('span', { class: 'legend legend--required' }, [
         h('span', { class: 'legend__bar' }),
-        document.createTextNode('必ず答える ' + need.length + '問')
+        document.createTextNode('必須 ' + need.length + '問')
       ]),
       h('span', { class: 'legend legend--optional' }, [
         h('span', { class: 'legend__bar' }),
-        document.createTextNode('答えなくてもOK ' + (step.fields.length - need.length) + '問')
+        document.createTextNode('任意 ' + (step.fields.length - need.length) + '問')
       ])
     ]);
 

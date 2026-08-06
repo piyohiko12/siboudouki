@@ -191,8 +191,10 @@ async function runMode(browser, key, errors) {
     '／任意バッジ:', (await page.locator('.badge--optional').first().textContent()).trim());
   console.log('    必須の欄:', await page.locator('.field--required').count(),
     '／任意の欄:', await page.locator('.field--optional').count());
-  console.log('    質問文の必須マーク:', await page.locator('.field--required .field__must').count(),
-    '個（任意側は', await page.locator('.field--optional .field__must').count(), '個）');
+  console.log('    バッジは質問文の後ろか:',
+    await page.locator('.field--required .field__label > .field__q + .badge--required').count(),
+    '/', await page.locator('.field--required').count(), '問');
+  console.log('    大題:', (await page.locator('.qgroup__name').allTextContents()).join(' / '));
   await fillIf('#f_effortHard', '意見がまとまらないこと');
   await fillIf('#f_effortHow', '一人ずつ話を聞くこと');
   await fillIf('#f_effortAction', '混雑する時間帯の動き方のメモ作り');
