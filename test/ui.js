@@ -104,7 +104,28 @@ async function runMode(browser, key, errors) {
 
   // ── STEP 3：自分を知る ──────────────────────────
   console.log('STEP3:', await page.textContent('#stepLabel'));
-  await page.click('[data-field="efforts"] .chip >> nth=0');
+
+  // 打ち込んだこと：1つめを選ぶと、あとの設問がその活動に合わせて変わる
+  await page.click('[data-field="efforts"] .chip:has-text("部活動")');
+  await page.waitForTimeout(250);
+  console.log('  1つ選んだとき:');
+  console.log('    役割の設問:', (await page.textContent('[data-field="effortRole"] .field__q')).trim());
+  console.log('    例:', (await page.locator('[data-field="effortRole"] .field__ex').allTextContents()).join(' ').replace(/\s+/g, ' ').trim());
+  console.log('    2つめの設問は出ていない:', (await page.locator('[data-field="effort2Action"]').count()) === 0);
+
+  // 2つめ・3つめを足すと、そのぶんの設問が増える（魅力カードと同じ考え方）
+  await page.click('[data-field="efforts"] .chip:has-text("アルバイト")');
+  await page.waitForTimeout(250);
+  await page.click('[data-field="efforts"] .chip:has-text("資格・検定の取得")');
+  await page.waitForTimeout(250);
+  console.log('  3つ選んだとき:');
+  console.log('    上限の表示:', (await page.textContent('[data-field="efforts"] .chips__meter')).replace(/\s+/g, ' ').trim());
+  console.log('    2つめ:', (await page.textContent('[data-field="effort2Action"] .field__q')).trim());
+  console.log('    3つめ:', (await page.textContent('[data-field="effort3Action"] .field__q')).trim());
+  const locked = await page.locator('[data-field="efforts"] .chip.is-locked').count();
+  console.log('    選んでいない選択肢が押せなくなった数:', locked);
+  await page.fill('#f_effort2Action', 'レジと品出し');
+  await page.fill('#f_effort3Action', '毎日30分の問題演習');
   await fillIf('#f_effortHard', '意見がまとまらないこと');
   await fillIf('#f_effortHow', '一人ずつ話を聞くこと');
   await fillIf('#f_effortAction', '混雑する時間帯の動き方のメモ作り');

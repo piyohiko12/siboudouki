@@ -29,7 +29,8 @@
 
   /** 選んだ進路と文章の型に応じた設問セット */
   function steps() {
-    return global.QUESTIONS.buildSteps(state.data.course || 'shingaku', state.data.template);
+    return global.QUESTIONS.buildSteps(
+      state.data.course || 'shingaku', state.data.template, state.data);
   }
 
   function isJob() {
@@ -192,6 +193,11 @@
     return (field.options || []).concat(state.custom[field.id] || []);
   }
 
+  /** label / hint / placeholder / examples は、回答に応じて変わることがある */
+  function val(x) {
+    return typeof x === 'function' ? x(state.data) : x;
+  }
+
   function renderField(field, no) {
     const wrap = h('div', { class: 'field', 'data-field': field.id });
 
@@ -218,7 +224,7 @@
       h('span', { class: 'field__done', title: '入力ずみ', text: '✓ 入力ずみ' })
     ]));
     wrap.appendChild(h('label', { class: 'field__label', for: 'f_' + field.id }, [
-      h('span', { class: 'field__q', text: field.label })
+      h('span', { class: 'field__q', text: val(field.label) })
     ]));
 
     // 答え終わった設問には印をつけ、残りを見つけやすくする
@@ -228,13 +234,15 @@
 
     // 説明・例・注意はひとまとめにして、たためるようにする
     const help = [];
-    if (field.hint) help.push(h('p', { class: 'field__hint', text: field.hint }));
+    const hint = val(field.hint);
+    if (hint) help.push(h('p', { class: 'field__hint', text: hint }));
 
     // 書き方の例。押せないようにしてあるのは、写して終わりにしないため
-    if ((field.examples || []).length) {
+    const examples = val(field.examples) || [];
+    if (examples.length) {
       help.push(h('div', { class: 'field__ex' }, [
         h('span', { class: 'field__exCap', text: 'こんな書き方' })
-      ].concat(field.examples.map(function (e) {
+      ].concat(examples.map(function (e) {
         return h('span', { class: 'field__exItem', text: e });
       }))));
     }
@@ -256,7 +264,7 @@
     }
 
     let input;
-    const val = state.data[field.id];
+    const cur = state.data[field.id];
 
     switch (field.type) {
       case 'textarea':
@@ -264,9 +272,9 @@
           id: 'f_' + field.id,
           class: 'input input--area',
           rows: field.rows || 3,
-          placeholder: field.placeholder || ''
+          placeholder: val(field.placeholder) || ''
         });
-        input.value = val || '';
+        input.value = cur || '';
         input.addEventListener('input', function () {
           state.data[field.id] = input.value;
           updateCounter(wrap, input.value);
@@ -274,7 +282,7 @@
           scheduleSave();
         });
         wrap.appendChild(input);
-        wrap.appendChild(h('div', { class: 'field__count', text: (val || '').length + '字' }));
+        wrap.appendChild(h('div', { class: 'field__count', text: (cur || '').length + '字' }));
         break;
 
       case 'select': {
@@ -283,7 +291,7 @@
         (field.options || []).forEach(function (o) {
           input.appendChild(h('option', { value: o, text: o }));
         });
-        input.value = val || field.default || '';
+        input.value = cur || field.default || '';
         input.addEventListener('change', function () {
           state.data[field.id] = input.value;
           emitChange(field.id);
@@ -299,7 +307,7 @@
           id: 'f_' + field.id, class: 'input input--num', type: 'number',
           min: field.min, max: field.max, step: field.step
         });
-        input.value = val != null && val !== '' ? val : (field.default || '');
+        input.value = cur != null && cur !== '' ? cur : (field.default || '');
         if (state.data[field.id] == null || state.data[field.id] === '') state.data[field.id] = field.default;
         input.addEventListener('input', function () {
           state.data[field.id] = Number(input.value);
@@ -337,9 +345,9 @@
         input = h('input', {
           id: 'f_' + field.id, class: 'input', type: 'text',
           maxlength: field.maxChars || null,
-          placeholder: field.placeholder || ''
+          placeholder: val(field.placeholder) || ''
         });
-        input.value = val || '';
+        input.value = cur || '';
         input.addEventListener('input', function () {
           state.data[field.id] = input.value;
           updateCounter(wrap, input.value, field.maxChars);
@@ -349,7 +357,7 @@
         wrap.appendChild(input);
         if (field.maxChars) {
           wrap.appendChild(h('div', { class: 'field__count' }));
-          updateCounter(wrap, val || '', field.maxChars);
+          updateCounter(wrap, cur || '', field.maxChars);
         }
     }
 
@@ -428,6 +436,8 @@
             state.data[field.id] = list;
             emitChange(field.id);
             scheduleSave();
+            // 選んだ内容で設問そのものが変わる欄は、画面ごと作り直す
+            if (field.rerender) { save(); render(); return; }
             repaint();
           }
         }, [opt]));
@@ -446,6 +456,7 @@
             state.data[field.id] = (state.data[field.id] || []).concat([v]);
             emitChange(field.id);
             save();
+            if (field.rerender) { render(); return; }
             repaint();
           }
         }, ['＋ 自分で追加']));
@@ -1039,7 +1050,7 @@
     card.appendChild(h('h3', { class: 'card__sub', text: 'ほかの型に変えることもできます' }));
     card.appendChild(templateCards(decided.id));
 
-    const diff = global.QUESTIONS.diffFor(state.data.course || 'shingaku', state.data.template);
+    const diff = global.QUESTIONS.diffFor(state.data.course || 'shingaku', state.data.template, state.data);
 
     card.appendChild(h('div', { class: 'notice' }, [
       h('strong', {
@@ -1356,6 +1367,8 @@
       effortWhen: d.effortWhen || '',
       effortRole: d.effortRole || '',
       effortAction: d.effortAction || '',
+      effort2Action: d.effort2Action || '',
+      effort3Action: d.effort3Action || '',
       effortActionKind: d.effortActionKind || '',
       effortResult: d.effortResult || '',
       effortHard: d.effortHard || '',

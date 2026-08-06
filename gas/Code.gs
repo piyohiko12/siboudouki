@@ -40,6 +40,8 @@ var COLUMNS = [
   { key: 'effortRole',       label: '役割',                  width: 110 },
   { key: 'effortAction',     label: '取り組んだこと',        width: 220 },
   { key: 'effortActionKind', label: '行動／作ったもの',      width: 130 },
+  { key: 'effort2Action',    label: '2つ目の活動でしたこと', width: 200 },
+  { key: 'effort3Action',    label: '3つ目の活動でしたこと', width: 200 },
   { key: 'effortResult',     label: 'その結果',              width: 160 },
   { key: 'effortHard',       label: '大変だったこと',        width: 200 },
   { key: 'effortHow',        label: '乗り越え方',            width: 200 },

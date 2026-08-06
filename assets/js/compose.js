@@ -313,7 +313,7 @@
   function scopeToTemplate(d, templateId) {
     const mode = d.course === 'shushoku' ? 'shushoku' : 'shingaku';
     const asked = {};
-    global.QUESTIONS.buildSteps(mode, templateId).forEach(function (s) {
+    global.QUESTIONS.buildSteps(mode, templateId, d).forEach(function (s) {
       s.fields.forEach(function (f) { asked[f.id] = true; });
     });
 
@@ -362,6 +362,11 @@
       studentName: bare(d.studentName),
       efforts: efforts,
       effortTop: efforts[0] || '学校生活',
+      // 2つ目・3つ目の活動は、一文にまとめて添える
+      others: [
+        { name: efforts[1], what: bare(d.effort2Action) },
+        { name: efforts[2], what: bare(d.effort3Action) }
+      ].filter(function (x) { return x.name && x.what; }),
       effortWhen: bare(d.effortWhen),
       effortRole: bare(d.effortRole),
       effortAction: bare(d.effortAction),
@@ -618,6 +623,21 @@
       'いずれは{X}人になりたいと考えています。');
   }
 
+  /**
+   * 2つ目・3つ目に選んだ活動。
+   * 1つ目のように掘り下げず、「また、◯◯では〜」と一文で添える。
+   * 3つ選んだのに1つしか文章に出ない、という状態をなくすための文。
+   */
+  function sEffortOthers(m) {
+    if (!m.others.length) return '';
+    // 「行事の企画」も「行事を企画しました」も同じ形に受けられるようにする
+    const parts = m.others.map(function (o) {
+      const w = global.QUESTIONS.plainWord(o.what);
+      return o.name + 'では' + (global.QUESTIONS.isPredicate(w) ? w + 'こと' : w);
+    });
+    return 'また、' + parts.join('に、') + 'にも取り組みました。';
+  }
+
   function sEffortLearned(m) {
     const lead = variant(m, ['この経験から、', 'この取り組みを通して、', 'ここから私は、'], 5);
     return fit(m.effortLearned, lead + '{X}を学びました。', lead + '{X}ということを学びました。');
@@ -818,6 +838,7 @@
     push(p4, sEffortHard(m), 2);
     push(p4, sEffortHow(m), 2);
     push(p4, sEffortLearned(m), 1);
+    push(p4, sEffortOthers(m), 3);
     push(p4, sSelfTraits(m), 3);
     push(p4, sLicenses(m), 3);
     push(p4, sContribution(m), 1);
@@ -854,6 +875,7 @@
     push(p1, sEffortHard(m), 2);
     push(p1, sEffortHow(m), 2);
     push(p1, sEffortLearned(m), 1);
+    push(p1, sEffortOthers(m), 3);
     push(p1, sSelfTraits(m), 3);
     push(p1, sLicenses(m), 3);
     paras.push(p1);
@@ -941,6 +963,7 @@
     push(p4, sEffortHard(m), 3);
     push(p4, sEffortHow(m), 3);
     push(p4, sEffortLearned(m), 2);
+    push(p4, sEffortOthers(m), 3);
     push(p4, sSelfTraits(m), 3);
     push(p4, sLicenses(m), 3);
     push(p4, sContribution(m), 2);
@@ -999,6 +1022,7 @@
     push(p3, sEffortHard(m), 2);
     push(p3, sEffortHow(m), 2);
     push(p3, sEffortLearned(m), 1);
+    push(p3, sEffortOthers(m), 3);
     push(p3, sSelfTraits(m), 3);
     push(p3, sLicenses(m), 3);
     push(p3, sContribution(m), 1);
@@ -1045,6 +1069,7 @@
     push(p2, sEffortHard(m), 2);
     push(p2, sEffortHow(m), 2);
     push(p2, sEffortLearned(m), 1);
+    push(p2, sEffortOthers(m), 3);
     push(p2, sSelfTraits(m), 3);
     push(p2, sLicenses(m), 3);
     push(p2, '同時に、自分にはまだ足りない部分もあります。', 2);
@@ -1129,6 +1154,7 @@
     push(p4, sEffortHard(m), 2);
     push(p4, sEffortHow(m), 2);
     push(p4, sEffortLearned(m), 1);
+    push(p4, sEffortOthers(m), 3);
     push(p4, sSelfTraits(m), 3);
     push(p4, sLicenses(m), 3);
     push(p4, sContribution(m), 1);
@@ -1453,7 +1479,7 @@
     // いまの型で聞いていない欄まで「使われていない」と言うと、
     // 答えた覚えのない指摘が出てしまうので、聞いている欄だけを見る。
     const asked = {};
-    global.QUESTIONS.buildSteps(job ? 'shushoku' : 'shingaku', d.template)
+    global.QUESTIONS.buildSteps(job ? 'shushoku' : 'shingaku', d.template, d)
       .forEach(function (step) {
         step.fields.forEach(function (f) { asked[f.id] = true; });
       });

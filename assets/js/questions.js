@@ -206,6 +206,141 @@
     { label: '今の自分では足りないと思った', te: '今の自分では足りないと感じ', end: '今の自分では足りないと感じました' }
   ];
 
+  // ══════════════════════════════════════════════════════
+  //  活動ごとの聞き方
+  //
+  //  「部活動」と「アルバイト」と「課題研究」では、役割の呼び方も、
+  //  やったことの粒度も、大変になる場面もまったく違う。
+  //  同じ例を出していては、生徒は自分の話に置きかえられない。
+  // ══════════════════════════════════════════════════════
+  const ACTIVITY = {
+    '部活動': {
+      role: ['副キャプテン', 'パートリーダー', 'マネージャー'],
+      action: ['練習メニューの見直し', '1年生への指導', '大会の運営'],
+      result: ['県大会ベスト8', '部員が5人増えたこと', '自己ベストの更新'],
+      hard: ['練習時間が合わないこと', 'けがからの復帰', '意見の食いちがい']
+    },
+    '生徒会': {
+      role: ['副会長', '書記', '会計'],
+      action: ['行事の企画', '意見箱の設置', '全校集会の進行'],
+      result: ['参加者が2倍になったこと', '新しい行事の実現'],
+      hard: ['意見がまとまらないこと', '先生との調整']
+    },
+    '委員会': {
+      role: ['委員長', '副委員長', '記録係'],
+      action: ['あいさつ運動', '清掃活動の見直し', '呼びかけのポスター作り'],
+      result: ['提出率が9割になったこと', '校内の変化'],
+      hard: ['協力してもらえないこと', '人が集まらないこと']
+    },
+    'クラス役員': {
+      role: ['学級委員', '班長', '会計'],
+      action: ['話し合いの進行', 'クラス目標の作成'],
+      result: ['クラスの雰囲気が変わったこと'],
+      hard: ['意見がまとまらないこと']
+    },
+    '学校行事': {
+      role: ['クラスTシャツの作成係', '応援団長', '装飾係'],
+      action: ['クラス企画の準備', '装飾の制作', '当日の進行'],
+      result: ['クラス優勝', '来場者200人'],
+      hard: ['みんなの意見を反映させること', '準備の時間が足りないこと']
+    },
+    '課題研究・探究学習': {
+      role: ['班長', '発表担当', '記録担当'],
+      action: ['地元商店街での聞き取り調査', 'アンケートの集計', '発表資料の作成'],
+      result: ['200人分のアンケート集計と校内発表', '県の発表会への出場'],
+      hard: ['協力を得られないこと', 'データがそろわないこと']
+    },
+    '資格・検定の取得': {
+      role: [],
+      action: ['毎日30分の問題演習', '過去問の分析', '苦手分野のやり直し'],
+      result: ['2級合格', '3回目での合格'],
+      hard: ['苦手分野の克服', '勉強時間の確保']
+    },
+    '実習・実験': {
+      role: ['班長', '記録担当'],
+      action: ['手順書どおりの作業', '測定の記録', '器具の準備'],
+      result: ['誤差を半分に減らせたこと'],
+      hard: ['手順を覚えること', '数値が安定しないこと']
+    },
+    '勉強・定期考査': {
+      role: [],
+      action: ['毎日2時間の学習', '間違い直しノートの作成'],
+      result: ['学年順位が20位上がったこと', '評定の向上'],
+      hard: ['部活動との両立', '苦手教科の克服']
+    },
+    'アルバイト': {
+      role: ['シフトリーダー', '新人教育担当'],
+      action: ['混雑する時間帯の動き方のメモ作り', '品出しの手順の見直し', '新人への説明'],
+      result: ['新しく入った人への引き継ぎ', 'ミスの件数が半分に'],
+      hard: ['忙しい時間帯の対応', 'お客様からの指摘']
+    },
+    'ボランティア': {
+      role: ['班のまとめ役'],
+      action: ['地域の清掃活動', '子どもへの学習支援', '募金の呼びかけ'],
+      result: ['月1回の活動を2年間継続'],
+      hard: ['参加者が集まらないこと', '相手に合わせて話すこと']
+    },
+    '皆勤・無遅刻無欠席': {
+      role: [],
+      action: ['毎日の早起き', '体調管理', '前日の準備'],
+      result: ['3年間の皆勤', '無遅刻無欠席'],
+      hard: ['体調をくずしたとき', '朝が苦手なこと']
+    },
+    '地域の活動': {
+      role: ['高校生代表'],
+      action: ['祭りの運営の手伝い', '地域の方への聞き取り'],
+      result: ['来場者からの感謝の言葉'],
+      hard: ['大人の中で意見を言うこと']
+    },
+    '習い事・クラブチーム': {
+      role: ['キャプテン', '学年リーダー'],
+      action: ['週3回の練習', '基礎の反復'],
+      result: ['大会出場', '級の取得'],
+      hard: ['学校生活との両立']
+    },
+    '作品づくり・制作': {
+      role: ['制作担当'],
+      action: ['作品の設計', '毎日の制作時間の確保'],
+      result: ['コンクールへの出品', '展示'],
+      hard: ['思いどおりの形にならないこと']
+    },
+    '大会・コンクールへの挑戦': {
+      role: ['代表', 'チームリーダー'],
+      action: ['過去の入賞作品の研究', '毎日の練習'],
+      result: ['県大会出場', '入賞'],
+      hard: ['結果が出ない時期', '緊張への対応']
+    },
+    '家の手伝い・家業': {
+      role: [],
+      action: ['毎日の夕食づくり', '店の手伝い', '弟妹の世話'],
+      result: ['家族から任されるようになったこと'],
+      hard: ['学校生活との両立', '時間のやりくり']
+    }
+  };
+
+  const ACTIVITY_DEFAULT = {
+    role: ['リーダー', '記録担当', 'まとめ役'],
+    action: ['毎日の記録', '手順の見直し', '仲間への声かけ'],
+    result: ['続けられたこと', '周りの反応が変わったこと'],
+    hard: ['時間のやりくり', '意見がまとまらないこと']
+  };
+
+  /** 選ばれた活動に合わせた例。自由入力の活動には共通の例を返す */
+  function activityOf(label) {
+    return ACTIVITY[label] || ACTIVITY_DEFAULT;
+  }
+
+  /** n 番目に選んだ活動 */
+  function effortAt(d, i) {
+    return ((d || {}).efforts || [])[i] || '';
+  }
+
+  /** 活動名を「」でくくる。未選択なら「その活動」 */
+  function effortName(d) {
+    const t = effortAt(d, 0);
+    return t ? '「' + t + '」' : 'その活動';
+  }
+
   /** がんばったこと：いつのことか（そのまま「私は◯◯、〜」に入る） */
   const EFFORT_WHEN = ['1年生のとき', '2年生のとき', '3年生のとき',
     '1・2年生の2年間', '2年生からの2年間', '1年生から3年間',
@@ -529,13 +664,22 @@
   //  設問
   //  only を持つ設問は、その構成を選んだときだけ出す。
   // ══════════════════════════════════════════════════════
-  function buildSteps(mode, template) {
+  /**
+   * @param {String} mode      進学／就職
+   * @param {String} template  文章の型
+   * @param {Object} [data]    いまの回答。渡すと showIf による出し分けが働く。
+   *                           省略すると「出る可能性のある設問」をすべて返す。
+   */
+  function buildSteps(mode, template, data) {
     const isJob = job(mode);
     const tpl = template || 'prep';
 
     function usable(f) {
       if (!f) return false;
-      return !f.only || f.only.indexOf(tpl) !== -1;
+      if (f.only && f.only.indexOf(tpl) === -1) return false;
+      // 回答が渡されているときだけ、答えに応じた出し分けをする
+      if (data && f.showIf && !f.showIf(data)) return false;
+      return true;
     }
 
     /**
@@ -676,8 +820,8 @@
           {
             id: 'effort',
             name: '高校でがんばったこと',
-            desc: 'まず1つ選び、そのことだけを最後まで掘り下げます。'
-              + '以下の質問は、すべてここで選んだ活動についての質問です。'
+            desc: '1つ目に選んだ活動を最後まで掘り下げ、2つ目・3つ目は一言ずつ添えます。'
+              + '掘り下げる質問は、すべて1つ目の活動についての質問です。'
           },
           {
             id: 'youself',
@@ -704,26 +848,30 @@
               '皆勤・無遅刻無欠席', '地域の活動', '習い事・クラブチーム', '作品づくり・制作',
               '大会・コンクールへの挑戦', '家の手伝い・家業'],
             allowFree: true,
-            hint: '最初に押したものが文章の中心になります。3つまで選べます。'
+            rerender: true,
+            hint: '3つまで選べます。最初に押したものが文章の中心になり、'
+              + 'このあとの質問はすべてその活動についての質問になります。'
+              + '2つ目・3つ目を選ぶと、それぞれについて聞く欄が下に増えます。'
               + '当てはまるものがなければ、「＋ 自分で追加」から書き足せます。'
           },
           {
             id: 'effortWhen', group: 'effort', type: 'select',
-            label: 'その活動に取り組んでいたのは、いつですか', required: true,
+            label: function (d) { return effortName(d) + 'に取り組んでいたのは、いつですか'; },
+            required: true,
             refer: function (d) { return about((d.efforts || [])[0]); },
             options: EFFORT_WHEN,
             default: '1年生から3年間',
             preview: function (d) {
-              const top = (d.efforts || [])[0] || '部活動';
+              const top = effortAt(d, 0) || '部活動';
               return (d.effortWhen || '1年生から3年間') + '、いちばん力を入れてきたのは' + top + 'です。';
             }
           },
           {
             id: 'effortRole', group: 'effort', type: 'text', maxChars: 15,
-            label: 'その活動での役割（あれば）',
-            refer: function (d) { return about((d.efforts || [])[0]); },
-            placeholder: '副キャプテン',
-            examples: ['副キャプテン', '会計', '班長', 'パートリーダー'],
+            label: function (d) { return effortName(d) + 'での役割（あれば）'; },
+            refer: function (d) { return about(effortAt(d, 0)); },
+            placeholder: function (d) { return activityOf(effortAt(d, 0)).role[0] || '班長'; },
+            examples: function (d) { return activityOf(effortAt(d, 0)).role; },
             hint: '肩書きの名前だけ書きます。役割がなければ、空のままで構いません。',
             preview: function (d) {
               if (!txt(d.effortRole) || !txt(d.effortAction)) return '';
@@ -732,10 +880,11 @@
           },
           {
             id: 'effortAction', group: 'effort', type: 'text', maxChars: 30,
-            label: 'その活動の中で、自分がやったこと', required: true,
-            refer: function (d) { return about((d.efforts || [])[0]); },
-            placeholder: '練習メニューの見直し',
-            examples: ['練習メニューの見直し', '週3回の朝練習の記録', '1年生への声かけ', '地元商店街での聞き取り調査'],
+            label: function (d) { return effortName(d) + 'の中で、自分がやったこと'; },
+            required: true,
+            refer: function (d) { return about(effortAt(d, 0)); },
+            placeholder: function (d) { return activityOf(effortAt(d, 0)).action[0]; },
+            examples: function (d) { return activityOf(effortAt(d, 0)).action; },
             hint: '「何をしたか」を、ものごとの名前で短く書きます。'
               + '数（週3回・50人・3か月）が入ると、いっきに具体的になります。',
             avoid: '「がんばりました」「一生懸命やりました」のような文は書きません',
@@ -770,8 +919,8 @@
             noteIn: { story: 'エピソード型は体験が主役なので、ここが文章の山場になります。' },
             refer: function (d) { return about(d.effortAction); },
             only: ['prep', 'story', 'gap', 'three'],
-            placeholder: '県大会ベスト8',
-            examples: ['県大会ベスト8', '来場者200人', 'ミスの件数が半分に', '新しく入った人への引き継ぎ'],
+            placeholder: function (d) { return activityOf(effortAt(d, 0)).result[0]; },
+            examples: function (d) { return activityOf(effortAt(d, 0)).result; },
             hint: '数字・順位・回数が入ると説得力が出ます。'
               + '大きな結果でなくて構いません。「前より良くなったこと」で十分です。',
             preview: function (d) {
@@ -781,10 +930,10 @@
           {
             id: 'effortHard', group: 'effort', type: 'text', maxChars: 30,
             only: ['prep', 'story', 'gap', 'three'],
-            label: 'その中で、いちばん大変だったこと',
-            refer: function (d) { return about((d.efforts || [])[0]); },
-            placeholder: '練習時間が合わないこと',
-            examples: ['練習時間が合わないこと', '意見がまとまらないこと', '数字が合わないこと'],
+            label: function (d) { return effortName(d) + 'で、いちばん大変だったこと'; },
+            refer: function (d) { return about(effortAt(d, 0)); },
+            placeholder: function (d) { return activityOf(effortAt(d, 0)).hard[0]; },
+            examples: function (d) { return activityOf(effortAt(d, 0)).hard; },
             hint: '大変だったことを書くと、そのあとの「乗り越え方」が活きます。'
               + '空でも進めますが、ここが書けると文章にぐっと厚みが出ます。',
             avoid: '「大変でした」だけでは、何が大変だったのか伝わりません',
@@ -812,7 +961,8 @@
           },
           {
             id: 'effortLearned', group: 'effort', type: 'text', maxChars: 30,
-            label: 'この活動全体をふり返って、学んだこと', required: true,
+            label: function (d) { return effortName(d) + 'をふり返って、学んだこと'; },
+            required: true,
             refer: function (d) { return about((d.efforts || [])[0]); },
             placeholder: '役割を分けることの大切さ',
             examples: ['役割を分けることの大切さ', '人に合わせて説明を変える力', '手順を共有することの大切さ'],
@@ -820,6 +970,46 @@
             avoid: '「成長できました」だけでは、何を学んだか伝わりません',
             preview: function (d) {
               return txt(d.effortLearned) ? 'この経験から、' + txt(d.effortLearned) + 'を学びました。' : '';
+            }
+          },
+          {
+            id: 'effort2Action', group: 'effort', type: 'text', maxChars: 30,
+            showIf: function (d) { return (d.efforts || []).length >= 2; },
+            label: function (d) {
+              return '「' + (effortAt(d, 1) || '2つ目の活動') + '」では、何をしましたか';
+            },
+            refer: function (d) { return about(effortAt(d, 1)); },
+            placeholder: function (d) { return activityOf(effortAt(d, 1)).action[0]; },
+            examples: function (d) { return activityOf(effortAt(d, 1)).action; },
+            hint: '2つ目に選んだ活動です。1つ目ほどくわしくなくて構いません。'
+              + 'ここに書いたことは「また、◯◯では〜」という一文になります。',
+            preview: function (d) {
+              const name = effortAt(d, 1);
+              if (!name) return '';
+              return frame(d.effort2Action,
+                'また、' + name + 'では{X}にも取り組みました。',
+                'また、' + name + 'では{X}ことにも取り組みました。');
+            }
+          },
+          {
+            id: 'effort3Action', group: 'effort', type: 'text', maxChars: 30,
+            showIf: function (d) { return (d.efforts || []).length >= 3; },
+            label: function (d) {
+              return '「' + (effortAt(d, 2) || '3つ目の活動') + '」では、何をしましたか';
+            },
+            refer: function (d) { return about(effortAt(d, 2)); },
+            placeholder: function (d) { return activityOf(effortAt(d, 2)).action[0]; },
+            examples: function (d) { return activityOf(effortAt(d, 2)).action; },
+            hint: '3つ目に選んだ活動です。ここも一文にまとめられます。',
+            preview: function (d) {
+              const a = effortAt(d, 1);
+              const b = effortAt(d, 2);
+              const x = txt(d.effort2Action);
+              const y = txt(d.effort3Action);
+              if (!b || !y) return '';
+              return x
+                ? 'また、' + a + 'では' + x + 'に、' + b + 'では' + y + 'にも取り組みました。'
+                : 'また、' + b + 'では' + y + 'にも取り組みました。';
             }
           },
           {
@@ -1474,21 +1664,24 @@
    *   special … その型でだけ（または少数の型でだけ）聞く設問の数
    *   skipped … ほかの型では聞くのに、この型では聞かない設問の数
    */
-  function diffFor(mode, template) {
-    const here = buildSteps(mode, template)
+  function diffFor(mode, template, data) {
+    // data を渡すと、いまの答えで実際に出る設問だけを数える。
+    // （打ち込んだ活動を2つ・3つ選ぶと、そのぶん設問が増えるため）
+    const d = data || {};
+    const here = buildSteps(mode, template, d)
       .reduce(function (a, s) { return a.concat(s.fields); }, []);
     const ids = here.map(function (f) { return f.id; });
 
     let widest = 0;
     TEMPLATE_IDS.forEach(function (id) {
-      const n = buildSteps(mode, id)
+      const n = buildSteps(mode, id, d)
         .reduce(function (a, s) { return a.concat(s.fields); }, []).length;
       if (n > widest) widest = n;
     });
 
     const all = {};
     TEMPLATE_IDS.forEach(function (id) {
-      buildSteps(mode, id).forEach(function (s) {
+      buildSteps(mode, id, d).forEach(function (s) {
         s.fields.forEach(function (f) { all[f.id] = true; });
       });
     });
