@@ -364,20 +364,12 @@
 
       studentName: bare(d.studentName),
       efforts: efforts,
-      effortTop: efforts[0] || '学校生活',
+      // 「部活動」ではなく「吹奏楽部での活動」のように、答えた名前で呼ぶ
+      effortTop: Q.effortTopWord(d) || efforts[0] || '学校生活',
       // 生徒がわざわざ書いた具体は、一般論より先に本文へ入れる。
       // （0=骨組み 1=必須 2=推奨 3=余裕があれば）
-      pOthers: (bare(d.effort2Action) || bare(d.effort3Action)) ? 2 : 3,
       pTraits: bare(d.personalityScene) ? 2 : 3,
       pStrengths: bare(d.strengthScene) ? 2 : 3,
-
-      // 2つ目・3つ目に選んだ活動の名前。書き出しの一文に必ず入れる
-      otherNames: efforts.slice(1, 3).filter(function (x) { return x; }),
-      // 2つ目・3つ目の活動でしたことは、一文にまとめて添える
-      others: [
-        { name: efforts[1], what: bare(d.effort2Action), learned: bare(d.effort2Learned) },
-        { name: efforts[2], what: bare(d.effort3Action), learned: bare(d.effort3Learned) }
-      ].filter(function (x) { return x.name && x.what; }),
       effortWhen: bare(d.effortWhen),
       effortRole: bare(d.effortRole),
       effortAction: bare(d.effortAction),
@@ -566,19 +558,6 @@
       '私がもっとも打ち込んだのは',
       'いちばん時間をかけてきたのは'
     ], 4);
-    // 2つ目・3つ目を選んだ人は、その名前をこの一文に入れてしまう。
-    // ここは削られない優先度なので、「3つ選んだのに1つしか出ない」を防げる
-    // 「毎日走った」のように述語で書く人がいるので、名詞の形に受け直す
-    const rest = m.otherNames.map(function (n) {
-      const w = global.QUESTIONS.plainWord(n);
-      return global.QUESTIONS.isPredicate(w) ? w + 'こと' : n;
-    });
-    if (rest.length) {
-      const tail = joinNouns(rest, 2) + variant(m, ['にも力を入れてきました。', 'にも取り組んできました。'], 25);
-      const head = (m.effortWhen || '高校生活で') + '、';
-      const top = fit(m.effortTop, '{X}を中心に、', '{X}ことを中心に、') || '学校生活を中心に、';
-      return head + top + tail;
-    }
     return fit(m.effortTop, lead + '{X}です。', lead + '{X}ことです。')
       || lead + '学校生活です。';
   }
@@ -649,40 +628,7 @@
       'いずれは{X}人になりたいと考えています。');
   }
 
-  /**
-   * 2つ目・3つ目に選んだ活動。
-   * 1つ目のように掘り下げず、「また、◯◯では〜」と一文で添える。
-   * 3つ選んだのに1つしか文章に出ない、という状態をなくすための文。
-   */
-  function sEffortOthers(m) {
-    if (!m.others.length) return '';
 
-    // 「行事の企画」も「行事を企画しました」も同じ形に受けられるようにする
-    const noun = function (w) {
-      const t = global.QUESTIONS.plainWord(w);
-      return global.QUESTIONS.isPredicate(t) ? t + 'こと' : w;
-    };
-
-    // 活動名は書き出しの一文がすでに挙げているので、ここで「また、〜にも」は重ねない。
-    // 1つ目の活動の文が「〜に取り組みました」で終わるので、言い方も変える
-    return m.others.map(function (o) {
-      return o.name + 'では' + noun(o.what);
-    }).join('に、') + variant(m, ['にも時間をかけました。', 'にも励みました。'], 26);
-  }
-
-  /**
-   * 2つ目・3つ目の活動で身についたこと。
-   * 字数が苦しいときは、上の一文だけを残してここが削られる。
-   */
-  function sEffortOthersLearned(m) {
-    const got = m.others.filter(function (o) { return o.learned; })
-      .map(function (o) {
-        const t = global.QUESTIONS.plainWord(o.learned);
-        return global.QUESTIONS.isPredicate(t) ? t + 'こと' : o.learned;
-      });
-    if (!got.length) return '';
-    return 'そこで身についたのは、' + joinNouns(got, 2) + 'です。';
-  }
 
   function sEffortLearned(m) {
     const lead = variant(m, ['この経験から、', 'この取り組みを通して、', 'ここから私は、'], 5);
@@ -905,8 +851,6 @@
     push(p4, sEffortHard(m), 2);
     push(p4, sEffortHow(m), 2);
     push(p4, sEffortLearned(m), 1);
-    push(p4, sEffortOthers(m), m.pOthers);
-    push(p4, sEffortOthersLearned(m), 3);
     push(p4, sSelfTraits(m), m.pTraits);
     push(p4, sStrengths(m), m.pStrengths);
     push(p4, sLicenses(m), 3);
@@ -944,8 +888,6 @@
     push(p1, sEffortHard(m), 2);
     push(p1, sEffortHow(m), 2);
     push(p1, sEffortLearned(m), 1);
-    push(p1, sEffortOthers(m), m.pOthers);
-    push(p1, sEffortOthersLearned(m), 3);
     push(p1, sSelfTraits(m), m.pTraits);
     push(p1, sStrengths(m), m.pStrengths);
     push(p1, sLicenses(m), 3);
@@ -1034,8 +976,6 @@
     push(p4, sEffortHard(m), 3);
     push(p4, sEffortHow(m), 3);
     push(p4, sEffortLearned(m), 2);
-    push(p4, sEffortOthers(m), m.pOthers);
-    push(p4, sEffortOthersLearned(m), 3);
     push(p4, sSelfTraits(m), m.pTraits);
     push(p4, sStrengths(m), m.pStrengths);
     push(p4, sLicenses(m), 3);
@@ -1095,8 +1035,6 @@
     push(p3, sEffortHard(m), 2);
     push(p3, sEffortHow(m), 2);
     push(p3, sEffortLearned(m), 1);
-    push(p3, sEffortOthers(m), m.pOthers);
-    push(p3, sEffortOthersLearned(m), 3);
     push(p3, sSelfTraits(m), m.pTraits);
     push(p3, sStrengths(m), m.pStrengths);
     push(p3, sLicenses(m), 3);
@@ -1144,8 +1082,6 @@
     push(p2, sEffortHard(m), 2);
     push(p2, sEffortHow(m), 2);
     push(p2, sEffortLearned(m), 1);
-    push(p2, sEffortOthers(m), m.pOthers);
-    push(p2, sEffortOthersLearned(m), 3);
     push(p2, sSelfTraits(m), m.pTraits);
     push(p2, sStrengths(m), m.pStrengths);
     push(p2, sLicenses(m), 3);
@@ -1231,8 +1167,6 @@
     push(p4, sEffortHard(m), 2);
     push(p4, sEffortHow(m), 2);
     push(p4, sEffortLearned(m), 1);
-    push(p4, sEffortOthers(m), m.pOthers);
-    push(p4, sEffortOthersLearned(m), 3);
     push(p4, sSelfTraits(m), m.pTraits);
     push(p4, sStrengths(m), m.pStrengths);
     push(p4, sLicenses(m), 3);
@@ -1582,10 +1516,7 @@
       ['afterGradWhat', job ? '将来の姿' : '卒業後の目標', d.afterGradWhat],
       ['targetPolicy', '共感した理念', d.targetPolicy],
       ['licenses', '資格・免許', d.licenses],
-      ['effort2Action', '2つ目の活動でしたこと', d.effort2Action],
-      ['effort2Learned', '2つ目の活動で身についたこと', d.effort2Learned],
-      ['effort3Action', '3つ目の活動でしたこと', d.effort3Action],
-      ['effort3Learned', '3つ目の活動で身についたこと', d.effort3Learned],
+      ['effortWhich', 'どの活動か', d.effortWhich],
       ['strengthScene', '得意なことを活かせる場面', d.strengthScene],
       ['personalityScene', '性格を活かせる場面', d.personalityScene]
     ].forEach(function (row) {

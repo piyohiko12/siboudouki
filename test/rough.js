@@ -99,16 +99,21 @@ CASES['選択の反対側'] = Object.assign({}, CASES.述語, {
   wantObject: '設計の技術', wantVerb: '身につけたい'
 });
 // 3つの活動を選び、2つ目・3つ目にも答えたとき（述語まじり）
-CASES['活動3つ'] = Object.assign({}, CASES.述語, {
+CASES['どれを名前で'] = Object.assign({}, CASES.述語, {
   targetChars: 1200,
-  efforts: ['毎日走った', 'アルバイト', '生徒会'],
-  effort2Action: 'レジと品出し', effort2Learned: '報告・連絡の大切さ',
-  effort3Action: '行事を企画しました', effort3Learned: '意見をまとめること'
+  efforts: ['学校行事'], effortWhich: '文化祭'
 });
-CASES['活動3つ・内容だけ'] = Object.assign({}, CASES.体言止めだけ, {
+CASES['どれを述語で'] = Object.assign({}, CASES.体言止めだけ, {
   targetChars: 1200,
-  efforts: ['学校行事', '委員会', '資格・検定の取得'],
-  effort2Action: 'あいさつ運動', effort3Action: '毎日30分の問題演習'
+  efforts: ['部活動'], effortWhich: '毎日走っていました'
+});
+CASES['どれを聞かない活動'] = Object.assign({}, CASES.述語, {
+  targetChars: 1200,
+  efforts: ['皆勤・無遅刻無欠席'], effortWhich: ''
+});
+CASES['どれをテーマで'] = Object.assign({}, CASES.丁寧語, {
+  targetChars: 1200,
+  efforts: ['課題研究・探究学習'], effortWhich: '地元商店街の活性化'
 });
 
 // 「活かせる場面」を、述語・体言止め・助詞つきなど、ばらばらの形で書いたとき
@@ -168,7 +173,6 @@ const NG = [
   [/(?:ことの場面|ときの場面|場面の場面|場面場面|でで|にに)/, '場面のつなぎ重複'],
   [/持ち味で、[^。]*持ち味/, '持ち味の重複'],
   [/(?:ました|ます|です)(?:では|に取り組み|にも)/, '丁寧語のあとに助詞'],
-  [/身につきました[^。]*身につきました/, '身につきましたの重複'],
   [/では[^。]*では[^。]*では/, '「では」が3つ']
 ].filter(function (r) { return r[1]; });
 

@@ -105,96 +105,42 @@ async function runMode(browser, key, errors) {
   // ── STEP 3：自分を知る ──────────────────────────
   console.log('STEP3:', await page.textContent('#stepLabel'));
 
-  // 打ち込んだこと：1つめを選ぶと、あとの設問がその活動に合わせて変わる
-  await page.click('[data-field="efforts"] .chip:has-text("部活動")');
-  await page.waitForTimeout(250);
-  console.log('  1つ選んだとき:');
-  console.log('    役割の設問:', (await page.textContent('[data-field="effortRole"] .field__q')).trim());
-  console.log('    例:', (await page.locator('[data-field="effortRole"] .field__ex').allTextContents()).join(' ').replace(/\s+/g, ' ').trim());
-  console.log('    2つめの設問は出ていない:', (await page.locator('[data-field="effort2Action"]').count()) === 0);
-
-  // 2つめ・3つめを足すと、そのぶんの設問が増える（魅力カードと同じ考え方）
-  await page.click('[data-field="efforts"] .chip:has-text("アルバイト")');
-  await page.waitForTimeout(250);
-  await page.click('[data-field="efforts"] .chip:has-text("資格・検定の取得")');
-  await page.waitForTimeout(250);
-  console.log('  3つ選んだとき:');
+  // 打ち込んだこと：選べるのは1つ。選ぶと、あとの設問がその活動に合わせて変わる
+  await page.click('[data-field="efforts"] .chip:has-text("学校行事")');
+  await page.waitForTimeout(300);
+  console.log('  1つ選んだあと:');
   console.log('    上限の表示:', (await page.textContent('[data-field="efforts"] .chips__meter')).replace(/\s+/g, ' ').trim());
-  console.log('    2つめ:', (await page.textContent('[data-field="effort2Action"] .field__q')).trim());
-  console.log('    3つめ:', (await page.textContent('[data-field="effort3Action"] .field__q')).trim());
-  const locked = await page.locator('[data-field="efforts"] .chip.is-locked').count();
-  console.log('    選んでいない選択肢が押せなくなった数:', locked);
-  await page.fill('#f_effort2Action', 'レジと品出し');
-  await page.fill('#f_effort3Action', '毎日30分の問題演習');
-  await page.waitForTimeout(250);
-  console.log('    内容を書くと「身についたこと」が増える:',
-    await page.locator('[data-field="effort2Learned"]').count(),
-    '/', await page.locator('[data-field="effort3Learned"]').count());
-  await page.fill('#f_effort2Learned', '報告・連絡の大切さ');
-  await page.fill('#f_effort3Learned', '毎日少しずつ続けることの力');
+  console.log('    ほかの選択肢が押せなくなった数:',
+    await page.locator('[data-field="efforts"] .chip.is-locked').count());
+  console.log('    どれかを聞く設問:', (await page.textContent('[data-field="effortWhich"] .field__q')).trim());
+  console.log('    例:', (await page.locator('[data-field="effortWhich"] .field__ex').allTextContents()).join(' ').replace(/\s+/g, ' ').trim());
+  await page.fill('#f_effortWhich', '文化祭');
+  await page.locator('#f_effortWhich').blur();
+  await page.waitForTimeout(350);
+  console.log('    こう文になります:', (await page.textContent('[data-field="effortWhich"] .field__previewText')).trim());
+  console.log('    次の設問の呼び名:', (await page.textContent('[data-field="effortAction"] .field__q')).trim());
 
-  // 選んだ活動によって、聞く設問そのものが変わる
-  const onlyPick = async (name) => {
-    let n = await page.locator('[data-field="efforts"] .chip.is-on').count();
-    while (n--) {
-      await page.click('[data-field="efforts"] .chip.is-on >> nth=0');
-      await page.waitForTimeout(180);
-    }
-    await page.click('[data-field="efforts"] .chip:has-text("' + name + '")');
-    await page.waitForTimeout(250);
-  };
-  await onlyPick('資格・検定の取得');
-  console.log('    「資格・検定の取得」だけ選ぶと 役割:',
-    await page.locator('[data-field="effortRole"]').count(),
-    '問／資格・検定:', await page.locator('[data-field="licenses"]').count(), '問');
-  console.log('      乗り越え方の例:',
-    (await page.locator('[data-field="effortHow"] .field__ex').allTextContents()).join(' ').replace(/\s+/g, ' ').trim() || '（この型では聞かない）');
-  await onlyPick('部活動');
-  console.log('    「部活動」だけ選ぶと     役割:',
-    await page.locator('[data-field="effortRole"]').count(),
-    '問／資格・検定:', await page.locator('[data-field="licenses"]').count(), '問');
-
-  // もとの3つに戻す
-  await page.click('[data-field="efforts"] .chip:has-text("アルバイト")');
-  await page.waitForTimeout(200);
+  // 選び直すと、聞くことも例も入れ替わる
+  await page.click('[data-field="efforts"] .chip.is-on >> nth=0');
+  await page.waitForTimeout(350);
   await page.click('[data-field="efforts"] .chip:has-text("資格・検定の取得")');
-  await page.waitForTimeout(250);
-  await page.fill('#f_effort2Action', 'レジと品出し');
-  await page.fill('#f_effort2Learned', '報告・連絡の大切さ');
-  await page.fill('#f_effort3Action', '毎日30分の問題演習');
-  await page.fill('#f_effort3Learned', '毎日少しずつ続けることの力');
+  await page.waitForTimeout(300);
+  console.log('  「資格・検定の取得」に変えると:');
+  console.log('    どれかを聞く設問:', (await page.textContent('[data-field="effortWhich"] .field__q')).trim());
+  console.log('    役割の設問:', await page.locator('[data-field="effortRole"]').count(), '問');
+  console.log('    資格・検定の設問:', await page.locator('[data-field="licenses"]').count(), '問');
 
-  // 資格・検定は「資格・検定の取得」を選んだ人にだけ出す
-  console.log('    資格・検定の欄:', await page.locator('[data-field="licenses"]').count(), '個（3つ目に選んだので出る）');
+  await page.click('[data-field="efforts"] .chip.is-on >> nth=0');
+  await page.waitForTimeout(350);
+  await page.click('[data-field="efforts"] .chip:has-text("部活動")');
+  await page.waitForTimeout(300);
+  console.log('  「部活動」に変えると:');
+  console.log('    どれかを聞く設問:', (await page.textContent('[data-field="effortWhich"] .field__q')).trim());
+  console.log('    役割の設問:', await page.locator('[data-field="effortRole"]').count(), '問');
+  await page.fill('#f_effortWhich', '吹奏楽部');
+  await page.locator('#f_effortWhich').blur();
+  await page.waitForTimeout(350);
 
-  // 得意なこと・性格は、選ぶと「どんな場面で活かせるか」の欄が増える
-  console.log('  得意なこと・性格:');
-  console.log('    選ぶ前の場面の欄:',
-    (await page.locator('[data-field="strengthScene"]').count())
-    + (await page.locator('[data-field="personalityScene"]').count()), '個');
-  await page.click('[data-field="strengths"] .chip >> nth=0');
-  await page.waitForTimeout(250);
-  await page.click('[data-field="personality"] .chip:has-text("責任感が強い")');
-  await page.waitForTimeout(250);
-  console.log('    得意:', (await page.textContent('[data-field="strengthScene"] .field__q')).trim());
-  console.log('    性格:', (await page.textContent('[data-field="personalityScene"] .field__q')).trim());
-  await page.fill('#f_strengthScene', key === 'shushoku' ? '部品を決まった場所に戻す作業' : 'グループで調べたことをまとめる場面');
-  await page.fill('#f_personalityScene', key === 'shushoku' ? '後輩に手順を教える場面' : '班で意見が分かれたとき');
-  await page.waitForTimeout(200);
-  console.log('    こう文になります:',
-    (await page.textContent('[data-field="personalityScene"] .field__previewText')).trim());
-
-  // 必須と任意の見分け
-  console.log('  必須と任意:');
-  console.log('    凡例:', (await page.textContent('.stepBar__legend')).replace(/\s+/g, ' ').trim());
-  console.log('    必須バッジ:', (await page.locator('.badge--required').first().textContent()).trim(),
-    '／任意バッジ:', (await page.locator('.badge--optional').first().textContent()).trim());
-  console.log('    必須の欄:', await page.locator('.field--required').count(),
-    '／任意の欄:', await page.locator('.field--optional').count());
-  console.log('    バッジは質問文の後ろか:',
-    await page.locator('.field--required .field__label > .field__q + .badge--required').count(),
-    '/', await page.locator('.field--required').count(), '問');
-  console.log('    大題:', (await page.locator('.qgroup__name').allTextContents()).join(' / '));
   await fillIf('#f_effortHard', '意見がまとまらないこと');
   await fillIf('#f_effortHow', '一人ずつ話を聞くこと');
   await fillIf('#f_effortAction', '混雑する時間帯の動き方のメモ作り');

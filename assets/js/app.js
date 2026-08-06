@@ -359,6 +359,11 @@
           emitChange(field.id);
           scheduleSave();
         });
+        // ここに書いた言葉が、あとの設問の文面にも使われる欄。
+        // 1文字ごとに作り直すとカーソルが飛ぶので、欄を離れたときだけ作り直す
+        if (field.rerender) {
+          input.addEventListener('change', function () { save(); render(); });
+        }
         wrap.appendChild(input);
         if (field.maxChars) {
           wrap.appendChild(h('div', { class: 'field__count' }));
@@ -1382,11 +1387,10 @@
       targetChars: d.targetChars || '',
       tone: d.tone || '',
       efforts: (d.efforts || []).join('、'),
+      effortWhich: d.effortWhich || '',
       effortWhen: d.effortWhen || '',
       effortRole: d.effortRole || '',
       effortAction: d.effortAction || '',
-      effort2Action: d.effort2Action || '',
-      effort3Action: d.effort3Action || '',
       effortActionKind: d.effortActionKind || '',
       effortResult: d.effortResult || '',
       effortHard: d.effortHard || '',
@@ -1417,8 +1421,6 @@
       why2: d.whyChain.why2 || '',
       why3: d.whyChain.why3 || '',
       valueFound: d.valueFound || '',
-      effort2Learned: d.effort2Learned || '',
-      effort3Learned: d.effort3Learned || '',
       strengthScene: d.strengthScene || '',
       personalityScene: d.personalityScene || '',
       mustPoint: d.mustPoint || '',
