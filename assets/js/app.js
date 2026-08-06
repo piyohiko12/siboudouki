@@ -37,8 +37,15 @@
   }
 
   /**
-   * 0 進路 → 1 型 → 2〜5 設問 → 6 組み立て → 7 見直し → 8 提出
-   * 型を先に決めてから質問するので、聞いた材料が全部本文に使われる。
+   * 0 進路 → 1 型 → 2〜7 設問 → 8 組み立て → 9 見直し → 10 提出
+   *
+   * 設問は、志望動機を考える順番そのものになるように並べている。
+   *   基本情報   だれが、どこへ
+   *   自分を知る 高校でやってきたことの棚おろし
+   *   思い出す   志望先で心が動いた瞬間
+   *   調べる     その場面のうしろにある中身
+   *   つなげる   自分と志望先の重なりを見つけ、志望理由の一文にする
+   *   その先     入ったあと、そしてその先
    */
   function views() {
     return [
@@ -46,8 +53,10 @@
       { id: 'pick', title: '文章の型をえらぶ', short: '型' },
       { id: 'basic', title: '基本情報', short: '基本' },
       { id: 'self', title: '自分を知る', short: '自分' },
-      { id: 'research', title: isJob() ? '会社を知る' : '学校を知る', short: isJob() ? '会社' : '学校' },
+      { id: 'recall', title: '思い出す', short: '場面' },
+      { id: 'research', title: isJob() ? '会社を調べる' : '学校を調べる', short: '調べる' },
       { id: 'connect', title: 'つなげる', short: 'つなぐ' },
+      { id: 'after', title: 'その先を書く', short: 'その先' },
       { id: 'compose', title: '組み立てる', short: '組立' },
       { id: 'review', title: '見直す', short: '見直し' },
       { id: 'submit', title: '提出する', short: '提出' }
@@ -817,7 +826,7 @@
   // 選択肢の中身が進路でちがう欄。進路を変えたら、前の進路の値が残らないよう白紙に戻す。
   // 残しておくと、プルダウンには何も選ばれていないのに本文だけ古い値で組まれる。
   const COURSE_SPECIFIC_FIELDS = [
-    'orgType', 'examType',                       // 志望先の種類・応募方法
+    'orgType', 'examType', 'featureSource',      // 志望先の種類・応募方法・情報源
     'strengths', 'attractPoints', 'afterEnter', 'visited', 'knewBy',
     'featureKind', 'wantVerb',                   // 特色の種類・どうしたいか
     'studyWant', 'jobTask',                      // 進学だけ／就職だけの欄
@@ -1349,6 +1358,8 @@
       effortAction: d.effortAction || '',
       effortActionKind: d.effortActionKind || '',
       effortResult: d.effortResult || '',
+      effortHard: d.effortHard || '',
+      effortHow: d.effortHow || '',
       effortLearned: d.effortLearned || '',
       strengths: (d.strengths || []).join('、'),
       licenses: d.licenses || '',
@@ -1364,6 +1375,7 @@
       featureKind: d.featureKind || '',
       featureName: d.featureName || '',
       featureNamed: d.featureNamed || '',
+      featureSource: d.featureSource || '',
       featureDetail: d.featureDetail || '',
       studyWant: d.studyWant || '',
       jobTask: d.jobTask || '',
@@ -1373,6 +1385,7 @@
       why1: d.whyChain.why1 || '',
       why2: d.whyChain.why2 || '',
       why3: d.whyChain.why3 || '',
+      valueFound: d.valueFound || '',
       mustPoint: d.mustPoint || '',
       afterEnter: (d.afterEnter || []).join('、'),
       afterAction: d.afterAction || '',
@@ -1381,6 +1394,7 @@
       afterGradWhen: d.afterGradWhen || '',
       afterGradKind: d.afterGradKind || '',
       afterGradWhat: d.afterGradWhat || '',
+      contributeTo: d.contributeTo || '',
       template: (global.COMPOSE.TEMPLATES.find(function (t) { return t.id === d.template; }) || {}).name || '',
       body: d.body || '',
       bodyChars: global.COMPOSE.countChars(d.body || '')
@@ -1584,7 +1598,7 @@
     if (view.id === 'pick' && !validatePicks()) return;
     const step = steps().find(function (s) { return s.id === view.id; });
     if (step && !validateStep(step)) return;
-    if (view.id === 'connect') regenerate(!state.bodyEdited);
+    if (view.id === 'after') regenerate(!state.bodyEdited);
     state.index = Math.min(state.index + 1, V.length - 1);
     render();
   }

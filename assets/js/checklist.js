@@ -140,7 +140,10 @@
   function checkFuture(text, d) {
     const job = d.course === 'shushoku';
     const label = job ? '入社後の目標' : '入学後の目標';
-    const re = job ? /入社|働|仕事|職場|業務/ : /入学|学び|学ん|研究|履修|在学/;
+    // 志望先の種類で「入社後」「採用後」「就職後」と言い方が変わる
+    const re = job
+      ? /入社|入職|採用|就職|勤務|働|仕事|職場|業務/
+      : /入学|学び|学ん|研究|履修|在学/;
     if (re.test(text)) {
       return result('future', label, 'ok', (job ? '入社後' : '入学後') + 'について書かれています。');
     }

@@ -105,17 +105,22 @@ async function runMode(browser, key, errors) {
   // ── STEP 3：自分を知る ──────────────────────────
   console.log('STEP3:', await page.textContent('#stepLabel'));
   await page.click('[data-field="efforts"] .chip >> nth=0');
+  await fillIf('#f_effortHard', '意見がまとまらないこと');
+  await fillIf('#f_effortHow', '一人ずつ話を聞くこと');
   await fillIf('#f_effortAction', '混雑する時間帯の動き方のメモ作り');
   await fillIf('#f_effortResult', '新しく入った人への引き継ぎ');
   await fillIf('#f_effortLearned', '手順を共有することの大切さ');
   await fillIf('#f_licenses', '危険物取扱者乙種4類');
   await clickIf('[data-field="personality"] .chip:has-text("責任感が強い")');
   await fillIf('#f_futureDream', 'ものづくり');
+  if (await page.locator('#f_futureWhySource').count()) {
+    await page.selectOption('#f_futureWhySource', '自分の体験から');
+  }
   await fillIf('#f_futureWhyWhat', '先輩が新人に教えている姿');
   await fillIf('#f_gapNow', '自分から動く力');
   await step();
 
-  // ── STEP 4：学校／会社を知る ────────────────────
+  // ── STEP 4：思い出す（出会いと魅力カード）────────
   console.log('STEP4:', await page.textContent('#stepLabel'));
 
   await page.selectOption('.attrCard select', d.cardWhere);
@@ -134,27 +139,37 @@ async function runMode(browser, key, errors) {
 
   await clickIf('[data-field="visited"] .chip >> nth=0');
   await page.click('[data-field="attractPoints"] .chip:has-text("' + d.chips.research + '")');
+  await step();
+
+  // ── STEP 5：調べる ─────────────────────────────
+  console.log('STEP5:', await page.textContent('#stepLabel'));
   await page.fill('#f_featureName', d.feature);
   await fillIf('#f_featureDetail', d.featureDetail);
   await fillIf('#' + d.extraId, d.extra);
   await step();
 
-  // ── STEP 5：つなげる ───────────────────────────
-  console.log('STEP5:', await page.textContent('#stepLabel'));
+  // ── STEP 6：つなげる ───────────────────────────
+  console.log('STEP6:', await page.textContent('#stepLabel'));
+  await fillIf('#f_valueFound', '人と話しながら考えを深めること');
   await page.fill('#f_wantObject', d.mainReason);
   const whys = page.locator('.why textarea');
   await whys.nth(0).fill('文化祭の運営で自分たちで決めて動くのが楽しかったから');
   await whys.nth(1).fill('任されたほうが責任を感じて力が出たから');
   await whys.nth(2).fill('自分で考えて動ける環境のほうが力を発揮できると気づいたから');
   await page.fill('#f_mustPoint', '最後まで責任を持つ体制');
-  await page.click('[data-field="afterEnter"] .chip:has-text("' + d.chips.after + '")');
-  await page.fill('#f_afterAction', '先輩への質問');
-  await page.fill('#f_afterGradWhat', '後輩に教えられる技術');
-  if (d.contribution) await page.fill('#f_contribution', d.contribution);
   await step();
 
-  // ── STEP 6：組み立てる ─────────────────────────
-  console.log('STEP6:', await page.textContent('#stepLabel'));
+  // ── STEP 7：その先を書く ───────────────────────
+  console.log('STEP7:', await page.textContent('#stepLabel'));
+  await page.click('[data-field="afterEnter"] .chip:has-text("' + d.chips.after + '")');
+  await page.fill('#f_afterAction', '先輩への質問');
+  await fillIf('#f_contribution', d.contribution || '最後までやり切る力');
+  await page.fill('#f_afterGradWhat', '後輩に教えられる技術');
+  await fillIf('#f_contributeTo', '同じ高校の後輩');
+  await step();
+
+  // ── STEP 8：組み立てる ─────────────────────────
+  console.log('STEP8:', await page.textContent('#stepLabel'));
   await page.waitForTimeout(350);
   console.log('  いまの型:', (await page.textContent('.tplNow')).replace(/\s+/g, ' ').trim());
   console.log('  型の選び直しボタン:', await page.locator('.tplNow .btn').count() === 1);
@@ -164,12 +179,12 @@ async function runMode(browser, key, errors) {
   console.log('  ' + (await page.textContent('#unusedBox')).replace(/\s+/g, ' ').trim().slice(0, 160));
   await step();
 
-  console.log('\nSTEP7:', (await page.textContent('.scoreRow')).replace(/\s+/g, ' ').trim());
+  console.log('\nSTEP9:', (await page.textContent('.scoreRow')).replace(/\s+/g, ' ').trim());
   const labels = await page.locator('.check__label').allTextContents();
   console.log('  チェック項目:', labels.join(' / '));
   await step();
 
-  console.log('\nSTEP8:', (await page.textContent('.summary')).replace(/\s+/g, ' ').trim());
+  console.log('\nSTEP10:', (await page.textContent('.summary')).replace(/\s+/g, ' ').trim());
   return page;
 }
 
@@ -198,10 +213,20 @@ async function runMode(browser, key, errors) {
   await page.waitForTimeout(250);
   await page.click('.courseCard:has-text("就職")');
   await page.waitForTimeout(300);
-  await page.click('#stepTabs .tab:nth-child(5)');
+  // 進路を変えると必須が空に戻るので、タブでは先へ行けない（B-3 の検証も兼ねる）
+  await page.click('#stepTabs .tab:nth-child(6)');
   await page.waitForTimeout(300);
-  console.log('切替後のSTEP4:', await page.textContent('#stepLabel'));
-  console.log('  就職用の設問に入れ替わったか:', await page.locator('#f_jobTask').count() === 1);
+  console.log('進路を変えたあと、タブで先へ飛ぶと:', (await page.textContent('#stepLabel')).trim(),
+    'で止まる');
+  await page.selectOption('#f_orgType', '会社（民間企業）');
+  // 設問セットが就職用に入れ替わったかは、定義側で確かめる
+  const swapped = await page.evaluate(() => {
+    const ids = window.QUESTIONS.buildSteps('shushoku', 'gap')
+      .reduce((a, s) => a.concat(s.fields.map(f => f.id)), []);
+    return { jobTask: ids.indexOf('jobTask') !== -1, studyWant: ids.indexOf('studyWant') !== -1 };
+  });
+  console.log('  就職用の「仕事の理解」が出るか:', swapped.jobTask,
+    '／進学用の「受けたい授業」が消えたか:', !swapped.studyWant);
 
   await page.click('#stepTabs .tab:nth-child(1)');
   await page.waitForTimeout(300);

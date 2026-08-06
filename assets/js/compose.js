@@ -367,6 +367,8 @@
       effortAction: bare(d.effortAction),
       effortMade: d.effortActionKind === '自分が作ったもの・仕組み',
       effortResult: bare(d.effortResult),
+      effortHard: bare(d.effortHard),
+      effortHow: bare(d.effortHow),
       effortLearned: bare(d.effortLearned),
 
       strengths: d.strengths || [],
@@ -385,6 +387,7 @@
       featureName: bare(d.featureName),
       featureNamed: d.featureNamed !== '名前はなく、特徴を書いた',
       featureDetail: bare(d.featureDetail),
+      featureSource: bare(d.featureSource),
       studyWant: bare(d.studyWant),
       jobTask: bare(d.jobTask),
       policy: bare(d.targetPolicy),
@@ -395,6 +398,7 @@
       deepReason: firstOf(chain.why3, chain.why2, chain.why1),
       midReason: firstOf(chain.why2, chain.why1),
 
+      valueFound: bare(d.valueFound),
       mustPoint: bare(d.mustPoint),
       after: d.afterEnter || [],
       afterAction: bare(d.afterAction),
@@ -402,7 +406,8 @@
       contribution: bare(d.contribution),
       afterGradWhen: bare(d.afterGradWhen),
       afterGradIsSelf: d.afterGradKind === 'なっていたい自分の姿',
-      afterGradWhat: bare(d.afterGradWhat)
+      afterGradWhat: bare(d.afterGradWhat),
+      contributeTo: bare(d.contributeTo)
     };
   }
 
@@ -552,6 +557,39 @@
     return fit(m.effortResult, pair[0], pair[1]);
   }
 
+  /** いちばん大変だったこと。ここがあると、次の「乗り越え方」が活きる */
+  function sEffortHard(m) {
+    return fit(m.effortHard, 'いちばん大変だったのは{X}です。', '{X}ことが、いちばん大変でした。');
+  }
+
+  /** どう乗り越えたか。困ったときにどう動く人かが、いちばん伝わる部分 */
+  function sEffortHow(m) {
+    if (!m.effortHard) return '';
+    return fit(m.effortHow,
+      'それでも{X}によって、続けることができました。',
+      'それでも{X}ことで、続けることができました。');
+  }
+
+  /** 心が動いた場面と自分の経験に共通するもの。志望理由の芯になる */
+  function sValue(m) {
+    return fit(m.valueFound,
+      'そこから私は、{X}を大切にするようになりました。',
+      'そこから私は、{X}ことを大切にするようになりました。');
+  }
+
+  /** 特色をどこで知ったか。調べた事実をはっきりさせる */
+  function sFeatureSource(m) {
+    if (!m.featureName || !m.featureSource) return '';
+    return 'このことは、' + m.featureSource + 'で知りました。';
+  }
+
+  /** いずれは誰の役に立ちたいか。文章の締めに芯を通す */
+  function sContributeTo(m) {
+    return fit(m.contributeTo,
+      'いずれは{X}の役に立てる人になりたいと考えています。',
+      'いずれは{X}人になりたいと考えています。');
+  }
+
   function sEffortLearned(m) {
     const lead = variant(m, ['この経験から、', 'この取り組みを通して、', 'ここから私は、'], 5);
     return fit(m.effortLearned, lead + '{X}を学びました。', lead + '{X}ということを学びました。');
@@ -587,12 +625,10 @@
   }
 
   function sContribution(m) {
-    if (!m.job) return '';
     const lead = (m.contributionFrom || '高校生活')
       + variant(m, ['で身につけた', 'で培った', 'を通して身につけた'], 14);
-    return fit(m.contribution,
-      lead + '{X}は、この仕事でも活かせると考えています。',
-      lead + '「{X}」という姿勢は、この仕事でも活かせると考えています。');
+    const tail = m.job ? 'この仕事でも活かせると考えています。' : 'ここでの学びにも活かせると考えています。';
+    return fit(m.contribution, lead + '{X}は、' + tail, lead + '「{X}」という姿勢は、' + tail);
   }
 
   /**
@@ -714,6 +750,7 @@
     const p2 = [];
     push(p2, sFeature(m), 1);
     push(p2, sFeatureDetail(m), 2);
+    push(p2, sFeatureSource(m), 3);
     push(p2, sLearnOrTask(m), 2);
     push(p2, sPolicy(m), 3);
     push(p2, sVisited(m), 3);
@@ -726,11 +763,14 @@
     m.cardSent(2, 3).forEach(function (s) { p3.push(s); });
     push(p3, sAttract(m, '特に'), 3);
     paras.push(p3);
+    paras.push([S(sValue(m), 1)]);
 
     const p4 = [];
     push(p4, sEffortIntro(m), 1);
     push(p4, sEffortAction(m), 2);
     push(p4, sEffortResult(m), 2);
+    push(p4, sEffortHard(m), 2);
+    push(p4, sEffortHow(m), 2);
     push(p4, sEffortLearned(m), 1);
     push(p4, sSelfTraits(m), 3);
     push(p4, sLicenses(m), 3);
@@ -745,6 +785,7 @@
     push(p6, sAfter(m), 1);
     push(p6, sAfterAction(m), 2);
     push(p6, sAfterGrad(m), 3);
+    push(p6, sContributeTo(m), 3);
     paras.push(p6);
 
     paras.push([S(variant(m, [
@@ -763,6 +804,8 @@
     push(p1, sEffortIntro(m), 0);
     push(p1, sEffortAction(m), 2);
     push(p1, sEffortResult(m), 2);
+    push(p1, sEffortHard(m), 2);
+    push(p1, sEffortHow(m), 2);
     push(p1, sEffortLearned(m), 1);
     push(p1, sSelfTraits(m), 3);
     push(p1, sLicenses(m), 3);
@@ -780,6 +823,7 @@
     m.cardSent(1, 2).forEach(function (s) { p2.push(s); });
     push(p2, sAttract(m, '中でも'), 3);
     paras.push(p2);
+    paras.push([S(sValue(m), 1)]);
 
     const p3 = [];
     // ここが抜けていると、必須で聞いた「手に入れたいもの」が本文に一度も出ない
@@ -794,12 +838,14 @@
     push(p3, sMust(m), 2);
     push(p3, sPolicy(m), 3);
     paras.push(p3);
+    paras.push([S(sValue(m), 1)]);
 
     const p4 = [];
     push(p4, sAfter(m), 1);
     push(p4, sAfterAction(m), 2);
     push(p4, sContribution(m), 1);
     push(p4, sAfterGrad(m), 3);
+    push(p4, sContributeTo(m), 3);
     paras.push(p4);
 
     paras.push([S(variant(m, [
@@ -831,6 +877,7 @@
     const p3 = [];
     push(p3, sFeature(m), 1);
     push(p3, sFeatureDetail(m), 3);
+    push(p3, sFeatureSource(m), 3);
     push(p3, sLearnOrTask(m), 3);
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 3).forEach(function (s) { p3.push(s); });
@@ -838,10 +885,13 @@
     push(p3, sAttract(m, '特に'), 3);
     push(p3, sMust(m), 2);
     paras.push(p3);
+    paras.push([S(sValue(m), 1)]);
 
     const p4 = [];
     push(p4, sEffortIntro(m), 1);
     push(p4, sEffortAction(m), 3);
+    push(p4, sEffortHard(m), 3);
+    push(p4, sEffortHow(m), 3);
     push(p4, sEffortLearned(m), 2);
     push(p4, sSelfTraits(m), 3);
     push(p4, sLicenses(m), 3);
@@ -852,6 +902,7 @@
     push(p5, sAfter(m), 1);
     push(p5, sAfterAction(m), 2);
     push(p5, sAfterGrad(m), 2);
+    push(p5, sContributeTo(m), 3);
     paras.push(p5);
 
     paras.push([S(variant(m, [
@@ -885,15 +936,19 @@
     push(p2, sFeature(m), 1);
     push(p2, sLearnOrTask(m), 2);
     push(p2, sFeatureDetail(m), 3);
+    push(p2, sFeatureSource(m), 3);
     push(p2, sVisited(m), 3);
     m.cardSent(1, 2).forEach(function (s) { p2.push(s); });
     m.cardSent(2, 3).forEach(function (s) { p2.push(s); });
     push(p2, sAttract(m, '特に'), 3);
     paras.push(p2);
+    paras.push([S(sValue(m), 1)]);
 
     const p3 = [];
     push(p3, sEffortIntro(m), 1);
     push(p3, sEffortAction(m), 3);
+    push(p3, sEffortHard(m), 2);
+    push(p3, sEffortHow(m), 2);
     push(p3, sEffortLearned(m), 1);
     push(p3, sSelfTraits(m), 3);
     push(p3, sLicenses(m), 3);
@@ -905,6 +960,7 @@
     push(p4, sAfter(m), 1);
     push(p4, sAfterAction(m), 2);
     push(p4, sAfterGrad(m), 3);
+    push(p4, sContributeTo(m), 3);
     paras.push(p4);
 
     paras.push([S(variant(m, [
@@ -936,6 +992,8 @@
     push(p2, sEffortIntro(m), 1);
     push(p2, sEffortAction(m), 2);
     push(p2, sEffortResult(m), 3);
+    push(p2, sEffortHard(m), 2);
+    push(p2, sEffortHow(m), 2);
     push(p2, sEffortLearned(m), 1);
     push(p2, sSelfTraits(m), 3);
     push(p2, sLicenses(m), 3);
@@ -956,12 +1014,14 @@
     push(p3, sAttract(m, '特に'), 3);
     push(p3, sMust(m), 2);
     paras.push(p3);
+    paras.push([S(sValue(m), 1)]);
 
     const p4 = [];
     push(p4, sAfter(m), 1);
     push(p4, sAfterAction(m), 1);
     push(p4, sContribution(m), 2);
     push(p4, sAfterGrad(m), 2);
+    push(p4, sContributeTo(m), 3);
     paras.push(p4);
 
     paras.push([S(variant(m, [
@@ -989,6 +1049,7 @@
     push(p2, sFeature(m), 1);
     push(p2, sLearnOrTask(m), 2);
     push(p2, sFeatureDetail(m), 3);
+    push(p2, sFeatureSource(m), 3);
     paras.push(p2);
 
     const p3 = [];
@@ -1013,6 +1074,8 @@
     push(p4, sEffortIntro(m), 1);
     push(p4, sEffortAction(m), 3);
     push(p4, sEffortResult(m), 3);
+    push(p4, sEffortHard(m), 2);
+    push(p4, sEffortHow(m), 2);
     push(p4, sEffortLearned(m), 1);
     push(p4, sSelfTraits(m), 3);
     push(p4, sLicenses(m), 3);
@@ -1024,6 +1087,7 @@
     push(p5, sAfter(m), 1);
     push(p5, sAfterAction(m), 2);
     push(p5, sAfterGrad(m), 3);
+    push(p5, sContributeTo(m), 3);
     paras.push(p5);
 
     paras.push([S(variant(m, [

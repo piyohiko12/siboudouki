@@ -759,6 +759,37 @@
             }
           },
           {
+            id: 'effortHard', group: 'effort', type: 'text', maxChars: 30,
+            only: ['prep', 'story', 'gap', 'three'],
+            label: 'その中で、いちばん大変だったこと',
+            refer: function (d) { return about((d.efforts || [])[0]); },
+            placeholder: '練習時間が合わないこと',
+            examples: ['練習時間が合わないこと', '意見がまとまらないこと', '数字が合わないこと'],
+            hint: '大変だったことを書くと、そのあとの「乗り越え方」が活きます。'
+              + '空でも進めますが、ここが書けると文章にぐっと厚みが出ます。',
+            avoid: '「大変でした」だけでは、何が大変だったのか伝わりません',
+            preview: function (d) {
+              return frame(d.effortHard,
+                'いちばん大変だったのは{X}です。', '{X}ことが、いちばん大変でした。');
+            }
+          },
+          {
+            id: 'effortHow', group: 'effort', type: 'text', maxChars: 30,
+            only: ['prep', 'story', 'gap', 'three'],
+            label: 'それを、どうやって乗り越えましたか',
+            refer: function (d) { return about(d.effortHard); },
+            placeholder: '朝練習への切り替え',
+            examples: ['朝練習への切り替え', '一人ずつ話を聞くこと', '記録を毎日つけること'],
+            hint: '自分がとった行動を、ものごとの名前で書きます。'
+              + '読み手がいちばん知りたいのは、困ったときにどう動く人かという点です。',
+            preview: function (d) {
+              if (!txt(d.effortHard)) return '';
+              return frame(d.effortHow,
+                'それでも{X}によって、続けることができました。',
+                'それでも{X}ことで、続けることができました。');
+            }
+          },
+          {
             id: 'effortLearned', group: 'effort', type: 'text', maxChars: 30,
             label: 'この活動全体をふり返って、学んだこと', required: true,
             refer: function (d) { return about((d.efforts || [])[0]); },
@@ -890,15 +921,13 @@
 
       // ───────────────────────────── 学校／会社を知る
       {
-        id: 'research',
+        id: 'recall',
         no: 3,
-        title: isJob ? '会社を知る' : '学校を知る',
+        title: '思い出す',
         lead: isJob
-          ? 'ここがいちばん大事なステップです。「調べた証拠」と「自分の目で見たこと」を集めます。ここが薄いと、どの会社にも出せる文章になってしまいます。'
-          : 'ここがいちばん大事なステップです。「調べた証拠」と「自分の目で見たこと」を集めます。ここが薄いと、どの学校にも出せる文章になってしまいます。',
-        note: isJob
-          ? '手元に用意すると早いもの：求人票／会社のホームページ／会社案内／説明会や職場見学のメモ'
-          : '手元に用意すると早いもの：学校案内のパンフレット／学校のホームページ／オープンキャンパスのメモ',
+          ? 'ここがこの文章の心臓部です。調べる前に、まず「心が動いた瞬間」を思い出してください。'
+          : 'ここがこの文章の心臓部です。調べる前に、まず「心が動いた瞬間」を思い出してください。',
+        note: '見学や説明会のときのメモ・写真・もらった資料があれば、手元に出しておくと思い出しやすくなります。',
         groups: [
           {
             id: 'meet',
@@ -908,14 +937,7 @@
           {
             id: 'card',
             name: '心が動いた場面',
-            desc: 'ここがこの文章の主役です。時間をかける価値があるのはこの2問。'
-          },
-          {
-            id: 'found',
-            name: isJob ? '調べて分かったこと' : '調べて分かったこと',
-            desc: isJob
-              ? '求人票と会社のホームページから、この会社ならではの中身を書き出します。'
-              : 'パンフレットと学校のホームページから、この学校ならではの中身を書き出します。'
+            desc: 'ここがこの文章の主役です。ほかのどの設問より、時間をかける価値があります。'
           }
         ],
         fields: [
@@ -997,6 +1019,30 @@
             hint: 'カードを書いていれば、本文では「ほかにも注目した点」として短く添えられます。'
               + 'カードが1枚もないときは、ここが魅力そのものの文になります。'
           },
+        ].filter(usable).map(tune)
+      },
+
+      // ───────────────────────────── 調べる
+      {
+        id: 'research',
+        no: 4,
+        title: isJob ? '会社を調べる' : '学校を調べる',
+        lead: isJob
+          ? '思い出した場面のうしろにある「中身」を確かめます。ここが薄いと、どの会社にも出せる文章になってしまいます。'
+          : '思い出した場面のうしろにある「中身」を確かめます。ここが薄いと、どの学校にも出せる文章になってしまいます。',
+        note: isJob
+          ? '手元に用意すると早いもの：求人票／会社のホームページ／会社案内'
+          : '手元に用意すると早いもの：学校案内のパンフレット／学校のホームページ／シラバス',
+        groups: [
+          {
+            id: 'found',
+            name: '調べて分かったこと',
+            desc: isJob
+              ? '求人票と会社のホームページから、この会社ならではの中身を書き出します。'
+              : 'パンフレットと学校のホームページから、この学校ならではの中身を書き出します。'
+          }
+        ],
+        fields: [
           {
             id: 'featureName', group: 'found', type: 'text', maxChars: 40, required: true,
             label: isJob
@@ -1066,6 +1112,22 @@
                 ? 'そこでは' + txt(d.featureDetail) + 'に関わることができると知りました。' : '';
             }
           },
+          {
+            id: 'featureSource', group: 'found', type: 'select',
+            only: ['prep', 'scene', 'three'],
+            label: 'そのことを、どこで知りましたか',
+            refer: function (d) { return about(d.featureName); },
+            options: isJob
+              ? ['求人票', '会社のホームページ', '会社案内・パンフレット', '会社説明会',
+                '職場見学', '先輩社員の話', '先生の話']
+              : ['学校案内・パンフレット', '学校のホームページ', 'シラバス', 'オープンキャンパス',
+                '体験授業', '在校生・卒業生の話', '先生の話'],
+            hint: '「どこで知ったか」まで書けると、調べた事実がはっきり伝わります。',
+            preview: function (d) {
+              return txt(d.featureName) && txt(d.featureSource)
+                ? 'このことは、' + txt(d.featureSource) + 'で知りました。' : '';
+            }
+          },
           isJob
             ? {
               id: 'jobTask', group: 'found', type: 'text', maxChars: 30,
@@ -1113,12 +1175,18 @@
       // ───────────────────────────── つなげる
       {
         id: 'connect',
-        no: 4,
+        no: 5,
         title: 'つなげる',
         lead: isJob
           ? '「自分」と「会社」を1本の線でつなぎます。ここが志望動機の心臓部です。'
           : '「自分」と「学校」を1本の線でつなぎます。ここが志望理由の心臓部です。',
         groups: [
+          {
+            id: 'value',
+            name: 'あなたが大事にしていること',
+            desc: 'ここまでに書いた「心が動いた場面」と「自分の経験」に、共通するものを探します。'
+              + 'ここが見つかると、志望理由に芯が通ります。'
+          },
           {
             id: 'why',
             name: '志望理由のひとこと',
@@ -1129,13 +1197,30 @@
             name: isJob ? 'この会社でなければならない理由' : 'この学校でなければならない理由',
             desc: '読み手がいちばん知りたいところです。'
           },
-          {
-            id: 'after',
-            name: isJob ? '入社したあとのこと' : '入学したあとのこと',
-            desc: '入ってからの姿を書くと、読み手が一緒に働く／学ぶ場面を想像できます。'
-          }
         ],
         fields: [
+          {
+            id: 'valueFound', group: 'value', type: 'text', maxChars: 30,
+            label: 'あなたが大事にしていると気づいたこと',
+            refer: function (d) {
+              const c = (d.attractCards || []).find(function (x) { return x && txt(x.what); });
+              if (!c) return '';
+              const w = txt(c.what);
+              return '心が動いた場面「' + w.slice(0, 18) + (w.length > 18 ? '…' : '') + '」から';
+            },
+            placeholder: '人と話しながら考えを深めること',
+            examples: ['人と話しながら考えを深めること', '手を動かして確かめること',
+              '最後まで責任を持つこと', '人の話をよく聞くこと'],
+            hint: '心が動いた場面と、自分ががんばってきたこと。'
+              + 'その両方に共通しているものを、ひとことで書きます。'
+              + '「〜すること」の形にすると入れやすいです。',
+            avoid: '志望先のいいところではなく、「あなたが大事にしていること」を書きます',
+            preview: function (d) {
+              return frame(d.valueFound,
+                'そこから私は、{X}を大切にするようになりました。',
+                'そこから私は、{X}ことを大切にするようになりました。');
+            }
+          },
           {
             id: 'wantObject', group: 'why', type: 'text', maxChars: 25, label: isJob
               ? 'その会社で、いちばん手に入れたいものは何ですか'
@@ -1192,6 +1277,30 @@
                 + n + 'には' + txt(d.mustPoint) + 'という違いがあります。';
             }
           },
+        ].filter(usable).map(tune)
+      },
+
+      // ───────────────────────────── その先
+      {
+        id: 'after',
+        no: 6,
+        title: 'その先を書く',
+        lead: isJob
+          ? '最後に、入社してからのことを書きます。ここまでの話がここへ着地します。'
+          : '最後に、入学してからのことを書きます。ここまでの話がここへ着地します。',
+        groups: [
+          {
+            id: 'after',
+            name: isJob ? '入社したあとのこと' : '入学したあとのこと',
+            desc: '入ってからの姿を書くと、読み手が一緒に働く／学ぶ場面を想像できます。'
+          },
+          {
+            id: 'far',
+            name: 'その先の自分',
+            desc: '文章の締めくくりになります。大きな夢でなくて構いません。'
+          }
+        ],
+        fields: [
           {
             id: 'afterEnter', group: 'after', type: 'chips', max: 3, required: true,
             label: isJob ? '入社したら、がんばりたいこと' : '入学したら、やりたいこと',
@@ -1230,15 +1339,17 @@
               return txt(d.afterAction) ? 'まずは' + txt(d.afterAction) + 'から始めたいです。' : '';
             }
           },
-          isJob ? {
+          {
             id: 'contribution', group: 'after', type: 'text', maxChars: 30,
-            label: 'その仕事で活かせる、自分の力の名前',
-            refer: function (d) { return about(txt(d.targetSub) || '希望する職種'); },
+            label: isJob ? 'その仕事で活かせる、自分の力の名前' : 'その学びの場で活かせる、自分の力の名前',
+            refer: function (d) {
+              return about(isJob ? (txt(d.targetSub) || '希望する職種') : (txt(d.targetSub) || txt(d.targetName)));
+            },
             placeholder: '手順を崩さずに作業を続ける力',
             examples: ['手順を崩さずに作業を続ける力', '初対面の人と話す力', '体力と早起きの習慣'],
             hint: '大げさな力でなくて構いません。実際に続けてきたことほど信じてもらえます。'
-          } : null,
-          isJob ? {
+          },
+          {
             id: 'contributionFrom', group: 'after', type: 'select',
             label: 'その力は、どこで身につけましたか',
             refer: function (d) { return about(d.contribution); },
@@ -1248,18 +1359,19 @@
             preview: function (d) {
               return txt(d.contribution)
                 ? (txt(d.contributionFrom) || '高校生活') + 'で身につけた' + txt(d.contribution)
-                  + 'は、この仕事でも活かせると考えています。' : '';
+                  + (isJob ? 'は、この仕事でも活かせると考えています。' : 'は、ここでの学びにも活かせると考えています。')
+                : '';
             }
-          } : null,
+          },
           {
-            id: 'afterGradWhen', group: 'after', type: 'select',
+            id: 'afterGradWhen', group: 'far', type: 'select',
             label: isJob ? '最後に、何年後の自分の話をしますか' : '最後に、いつの話で締めくくりますか',
             options: isJob ? AFTER_WHEN_SHUSHOKU : AFTER_WHEN_SHINGAKU,
             default: isJob ? '5年後' : '卒業後',
             hint: '最後の段落で「その先」を示すと、文章に前向きな余韻が残ります。'
           },
           {
-            id: 'afterGradKind', group: 'after', type: 'select', required: true,
+            id: 'afterGradKind', group: 'far', type: 'select', required: true,
             label: 'そのときのことを、どちらで書きますか',
             options: isJob
               ? ['身につけていたい力・技術', 'なっていたい自分の姿']
@@ -1269,7 +1381,22 @@
               + '選びまちがえると「先輩を身につけていたいです」という文になってしまいます。'
           },
           {
-            id: 'afterGradWhat', group: 'after', type: 'text', maxChars: 30,
+            id: 'contributeTo', group: 'far', type: 'text', maxChars: 25,
+            label: 'いずれは、誰の役に立ちたいですか',
+            placeholder: isJob ? '地域のものづくりを支える人' : '地域の高齢者',
+            examples: isJob
+              ? ['地域のものづくり', '現場で働く人', '製品を使う人']
+              : ['地域の高齢者', '子どもたち', '同じ悩みを持つ人'],
+            hint: '大きな話でなくて構いません。顔が浮かぶ相手を1つ書くと、'
+              + '文章の最後に芯が通ります。空でも進めます。',
+            preview: function (d) {
+              return frame(d.contributeTo,
+                'いずれは{X}の役に立てる人になりたいと考えています。',
+                'いずれは{X}人になりたいと考えています。');
+            }
+          },
+          {
+            id: 'afterGradWhat', group: 'far', type: 'text', maxChars: 30,
             label: isJob ? 'そのとき、身につけていたいもの' : 'そのとき、目指していること',
             refer: function (d) { return about(d.afterGradWhen); },
             placeholder: isJob ? '後輩に教えられる技術' : '地域づくりに関わる仕事',

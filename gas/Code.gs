@@ -33,6 +33,7 @@ var COLUMNS = [
   { key: 'why1',             label: 'なぜ1',                 width: 200 },
   { key: 'why2',             label: 'なぜ2',                 width: 200 },
   { key: 'why3',             label: 'なぜ3',                 width: 200 },
+  { key: 'valueFound',       label: '大事にしていること',    width: 220 },
   { key: 'mustPoint',        label: 'ここでなければの違い',  width: 220 },
   { key: 'efforts',          label: 'がんばったこと',        width: 160 },
   { key: 'effortWhen',       label: 'その時期',              width: 120 },
@@ -40,6 +41,8 @@ var COLUMNS = [
   { key: 'effortAction',     label: '取り組んだこと',        width: 220 },
   { key: 'effortActionKind', label: '行動／作ったもの',      width: 130 },
   { key: 'effortResult',     label: 'その結果',              width: 160 },
+  { key: 'effortHard',       label: '大変だったこと',        width: 200 },
+  { key: 'effortHow',        label: '乗り越え方',            width: 200 },
   { key: 'effortLearned',    label: '学んだこと',            width: 200 },
   { key: 'strengths',        label: '得意なこと',            width: 160 },
   { key: 'licenses',         label: '資格・免許',            width: 180 },
@@ -71,6 +74,8 @@ var COLUMNS = [
   { key: 'featureKind',      label: '特色の種類',            width: 120 },
   { key: 'featureName',      label: '特色の名前',            width: 220 },
   { key: 'featureNamed',     label: '名前の有無',            width: 130 },
+  { key: 'featureSource',    label: '特色の情報源',          width: 150 },
+  { key: 'featureSource',    label: '特色の情報源',          width: 150 },
   { key: 'featureDetail',    label: 'そこでできること',      width: 200 },
   { key: 'studyWant',        label: '受けたい授業（進学）',  width: 200 },
   { key: 'jobTask',          label: '仕事の理解（就職）',    width: 200 },
@@ -82,6 +87,7 @@ var COLUMNS = [
   { key: 'afterGradWhen',    label: '将来の時期',            width: 100 },
   { key: 'afterGradKind',    label: '将来の書き方',          width: 130 },
   { key: 'afterGradWhat',    label: '卒業後・将来像',        width: 200 },
+  { key: 'contributeTo',     label: '役に立ちたい相手',      width: 180 },
   { key: 'tone',             label: '文体',                  width: 90 }
 ];
 

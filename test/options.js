@@ -27,14 +27,15 @@ Q.FEELINGS.forEach((f, i) => {
 
 head('将来の答え方（名詞で書いたとき／述語で書いたとき）');
 const steps0 = Q.buildSteps('shingaku', 'future');
-const fk = steps0[1].fields.find(f => f.id === 'futureKind').options;
+const flat = st => st.reduce((a, x) => a.concat(x.fields), []);
+const fk = flat(steps0).find(f => f.id === 'futureKind').options;
 fk.forEach(k => {
   console.log('  ' + Q.futureSentence(k, '看護師'));
   console.log('  ' + Q.futureSentence(k, '人を助けたい'));
 });
 
 head('きっかけの場（名詞／述語）');
-const ws = steps0[1].fields.find(f => f.id === 'futureWhySource').options;
+const ws = flat(steps0).find(f => f.id === 'futureWhySource').options;
 ws.forEach(w => {
   console.log('  ' + Q.whySourceSentence(w, '祖母の入院'));
   console.log('  ' + Q.whySourceSentence(w, '祖母が入院した'));
@@ -44,39 +45,39 @@ ws.forEach(w => {
   const job = mode === 'shushoku';
   head((job ? '就職' : '進学') + '：どうしたいか（名詞／述語）');
   const st = Q.buildSteps(mode, 'prep');
-  st[3].fields.find(f => f.id === 'wantVerb').options.forEach(v => {
+  flat(st).find(f => f.id === 'wantVerb').options.forEach(v => {
     console.log('  私が貴校を志望した理由は、' + Q.wantPhrase(v, job ? '正確なものづくり' : '地域の課題を調べる力', mode) + 'からです。');
     console.log('  私が貴校を志望した理由は、' + Q.wantPhrase(v, job ? '人の役に立つ' : '人の役に立つ', mode) + 'からです。');
   });
 
   head((job ? '就職' : '進学') + '：特色の種類');
-  st[2].fields.find(f => f.id === 'featureKind').options.forEach(k => {
+  flat(st).find(f => f.id === 'featureKind').options.forEach(k => {
     console.log('  私が特に関心を持ったのは、' + (job ? '貴社' : '貴校') + 'の' + k + '「◯◯」です。');
   });
 
   head((job ? '就職' : '進学') + '：入学・入社後にやりたいこと');
-  st[3].fields.find(f => f.id === 'afterEnter').options.forEach(a => {
+  flat(st).find(f => f.id === 'afterEnter').options.forEach(a => {
     console.log('  ' + (job ? '入社後' : '入学後') + 'は、' + a + 'に取り組みたいと考えています。');
   });
 
   head((job ? '就職' : '進学') + '：いつのことか');
-  st[1].fields.find(f => f.id === 'effortWhen').options.forEach(w => {
+  flat(st).find(f => f.id === 'effortWhen').options.forEach(w => {
     console.log('  ' + w + '、いちばん力を入れてきたのは部活動です。');
   });
 
   head((job ? '就職' : '進学') + '：がんばったこと');
-  st[1].fields.find(f => f.id === 'efforts').options.forEach(e => {
+  flat(st).find(f => f.id === 'efforts').options.forEach(e => {
     console.log('  1年生から3年間、いちばん力を入れてきたのは' + e + 'です。');
   });
 
   head((job ? '就職' : '進学') + '：実際に行ったこと');
-  st[2].fields.find(f => f.id === 'visited').options
+  flat(st).find(f => f.id === 'visited').options
     .filter(v => v.indexOf('まだ') !== 0)
     .forEach(v => console.log('  ' + v + 'にも参加し、自分の目で確かめました。'));
 
   head((job ? '就職' : '進学') + '：知ったきっかけ（エピソード型でだけ聞く）');
   const story = Q.buildSteps(mode, 'story');
-  story[2].fields.find(f => f.id === 'knewBy').options.forEach(k => {
+  flat(story).find(f => f.id === 'knewBy').options.forEach(k => {
     const by = k === 'その他' ? '' : k;
     console.log('  ' + (by
       ? 'そんな私が貴校を知ったのは、' + by + 'がきっかけでした。'
@@ -85,13 +86,13 @@ ws.forEach(w => {
 
   if (job) {
     head('就職：活かせる力を身につけた場');
-    st[3].fields.find(f => f.id === 'contributionFrom').options.forEach(c => {
+    flat(st).find(f => f.id === 'contributionFrom').options.forEach(c => {
       console.log('  ' + c + 'で身につけた◯◯は、この仕事でも活かせると考えています。');
     });
   }
 
   head((job ? '就職' : '進学') + '：いつの話で締めくくるか');
-  st[3].fields.find(f => f.id === 'afterGradWhen').options.forEach(w => {
+  flat(st).find(f => f.id === 'afterGradWhen').options.forEach(w => {
     console.log('  ' + (job ? w + 'には、◯◯を身につけていたいです。' : w + 'は、◯◯を目指したいと考えています。'));
   });
 });
