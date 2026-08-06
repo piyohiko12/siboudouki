@@ -171,6 +171,20 @@ async function runMode(browser, key, errors) {
     (await page.textContent('[data-field="personalityEpisode"] .field__previewText')).trim());
   console.log('    こう文になります（場面）　　:',
     (await page.textContent('[data-field="personalityScene"] .field__previewText')).trim());
+
+  // 選択肢を押す／解除しても、見ていた場所から動かない
+  await page.locator('[data-field="personality"]').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+  const beforeY = await page.evaluate(() => window.pageYOffset);
+  await page.click('[data-field="personality"] .chip.is-on >> nth=0');
+  await page.waitForTimeout(450);
+  const afterY = await page.evaluate(() => window.pageYOffset);
+  await page.click('[data-field="personality"] .chip:has-text("責任感が強い")');
+  await page.waitForTimeout(450);
+  await page.fill('#f_personalityEpisode', '任された係を3年間続けた');
+  await page.fill('#f_personalityScene', key === 'shushoku' ? '後輩に手順を教える場面' : '班で意見が分かれたとき');
+  console.log('    解除しても先頭へ飛ばない:', beforeY > 200 && afterY > 200 ? 'OK（' + beforeY + '→' + afterY + '）' : '× ' + beforeY + '→' + afterY);
+  console.log('    入力済の表示:', (await page.locator('.field__done').first().textContent()).trim());
   await fillIf('#f_futureDream', 'ものづくり');
   if (await page.locator('#f_futureWhySource').count()) {
     await page.selectOption('#f_futureWhySource', '自分の体験から');
@@ -290,6 +304,34 @@ async function runMode(browser, key, errors) {
   await page.click('#stepTabs .tab:nth-child(1)');
   await page.waitForTimeout(300);
   await page.screenshot({ path: SHOT + 'course.png', fullPage: true });
+
+  // ── 「やり直す」で保存が消えるか ──────────────────
+  {
+    const page = await browser.newPage();
+    page.on('dialog', d => d.accept());
+    page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
+    await page.goto('http://127.0.0.1:8765/index.html');
+    await page.waitForTimeout(400);
+    await page.click('.courseCard:has-text("就職")');
+    await page.waitForTimeout(200);
+    await page.click('#nextBtn'); await page.waitForTimeout(250);
+    const g = page.locator('.picks');
+    for (let i = 0; i < 3; i++) { await g.nth(i).locator('.pickCard').nth(0).click(); await page.waitForTimeout(140); }
+    await page.click('#nextBtn'); await page.waitForTimeout(250);
+    await page.fill('#f_studentName', '山田太郎');
+    await page.waitForTimeout(500);
+    const read = () => page.evaluate(() => {
+      const raw = localStorage.getItem('shibou-douki-v2');
+      return raw ? (JSON.parse(raw).data || {}).studentName || '空' : '（保存なし）';
+    });
+    console.log('\n【やり直す】押す前の保存:', await read());
+    await page.click('#resetBtn');
+    await page.waitForTimeout(1500);
+    console.log('  押したあとの保存:', await read());
+    console.log('  画面:', (await page.textContent('#stepLabel')).trim(),
+      '／進路:', await page.evaluate(() => document.body.dataset.course || '（未選択）'));
+    await page.close();
+  }
 
   console.log('\nエラー:', errors.length ? errors.join('\n') : 'なし');
   await browser.close();

@@ -384,7 +384,7 @@
       // 得意なこと・性格は、設問側と同じ関数で文にする（プレビューとずれないように）
       traitLine: Q.traitSentence(d, isJob),
       traitScene: (d.personality || []).length && bare(d.personalityEpisode) && bare(d.personalityScene)
-        ? 'この持ち味は、' + Q.sceneAt(d.personalityScene)
+        ? 'この強みは、' + Q.sceneAt(d.personalityScene)
         : '',
       strengthLine: Q.strengthSentence(d, isJob),
       strengthScene2: (d.strengths || []).length && bare(d.strengthEpisode) && bare(d.strengthScene)
@@ -757,7 +757,7 @@
   /**
    * 得意なこと。
    * 性格の文がすでにあるときは、きっかけか場面まで答えている場合だけ足す。
-   * 「持ち味の言いっぱなし」が2文続くのを避けるため。
+   * 「強みの言いっぱなし」が2文続くのを避けるため。
    */
   function sStrengths(m) {
     if (!m.strengthLine) return '';

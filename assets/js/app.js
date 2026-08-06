@@ -66,8 +66,11 @@
 
   // ── 保存／復元 ────────────────────────────────────
   let saveTimer = null;
+  // 「やり直す」を押したあとは、読み込み直すまで一切保存しない
+  let saveOff = false;
 
   function save() {
+    if (saveOff) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         data: state.data, custom: state.custom, index: state.index,
@@ -223,7 +226,7 @@
     // 番号とバッジを1行目、質問文を2行目にすると、長い質問でも形が崩れない
     wrap.appendChild(h('div', { class: 'field__meta' }, [
       no ? h('span', { class: 'field__no', text: 'Q' + no }) : null,
-      h('span', { class: 'field__done', title: '入力ずみ', text: '✓ 入力ずみ' })
+      h('span', { class: 'field__done', title: '入力済', text: '✓ 入力済' })
     ]));
     wrap.appendChild(h('label', { class: 'field__label', for: 'f_' + field.id }, [
       h('span', { class: 'field__q', text: val(field.label) }),
@@ -362,7 +365,7 @@
         // ここに書いた言葉が、あとの設問の文面にも使われる欄。
         // 1文字ごとに作り直すとカーソルが飛ぶので、欄を離れたときだけ作り直す
         if (field.rerender) {
-          input.addEventListener('change', function () { save(); render(); });
+          input.addEventListener('change', function () { save(); render(field.id); });
         }
         wrap.appendChild(input);
         if (field.maxChars) {
@@ -447,7 +450,7 @@
             emitChange(field.id);
             scheduleSave();
             // 選んだ内容で設問そのものが変わる欄は、画面ごと作り直す
-            if (field.rerender) { save(); render(); return; }
+            if (field.rerender) { save(); render(field.id); return; }
             repaint();
           }
         }, [opt]));
@@ -466,7 +469,7 @@
             state.data[field.id] = (state.data[field.id] || []).concat([v]);
             emitChange(field.id);
             save();
-            if (field.rerender) { render(); return; }
+            if (field.rerender) { render(field.id); return; }
             repaint();
           }
         }, ['＋ 自分で追加']));
@@ -1149,7 +1152,7 @@
       const all = step.fields.length;
       const left = need.filter(function (f) { return !answered(f); }).length;
       count.textContent = '答えた質問 ' + done + ' / ' + all + '問'
-        + (left ? '（必須があと' + left + '問）' : '（必須はすべて入力ずみ）');
+        + (left ? '（必須があと' + left + '問）' : '（必須はすべて入力済）');
       fill.style.width = Math.round((done / all) * 100) + '%';
       fill.classList.toggle('is-done', left === 0);
     }
@@ -1558,7 +1561,22 @@
   }
 
   // ── レンダリング ──────────────────────────────────
-  function render() {
+  /**
+   * 画面を描き直す。
+   * @param {String} [anchorId]  同じ画面のまま描き直すとき、位置の基準にする設問のID。
+   *   選択肢を押すたびに先頭へ飛ぶと、どこを触っていたのか分からなくなるため、
+   *   その設問が画面の同じ高さに来るようにスクロールを戻す。
+   */
+  let lastIndex = -1;
+  function render(anchorId) {
+    const sameView = lastIndex === state.index;
+    const keepY = window.pageYOffset;
+    let anchorTop = null;
+    if (sameView && anchorId) {
+      const before = document.querySelector('[data-field="' + anchorId + '"]');
+      if (before) anchorTop = before.getBoundingClientRect().top;
+    }
+
     const V = views();
     const view = V[state.index];
     const root = document.getElementById('view');
@@ -1578,7 +1596,22 @@
     renderNav(V);
     renderProgress(V);
     save();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    lastIndex = state.index;
+
+    // ステップが変わったときだけ先頭へ。同じ画面の描き直しでは動かさない。
+    // なめらかスクロールにすると、中身が入れ替わったときにブラウザの
+    // スクロール位置調整とぶつかって途中で止まるので、一気に戻す
+    if (!sameView) {
+      window.scrollTo(0, 0);
+      return;
+    }
+    window.scrollTo({ top: keepY });
+    if (anchorTop != null) {
+      const after = document.querySelector('[data-field="' + anchorId + '"]');
+      if (after) {
+        window.scrollTo({ top: window.pageYOffset + (after.getBoundingClientRect().top - anchorTop) });
+      }
+    }
   }
 
   function renderProgress(V) {
@@ -1656,6 +1689,11 @@
     document.getElementById('prevBtn').addEventListener('click', goPrev);
     document.getElementById('resetBtn').addEventListener('click', function () {
       if (!confirm('入力した内容をすべて消して、最初からやり直しますか？')) return;
+      // 消したあとに beforeunload と自動保存が走ると、同じ内容が書き戻ってしまう。
+      // 先に保存の口をすべて閉じてから消す
+      window.removeEventListener('beforeunload', save);
+      if (saveTimer) clearTimeout(saveTimer);
+      saveOff = true;
       localStorage.removeItem(STORAGE_KEY);
       location.reload();
     });

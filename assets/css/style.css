@@ -776,6 +776,10 @@ h1, h2, h3 { line-height: 1.5; letter-spacing: .01em; }
   color: var(--accent);
 }
 
+/* 設問を出し入れしたときに、ブラウザが勝手にスクロールを動かさないようにする
+   （位置は render() 側で、触っていた設問を基準に戻している） */
+#view { overflow-anchor: none; }
+
 .field { margin-bottom: 30px; }
 
 /* 必須と任意は、色の濃さではなく「帯があるか／ないか」で見分ける。
@@ -793,7 +797,7 @@ h1, h2, h3 { line-height: 1.5; letter-spacing: .01em; }
 
 
 
-/* 1行目：番号・必須／任意・入力ずみの印 */
+/* 1行目：番号・必須／任意・入力済の印 */
 .field__meta {
   display: flex;
   align-items: center;

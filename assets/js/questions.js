@@ -496,9 +496,9 @@
     if (!t) return '';
     const from = fromEpisode(d.personalityEpisode);
     const scene = sceneAt(d.personalityScene);
-    if (from) return from + '自分では「' + t + '」という点が持ち味だと思っています。';
-    if (scene) return '自分では「' + t + '」という点が持ち味で、' + scene + '活かせると思います。';
-    return '自分では「' + t + '」という点が持ち味だと思っています。';
+    if (from) return from + '自分では「' + t + '」という点が強みだと思っています。';
+    if (scene) return '自分では「' + t + '」という点が強みで、' + scene + '活かせると思います。';
+    return '自分では「' + t + '」という点が強みだと思っています。';
   }
 
   function strengthSentence(d, isJob) {
@@ -1345,7 +1345,7 @@
               const t = (d.personality || [])[0];
               if (!t || !txt(d.personalityScene)) return '';
               if (!txt(d.personalityEpisode)) return traitSentence(d, isJob);
-              return 'この持ち味は、' + sceneAt(d.personalityScene) + '活かせると思います。';
+              return 'この強みは、' + sceneAt(d.personalityScene) + '活かせると思います。';
             }
           },
           {
