@@ -199,7 +199,12 @@
   }
 
   function renderField(field, no) {
-    const wrap = h('div', { class: 'field', 'data-field': field.id });
+    // 必須か任意かは、左の帯・バッジ・質問文の印の3つで示す。
+    // 色の濃さだけで分けると、並んだときに見分けがつかないため。
+    const wrap = h('div', {
+      class: 'field ' + (field.required ? 'field--required' : 'field--optional'),
+      'data-field': field.id
+    });
 
     // 「それは」「その中で」が何を指すのかを、前の答えを引用して示す
     if (typeof field.refer === 'function') {
@@ -219,11 +224,18 @@
     wrap.appendChild(h('div', { class: 'field__meta' }, [
       no ? h('span', { class: 'field__no', text: 'Q' + no }) : null,
       field.required
-        ? h('span', { class: 'badge badge--required', text: '必須' })
-        : h('span', { class: 'badge badge--optional', text: '任意' }),
+        ? h('span', { class: 'badge badge--required' }, [
+          h('span', { class: 'badge__mark', text: '✱' }),
+          document.createTextNode('必ず答える')
+        ])
+        : h('span', { class: 'badge badge--optional' }, [
+          h('span', { class: 'badge__mark', text: '○' }),
+          document.createTextNode('答えなくてもOK')
+        ]),
       h('span', { class: 'field__done', title: '入力ずみ', text: '✓ 入力ずみ' })
     ]));
     wrap.appendChild(h('label', { class: 'field__label', for: 'f_' + field.id }, [
+      field.required ? h('span', { class: 'field__must', title: '必須', text: '✱' }) : null,
       h('span', { class: 'field__q', text: val(field.label) })
     ]));
 
@@ -838,7 +850,8 @@
   // 残しておくと、プルダウンには何も選ばれていないのに本文だけ古い値で組まれる。
   const COURSE_SPECIFIC_FIELDS = [
     'orgType', 'examType', 'featureSource',      // 志望先の種類・応募方法・情報源
-    'strengths', 'attractPoints', 'afterEnter', 'visited', 'knewBy',
+    'strengths', 'strengthScene',                // 得意なことは選択肢が進路でちがう
+    'attractPoints', 'afterEnter', 'visited', 'knewBy',
     'featureKind', 'wantVerb',                   // 特色の種類・どうしたいか
     'studyWant', 'jobTask',                      // 進学だけ／就職だけの欄
     'contribution', 'contributionFrom',
@@ -1145,7 +1158,19 @@
     paint();
     onDataChange(paint);
 
-    bar.appendChild(h('div', { class: 'stepBar__body' }, [count, track]));
+    // 帯とバッジの意味を、ステップごとに一度だけ説明しておく
+    const legend = h('div', { class: 'stepBar__legend' }, [
+      h('span', { class: 'legend legend--required' }, [
+        h('span', { class: 'legend__bar' }),
+        document.createTextNode('必ず答える ' + need.length + '問')
+      ]),
+      h('span', { class: 'legend legend--optional' }, [
+        h('span', { class: 'legend__bar' }),
+        document.createTextNode('答えなくてもOK ' + (step.fields.length - need.length) + '問')
+      ])
+    ]);
+
+    bar.appendChild(h('div', { class: 'stepBar__body' }, [count, track, legend]));
     bar.appendChild(h('button', {
       type: 'button', class: 'btn btn--ghost btn--sm',
       onclick: function () { state.helpOpen = !state.helpOpen; save(); render(); }
@@ -1399,6 +1424,8 @@
       why2: d.whyChain.why2 || '',
       why3: d.whyChain.why3 || '',
       valueFound: d.valueFound || '',
+      strengthScene: d.strengthScene || '',
+      personalityScene: d.personalityScene || '',
       mustPoint: d.mustPoint || '',
       afterEnter: (d.afterEnter || []).join('、'),
       afterAction: d.afterAction || '',

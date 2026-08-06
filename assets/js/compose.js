@@ -71,7 +71,10 @@
     [/過ぎました/g, '過ぎた'], [/過ぎます/g, '過ぎる'],
     [/生きました/g, '生きた'], [/生きます/g, '生きる'],
     [/用いました/g, '用いた'], [/用います/g, '用いる'],
-    [/ありません/g, 'ない'], [/できません/g, 'できない'], [/いません/g, 'いない']
+    [/ありません/g, 'ない'], [/できません/g, 'できない'], [/いません/g, 'いない'],
+    // 「準備をします」のように、直前が漢語でない「します」も「する」に直す
+    // （一般則だと「し＋ます」を五段活用と見て「す」になってしまう）
+    [/しました/g, 'した'], [/します/g, 'する']
   ];
 
   // 先に処理する定型の語尾（長いものから順に並べる）
@@ -377,7 +380,9 @@
       effortLearned: bare(d.effortLearned),
 
       strengths: d.strengths || [],
+      strengthScene: bare(d.strengthScene),
       personality: d.personality || [],
+      personalityScene: bare(d.personalityScene),
       licenses: bare(d.licenses),
 
       futureLine: Q.futureSentence(d.futureKind, d.futureDream),
@@ -741,13 +746,34 @@
    */
   function sSelfTraits(m) {
     const traits = (m.personality || []).slice(0, 3);
-    if (traits.length) {
-      return '自分では' + traits.map(function (t) { return '「' + t + '」'; }).join('')
-        + 'という点が持ち味だと思っています。';
+    if (!traits.length) return '';
+    const quoted = traits.map(function (t) { return '「' + t + '」'; }).join('');
+    const scene = global.QUESTIONS.sceneAt(m.personalityScene);
+    // 場面まで答えてもらえたときは、性格と場面を1つの文にまとめる。
+    // 「まじめです」だけの文は誰にでも書けてしまうため。
+    if (scene) {
+      return '自分では' + quoted + 'という点が持ち味で、' + scene
+        + variant(m, ['活かせると思います。', '力になれると思います。', '役に立てると考えています。'], 23);
     }
+    return '自分では' + quoted + 'という点が持ち味だと思っています。';
+  }
+
+  /**
+   * 得意なこと。
+   * 性格の文がすでにあるときは、場面まで答えている場合だけ足す。
+   * 「持ち味の言いっぱなし」が2文続くのを避けるため。
+   */
+  function sStrengths(m) {
     const good = (m.strengths || []).slice(0, 3);
     if (!good.length) return '';
     const quoted = good.map(function (t) { return '「' + t + '」'; }).join('');
+    const scene = global.QUESTIONS.sceneAt(m.strengthScene);
+    const also = (m.personality || []).length ? 'も' : 'は';
+    if (scene) {
+      return (m.job ? '得意な' : '得意な') + quoted + also + '、' + scene
+        + variant(m, ['活かせると考えています。', '役に立つと思います。', '活かしていきたいです。'], 24);
+    }
+    if ((m.personality || []).length) return '';
     return m.job ? '仕事で活かせそうな点は' + quoted + 'です。' : '得意なのは' + quoted + 'です。';
   }
 
@@ -840,6 +866,7 @@
     push(p4, sEffortLearned(m), 1);
     push(p4, sEffortOthers(m), 3);
     push(p4, sSelfTraits(m), 3);
+    push(p4, sStrengths(m), 3);
     push(p4, sLicenses(m), 3);
     push(p4, sContribution(m), 1);
     paras.push(p4);
@@ -877,6 +904,7 @@
     push(p1, sEffortLearned(m), 1);
     push(p1, sEffortOthers(m), 3);
     push(p1, sSelfTraits(m), 3);
+    push(p1, sStrengths(m), 3);
     push(p1, sLicenses(m), 3);
     paras.push(p1);
 
@@ -965,6 +993,7 @@
     push(p4, sEffortLearned(m), 2);
     push(p4, sEffortOthers(m), 3);
     push(p4, sSelfTraits(m), 3);
+    push(p4, sStrengths(m), 3);
     push(p4, sLicenses(m), 3);
     push(p4, sContribution(m), 2);
     paras.push(p4);
@@ -1024,6 +1053,7 @@
     push(p3, sEffortLearned(m), 1);
     push(p3, sEffortOthers(m), 3);
     push(p3, sSelfTraits(m), 3);
+    push(p3, sStrengths(m), 3);
     push(p3, sLicenses(m), 3);
     push(p3, sContribution(m), 1);
     paras.push(p3);
@@ -1071,6 +1101,7 @@
     push(p2, sEffortLearned(m), 1);
     push(p2, sEffortOthers(m), 3);
     push(p2, sSelfTraits(m), 3);
+    push(p2, sStrengths(m), 3);
     push(p2, sLicenses(m), 3);
     push(p2, '同時に、自分にはまだ足りない部分もあります。', 2);
     paras.push(p2);
@@ -1156,6 +1187,7 @@
     push(p4, sEffortLearned(m), 1);
     push(p4, sEffortOthers(m), 3);
     push(p4, sSelfTraits(m), 3);
+    push(p4, sStrengths(m), 3);
     push(p4, sLicenses(m), 3);
     push(p4, sContribution(m), 1);
     paras.push(p4);
@@ -1502,7 +1534,9 @@
       ['afterAction', 'まず始めること', d.afterAction],
       ['afterGradWhat', job ? '将来の姿' : '卒業後の目標', d.afterGradWhat],
       ['targetPolicy', '共感した理念', d.targetPolicy],
-      ['licenses', '資格・免許', d.licenses]
+      ['licenses', '資格・免許', d.licenses],
+      ['strengthScene', '得意なことを活かせる場面', d.strengthScene],
+      ['personalityScene', '性格を活かせる場面', d.personalityScene]
     ].forEach(function (row) {
       if (asked[row[0]] && row[1] && bare(row[2])) items.push({ label: row[1], text: row[2] });
     });

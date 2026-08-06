@@ -82,12 +82,13 @@ body[data-course="shushoku"] {
 }
 
 /* アクセント色の上に置く文字色。ライトでは白、ダークでは暗い色にする */
-:root { --on-accent: #ffffff; }
+:root { --on-accent: #ffffff; --on-err: #ffffff; }
 
 /* 端末の設定がダークのとき（ただし手動でライトに固定していない場合） */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --on-accent: #10141c;
+    --on-err: #2a1214;
     --accent: #8aa4f5;
     --accent-strong: #a5b9ff;
     --accent-soft: #1e2740;
@@ -133,6 +134,7 @@ body[data-course="shushoku"] {
 /* 手動でダークに固定したとき（html に data-theme="dark" が付く） */
 :root[data-theme="dark"] {
     --on-accent: #10141c;
+    --on-err: #2a1214;
     --accent: #8aa4f5;
     --accent-strong: #a5b9ff;
     --accent-soft: #1e2740;
@@ -695,6 +697,24 @@ h1, h2, h3 { line-height: 1.5; letter-spacing: .01em; }
 }
 .stepBar__fill.is-done { background: var(--ok); }
 
+/* 左の帯が何を表すのかを、ステップごとに一度だけ示す */
+.stepBar__legend { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.legend__bar { width: 3px; height: 13px; border-radius: 2px; }
+.legend--required .legend__bar { background: var(--err-line); }
+.legend--optional .legend__bar {
+  background: none;
+  border-left: 3px dotted var(--line);
+  width: 3px;
+}
+
 
 /* 同じ話題の設問のまとまり。「それは」が何を指すかを、囲みで示す */
 .qgroup {
@@ -746,6 +766,28 @@ h1, h2, h3 { line-height: 1.5; letter-spacing: .01em; }
 
 .field { margin-bottom: 30px; }
 
+/* 必須と任意は、色の濃さではなく「帯があるか／ないか」で見分ける。
+   小さなバッジの色ちがいだけでは、並んだときに区別がつかないため */
+.field--required {
+  padding-left: 13px;
+  border-left: 3px solid var(--err-line);
+}
+.field--optional {
+  padding-left: 13px;
+  border-left: 3px dotted var(--line);
+}
+.field--required.is-answered { border-left-color: var(--ok-line); }
+.field.has-error { border-left-color: var(--err); }
+
+/* 質問文の頭につく必須の印 */
+.field__must {
+  color: var(--err);
+  font-weight: 700;
+  margin-right: 5px;
+  font-size: 13px;
+  vertical-align: 2px;
+}
+
 /* 1行目：番号・必須／任意・入力ずみの印 */
 .field__meta {
   display: flex;
@@ -788,10 +830,13 @@ h1, h2, h3 { line-height: 1.5; letter-spacing: .01em; }
   letter-spacing: .02em;
 }
 
+/* 任意は「引っ込む」側。塗りも枠も持たせない */
 .badge--optional {
-  background: var(--surface-2);
+  background: none;
   color: var(--ink-3);
-  border: 1px solid var(--line);
+  border: 1px dotted var(--line);
+  font-weight: 400;
+  letter-spacing: 0;
 }
 
 /* 説明・例・注意のまとまり。たたむと質問と入力欄だけになる */
@@ -905,14 +950,24 @@ h1, h2, h3 { line-height: 1.5; letter-spacing: .01em; }
 .field.has-error .input { background: var(--err-soft); }
 
 .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 10.5px;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 2px 9px;
   border-radius: var(--r-full);
-  letter-spacing: .08em;
+  letter-spacing: .06em;
   line-height: 1.7;
+  white-space: nowrap;
 }
-.badge--required { background: var(--err-soft); color: var(--err); border: 1px solid var(--err-line); }
+.badge__mark { font-size: 9px; line-height: 1; }
+/* 必須は「前に出る」側。塗りつぶして白抜きにする */
+.badge--required {
+  background: var(--err);
+  color: var(--on-err);
+  border: 1px solid var(--err);
+}
 
 .input {
   width: 100%;

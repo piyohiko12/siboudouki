@@ -489,6 +489,45 @@
     return t ? '「' + t + '」について' : '';
   }
 
+  /** 選んだ選択肢を並べた引用文（「まじめ」「責任感が強い」について） */
+  function listRefer(list) {
+    const a = (list || []).slice(0, 3).filter(function (x) { return txt(x); });
+    if (!a.length) return '';
+    return a.map(function (x) { return '「' + txt(x) + '」'; }).join('') + 'について';
+  }
+
+  /**
+   * 「活かせる場面」の答えを、文の中につなげる形にする。
+   *   後輩に手順を教える場面 → 後輩に手順を教える場面で
+   *   レジが混雑したとき     → レジが混雑したときに
+   *   後輩に手順を教える     → 後輩に手順を教える場面で
+   *   品出し                 → 品出しの場面で
+   * 生徒は「場面」まで書く人、動作だけ書く人、名詞だけ書く人に分かれるため。
+   */
+  function sceneAt(v) {
+    let t = txt(v);
+    if (!t) return '';
+    // 「お客様に声をかけます」のような丁寧語は、文の途中に置けないので常体に直す
+    t = txt(plainWord(t)).replace(/だ$/, '');
+    if (!t) return '';
+    // 「〜ときに」「〜場面で」のように助詞まで書く人がいるので、いったん落とす
+    t = t.replace(/(には|では|にて|に|は)$/, '');
+    t = t.replace(/([一-龥ァ-ヶー])で$/, '$1');
+    // 「意見をまとめること」→「意見をまとめる」。「ことの場面で」を防ぐ。
+    // 「こと」で受けていた時点で述語だと分かるので、動詞判定は通さない
+    const wasKoto = /(.)こと$/.test(t);
+    if (wasKoto) t = t.replace(/こと$/, '');
+    if (!t) return '';
+    if (/(とき|時|場合|際)$/.test(t)) return t + 'に';
+    if (/(場面|ところ|作業|仕事|シーン|局面)$/.test(t)) return t + 'で';
+    // 「お客様に声をかける」のように、かなだけで終わる動詞は isPredicate では拾えない。
+    // 助詞を含む＝ひとまとまりの動作、と見て述語あつかいにする
+    // （「あいさつ」のような単語をまちがえて動詞と見ないための条件）
+    const clause = /[をがにへとで]/.test(t) && /[ぁ-んァ-ヶ一-龥](?:う|く|ぐ|す|つ|ぬ|ぶ|む|る)$/.test(t);
+    if (wasKoto || clause || isPredicate(plainWord(t))) return t + '場面で';
+    return t + 'の場面で';
+  }
+
   /**
    * プレビュー用の志望先の呼び方。
    * 進学は「〇〇大学経済学部」、就職は「株式会社〇〇の製造職」とつなぐ（生成側と同じ規則）。
@@ -1023,17 +1062,48 @@
                 '美術', '音楽', '書道', '簿記', '福祉・看護',
                 'プログラミング', 'ものづくり', '調べること', '発表すること', '文章を書くこと'],
             allowFree: true,
-            hint: '下の「性格」を選んだ場合は、そちらが優先して使われます。',
+            hint: '3つまで選べます。選んだあと、下に「どんな場面で活かせそうか」を書く欄が出ます。'
+              + '当てはまるものがなければ、「＋ 自分で追加」から書き足せます。',
+            rerender: true,
             preview: function (d) {
               const a = (d.strengths || []).slice(0, 3);
-              if (!a.length || (d.personality || []).length) return '';
+              if (!a.length) return '';
               const q = a.map(function (x) { return '「' + x + '」'; }).join('');
               return isJob ? '仕事で活かせそうな点は' + q + 'です。' : '得意なのは' + q + 'です。';
             }
           },
           {
+            id: 'strengthScene', group: 'youself', type: 'text', maxChars: 30,
+            showIf: function (d) { return (d.strengths || []).length > 0; },
+            label: isJob
+              ? 'その得意なことは、会社のどんな場面で活かせそうですか'
+              : 'その得意なことは、学校のどんな場面で活かせそうですか',
+            refer: function (d) { return listRefer(d.strengths); },
+            placeholder: isJob ? '部品を決まった場所に戻す場面' : 'グループで調べたことをまとめる場面',
+            examples: isJob
+              ? ['部品を決まった場所に戻す場面', 'お客様に声をかけるとき', '不良品を見つける作業']
+              : ['グループで調べたことをまとめる場面', '実習でデータを記録するとき', '発表の資料づくり'],
+            avoid: '「役に立つと思います」まで書くと文が二重になります。場面だけを書いてください',
+            hint: 'その得意なことが実際に働く場面を、短い言葉で。'
+              + '「〜する場面」「〜するとき」「〜の作業」のような書き方が入れやすいです。'
+              + 'ここまで書けると、選んだだけの言葉が「使える力」に変わります。',
+            preview: function (d) {
+              const a = (d.strengths || []).slice(0, 3);
+              if (!a.length || !txt(d.strengthScene)) return '';
+              const q = a.map(function (x) { return '「' + x + '」'; }).join('');
+              return (isJob ? '得意な' : '得意な') + q + 'は、'
+                + sceneAt(d.strengthScene) + '活かせると思います。';
+            }
+          },
+          {
             id: 'licenses', group: 'youself', type: 'text', maxChars: 40,
+            // 「資格・検定の取得」に時間をかけた人にだけ聞く。
+            // 全員に聞くと空欄のまま進む人が多く、設問が増えるだけになるため。
+            showIf: function (d) {
+              return (d.efforts || []).indexOf('資格・検定の取得') !== -1;
+            },
             label: '持っている資格・検定',
+            refer: '「資格・検定の取得」に時間をかけたと答えました',
             placeholder: isJob ? '危険物取扱者乙種4類' : '実用英語技能検定2級',
             examples: isJob
               ? ['危険物取扱者乙種4類', '第二種電気工事士', '普通自動車第一種運転免許']
@@ -1049,12 +1119,36 @@
               'まわりを見て動ける', 'リーダーシップがある', '前向き', '落ち着いている', '明るい',
               'ていねい', '協調性がある', 'がまん強い', '人に頼られやすい', '負けずぎらい'],
             allowFree: true,
-            hint: '自分で思うものでも、人からよく言われるものでも構いません。',
+            hint: '自分で思うものでも、人からよく言われるものでも構いません。3つまで選べます。'
+              + '選んだあと、下に「どんな場面で活かせそうか」を書く欄が出ます。',
+            rerender: true,
             preview: function (d) {
               const a = (d.personality || []).slice(0, 3);
               if (!a.length) return '';
               return '自分では' + a.map(function (x) { return '「' + x + '」'; }).join('')
                 + 'という点が持ち味だと思っています。';
+            }
+          },
+          {
+            id: 'personalityScene', group: 'youself', type: 'text', maxChars: 30,
+            showIf: function (d) { return (d.personality || []).length > 0; },
+            label: isJob
+              ? 'その性格は、会社のどんな場面で活かせそうですか'
+              : 'その性格は、学校のどんな場面で活かせそうですか',
+            refer: function (d) { return listRefer(d.personality); },
+            placeholder: isJob ? '後輩に手順を教える場面' : '班で意見が分かれたとき',
+            examples: isJob
+              ? ['後輩に手順を教える場面', '同じ作業を毎日続けるとき', '締め切りが近いとき']
+              : ['班で意見が分かれたとき', '長い期間の課題に取り組むとき', '初めての実習'],
+            avoid: '「頑張りたいです」まで書くと文が二重になります。場面だけを書いてください',
+            hint: '性格は、場面とセットにして初めて相手に伝わります。'
+              + '「まじめです」だけでは誰にでも書けますが、'
+              + '「同じ作業を毎日続けるとき」まで書くと、あなたの話になります。',
+            preview: function (d) {
+              const a = (d.personality || []).slice(0, 3);
+              if (!a.length || !txt(d.personalityScene)) return '';
+              return '自分では' + a.map(function (x) { return '「' + x + '」'; }).join('')
+                + 'という点が持ち味で、' + sceneAt(d.personalityScene) + '活かせると思います。';
             }
           },
           {
@@ -1722,6 +1816,7 @@
     futureSentence: futureSentence,
     whySourceSentence: whySourceSentence,
     wantPhrase: wantPhrase,
+    sceneAt: sceneAt,
     CHIP_JOIN_LIMIT: CHIP_JOIN_LIMIT
   };
 })(window);

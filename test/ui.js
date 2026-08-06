@@ -126,6 +126,36 @@ async function runMode(browser, key, errors) {
   console.log('    選んでいない選択肢が押せなくなった数:', locked);
   await page.fill('#f_effort2Action', 'レジと品出し');
   await page.fill('#f_effort3Action', '毎日30分の問題演習');
+
+  // 資格・検定は「資格・検定の取得」を選んだ人にだけ出す
+  console.log('    資格・検定の欄:', await page.locator('[data-field="licenses"]').count(), '個（3つ目に選んだので出る）');
+
+  // 得意なこと・性格は、選ぶと「どんな場面で活かせるか」の欄が増える
+  console.log('  得意なこと・性格:');
+  console.log('    選ぶ前の場面の欄:',
+    (await page.locator('[data-field="strengthScene"]').count())
+    + (await page.locator('[data-field="personalityScene"]').count()), '個');
+  await page.click('[data-field="strengths"] .chip >> nth=0');
+  await page.waitForTimeout(250);
+  await page.click('[data-field="personality"] .chip:has-text("責任感が強い")');
+  await page.waitForTimeout(250);
+  console.log('    得意:', (await page.textContent('[data-field="strengthScene"] .field__q')).trim());
+  console.log('    性格:', (await page.textContent('[data-field="personalityScene"] .field__q')).trim());
+  await page.fill('#f_strengthScene', key === 'shushoku' ? '部品を決まった場所に戻す作業' : 'グループで調べたことをまとめる場面');
+  await page.fill('#f_personalityScene', key === 'shushoku' ? '後輩に手順を教える場面' : '班で意見が分かれたとき');
+  await page.waitForTimeout(200);
+  console.log('    こう文になります:',
+    (await page.textContent('[data-field="personalityScene"] .field__previewText')).trim());
+
+  // 必須と任意の見分け
+  console.log('  必須と任意:');
+  console.log('    凡例:', (await page.textContent('.stepBar__legend')).replace(/\s+/g, ' ').trim());
+  console.log('    必須バッジ:', (await page.locator('.badge--required').first().textContent()).trim(),
+    '／任意バッジ:', (await page.locator('.badge--optional').first().textContent()).trim());
+  console.log('    必須の欄:', await page.locator('.field--required').count(),
+    '／任意の欄:', await page.locator('.field--optional').count());
+  console.log('    質問文の必須マーク:', await page.locator('.field--required .field__must').count(),
+    '個（任意側は', await page.locator('.field--optional .field__must').count(), '個）');
   await fillIf('#f_effortHard', '意見がまとまらないこと');
   await fillIf('#f_effortHow', '一人ずつ話を聞くこと');
   await fillIf('#f_effortAction', '混雑する時間帯の動き方のメモ作り');

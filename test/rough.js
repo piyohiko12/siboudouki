@@ -20,7 +20,7 @@ const CASES = {
     effortHard: '毎日続けること', effortHow: '記録を毎日つけること',
     effortLearned: '続けることが力になる', valueFound: '続けること', contributeTo: '地域の人',
     licenses: '英検2級を持っている',
-    personality: [], strengths: ['人と話すのが好き'],
+    personality: [], strengths: ['人と話すのが好き'], strengthScene: '発表の資料づくり',
     futureKind: 'なりたい職業がある', futureDream: '人を助けたい',
     futureWhySource: '自分の体験から', futureWhyWhat: '祖母が入院した',
     gapNow: 'うまく話せない',
@@ -47,7 +47,7 @@ const CASES = {
     effortHard: '新しい人に伝わらないことです', effortHow: '一人ずつ見せました',
     effortLearned: '手順を守ることが大切です', valueFound: '手順を守ることです', contributeTo: '現場の人',
     licenses: '危険物取扱者乙種4類',
-    personality: ['責任感が強い'], strengths: [],
+    personality: ['責任感が強い'], strengths: [], personalityScene: '締め切りが近いときに',
     gapNow: '自分から動けません',
     knewBy: '職場見学', visited: ['職場見学', 'まだ行っていない'],
     attractCards: [{ where: '職場見学', weight: 3, feel: ['おどろいた', '見習いたい'],
@@ -98,6 +98,22 @@ CASES['選択の反対側'] = Object.assign({}, CASES.述語, {
   afterGradKind: '目指していること', afterGradWhat: '地元での就職',
   wantObject: '設計の技術', wantVerb: '身につけたい'
 });
+// 「活かせる場面」を、述語・体言止め・助詞つきなど、ばらばらの形で書いたとき
+CASES['場面の書き方いろいろ'] = Object.assign({}, CASES.述語, {
+  targetChars: 1200,
+  personality: ['責任感が強い'], personalityScene: '後輩に手順を教えること',
+  strengths: ['人と話すのが好き'], strengthScene: '意見が分かれたときに'
+});
+CASES['場面が体言止め'] = Object.assign({}, CASES.述語, {
+  targetChars: 1200,
+  personality: ['まじめ'], personalityScene: '品出し',
+  strengths: ['調べること'], strengthScene: '安全確認'
+});
+CASES['場面が丁寧語'] = Object.assign({}, CASES.述語, {
+  targetChars: 1200,
+  personality: ['明るい'], personalityScene: 'お客様に声をかけます',
+  strengths: ['あいさつ'], strengthScene: '朝の準備をします'
+});
 CASES['姿で締める'] = Object.assign({}, CASES.体言止めだけ, {
   orgType: '福祉施設・団体など', effortActionKind: '自分がやった行動',
   featureNamed: '決まった名前がある',
@@ -134,7 +150,10 @@ const NG = [
   [/というという/, 'という重複'],
   [/[ぁ-んァ-ヶ一-龥]を作りましたこと/, '作りました＋こと'],
   [/「」|「[^」]{0,1}」/, '中身のないかぎかっこ'],
-  [/貴(?:社|校|学|庁|院|施設)[^はにをのでとがもだへやか、。「]/, '敬称のあとの助詞なし']
+  [/貴(?:社|校|学|庁|院|施設)[^はにをのでとがもだへやか、。「]/, '敬称のあとの助詞なし'],
+  [/(?:する|した|ない|たい|れる|ある|いる|です|ます|ました)の場面/, '述語＋の場面'],
+  [/(?:ことの場面|ときの場面|場面の場面|場面場面|でで|にに)/, '場面のつなぎ重複'],
+  [/持ち味で、[^。]*持ち味/, '持ち味の重複']
 ].filter(function (r) { return r[1]; });
 
 let bad = 0;
