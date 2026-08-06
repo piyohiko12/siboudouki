@@ -1394,6 +1394,7 @@
       afterGradWhen: d.afterGradWhen || '',
       afterGradKind: d.afterGradKind || '',
       afterGradWhat: d.afterGradWhat || '',
+      dailyImage: d.dailyImage || '',
       contributeTo: d.contributeTo || '',
       template: (global.COMPOSE.TEMPLATES.find(function (t) { return t.id === d.template; }) || {}).name || '',
       body: d.body || '',

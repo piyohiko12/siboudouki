@@ -407,6 +407,7 @@
       afterGradWhen: bare(d.afterGradWhen),
       afterGradIsSelf: d.afterGradKind === 'なっていたい自分の姿',
       afterGradWhat: bare(d.afterGradWhat),
+      dailyImage: bare(d.dailyImage),
       contributeTo: bare(d.contributeTo)
     };
   }
@@ -479,18 +480,32 @@
   }
 
   /** 志望先の特色。固有名詞をかぎかっこで囲んで示す */
+  /**
+   * 「〜に魅力を感じた」「〜がよかった」のような感想の語尾を落とす。
+   * 名前を聞いている欄に感想を書く生徒がいるため、枠にはめる前に整える。
+   */
+  const IMPRESSION_END =
+    /(に魅力を感じた|に興味を持った|に関心を持った|にひかれた|に惹かれた|がよかった|が良かった|が印象に残った|と思った|と感じた|がすごかった)$/;
+
+  function trimImpression(text) {
+    return bare(text).replace(IMPRESSION_END, '');
+  }
+
   function sFeature(m) {
-    if (!m.featureName) return '';
+    const name = trimImpression(m.featureName);
+    if (!name) return '';
     const kind = m.featureKind || (m.job ? '取り組み' : '学び');
     const lead = variant(m, [
       '私が特に関心を持ったのは、',
       '中でも強く心を引かれたのは、',
       'とりわけ関心を持ったのは、'
     ], 2) + m.name + 'の';
-    // 固有名詞はかぎかっこで、特徴を書いた人は「という◯◯」で受ける
-    return m.featureNamed
-      ? lead + kind + '「' + m.featureName + '」です。'
-      : fit(m.featureName, lead + '{X}という' + kind + 'です。');
+
+    // 固有名詞はかぎかっこで受ける
+    if (m.featureNamed) return lead + kind + '「' + name + '」です。';
+    // 特徴を書いた人は「◯◯のうち、△△という点」で受ける（「という授業です」より座る）
+    return fit(name, lead + kind + 'のうち、{X}'
+      + (NOUN_TAIL.test(name) ? 'です。' : 'という点です。'));
   }
 
   function sFeatureDetail(m) {
@@ -537,13 +552,21 @@
       || lead + '学校生活です。';
   }
 
+  /** 「デザイン作成」のように、それ自体が「作る」を含む言葉 */
+  const MAKE_END = /(作成|制作|製作|作り|づくり|づくり|設計)$/;
+
   function sEffortAction(m) {
     const lead = m.effortRole ? m.effortRole + 'として、'
       // 「取り組む中で、〜に取り組みました」と重ならない言い回しにしておく
       : variant(m, ['その中で、', 'その活動では、', '日々の活動の中で、'], 7);
-    return m.effortMade
-      ? fit(m.effortAction, lead + '{X}を作りました。', lead + '{X}ものを作りました。')
-      : fit(m.effortAction, lead + '{X}に取り組みました。', lead + '{X}ことに力を注ぎました。');
+
+    if (!m.effortMade) {
+      return fit(m.effortAction, lead + '{X}に取り組みました。', lead + '{X}ことに力を注ぎました。');
+    }
+    // 「デザイン作成を作りました」にならないよう、受け方を変える
+    return MAKE_END.test(bare(m.effortAction))
+      ? fit(m.effortAction, lead + '{X}を担当しました。', lead + '{X}ことを担当しました。')
+      : fit(m.effortAction, lead + '{X}を作りました。', lead + '{X}ものを作りました。');
   }
 
   function sEffortResult(m) {
@@ -583,6 +606,11 @@
     return 'このことは、' + m.featureSource + 'で知りました。';
   }
 
+  /** 入ったあとの一場面。具体的な絵が浮かぶほど、本気度が伝わる */
+  function sDailyImage(m) {
+    return fit(m.dailyImage, '{X}を思い描いています。', '{X}自分を思い描いています。');
+  }
+
   /** いずれは誰の役に立ちたいか。文章の締めに芯を通す */
   function sContributeTo(m) {
     return fit(m.contributeTo,
@@ -595,12 +623,20 @@
     return fit(m.effortLearned, lead + '{X}を学びました。', lead + '{X}ということを学びました。');
   }
 
+  /** 「◯◯という点」の◯◯がすでに「点」で終わっていないか（「点という点」を防ぐ） */
+  const NOUN_TAIL = /(点|ところ|こと|違い|ちがい)$/;
+
   function sMust(m) {
-    // どの枠も「という」で受けるので、名詞でも述語でも文になる
+    const dup = NOUN_TAIL.test(bare(m.mustPoint));
+    // どの枠も「という」で受けるので、名詞でも述語でも文になる。
+    // 答えがすでに「〜点」で終わっていたら、「という点」は重ねない。
     return fit(m.mustPoint, variant(m, [
-      '同じような' + m.L.org + 'は他にもありますが、' + m.name + 'には{X}という違いがあります。',
-      'ほかにも' + m.L.org + 'はありますが、' + m.name + 'にしかない{X}という点にひかれました。',
-      '私が' + m.name + 'でなければならないと考えるのは、{X}という点があるからです。'
+      '同じような' + m.L.org + 'は他にもありますが、' + m.name + 'には{X}'
+        + (dup ? 'があります。' : 'という違いがあります。'),
+      'ほかにも' + m.L.org + 'はありますが、' + m.name + 'にしかない{X}'
+        + (dup ? 'にひかれました。' : 'という点にひかれました。'),
+      '私が' + m.name + 'でなければならないと考えるのは、{X}'
+        + (dup ? 'があるからです。' : 'という点があるからです。')
     ], 3));
   }
 
@@ -625,10 +661,14 @@
   }
 
   function sContribution(m) {
-    const lead = (m.contributionFrom || '高校生活')
-      + variant(m, ['で身につけた', 'で培った', 'を通して身につけた'], 14);
+    const from = m.contributionFrom || '高校生活';
+    const lead = from + variant(m, ['で身につけた', 'で培った', 'を通して身につけた'], 14);
     const tail = m.job ? 'この仕事でも活かせると考えています。' : 'ここでの学びにも活かせると考えています。';
-    return fit(m.contribution, lead + '{X}は、' + tail, lead + '「{X}」という姿勢は、' + tail);
+    // 「〜したい」まで書かれたら、そのまま意欲の文として受ける
+    return fitWish(m.contribution,
+      lead + '{X}は、' + tail,
+      lead + '「{X}」という姿勢は、' + tail,
+      from + 'で得たものを持って、{X}と考えています。');
   }
 
   /**
@@ -639,7 +679,13 @@
   function cardLink(text) {
     const t = bare(text);
     if (!t) return '';
-    return global.QUESTIONS.isPredicate(t) ? flow(t) : t + 'と重なる部分があります。';
+    // すでに「です・ます」で書いてあれば、その言葉をそのまま尊重する
+    if (/(です|ます|ました|ません|でした)$/.test(t)) return flow(t);
+    // 常体の文で書かれたら、そのまま入れると文体が混ざるので枠にはめ直す
+    if (global.QUESTIONS.isPredicate(t)) {
+      return global.QUESTIONS.frame(t, '{X}ように感じています。', '{X}ように感じています。');
+    }
+    return t + 'と重なる部分があります。';
   }
 
   function sAfterGrad(m) {
@@ -778,12 +824,13 @@
     paras.push(p4);
 
     const p5 = [];
-    push(p5, sMust(m), 2);
+    push(p5, sMust(m), 1);
     paras.push(p5);
 
     const p6 = [];
     push(p6, sAfter(m), 1);
     push(p6, sAfterAction(m), 2);
+    push(p6, sDailyImage(m), 3);
     push(p6, sAfterGrad(m), 3);
     push(p6, sContributeTo(m), 3);
     paras.push(p6);
@@ -835,7 +882,7 @@
     push(p3, sFeature(m), 1);
     push(p3, sLearnOrTask(m), 2);
     push(p3, sDeep(m, 'why'), 2);
-    push(p3, sMust(m), 2);
+    push(p3, sMust(m), 1);
     push(p3, sPolicy(m), 3);
     paras.push(p3);
     paras.push([S(sValue(m), 1)]);
@@ -843,6 +890,7 @@
     const p4 = [];
     push(p4, sAfter(m), 1);
     push(p4, sAfterAction(m), 2);
+    push(p4, sDailyImage(m), 3);
     push(p4, sContribution(m), 1);
     push(p4, sAfterGrad(m), 3);
     push(p4, sContributeTo(m), 3);
@@ -883,7 +931,7 @@
     m.cardSent(1, 3).forEach(function (s) { p3.push(s); });
     push(p3, sVisited(m), 3);
     push(p3, sAttract(m, '特に'), 3);
-    push(p3, sMust(m), 2);
+    push(p3, sMust(m), 1);
     paras.push(p3);
     paras.push([S(sValue(m), 1)]);
 
@@ -901,6 +949,7 @@
     const p5 = [];
     push(p5, sAfter(m), 1);
     push(p5, sAfterAction(m), 2);
+    push(p5, sDailyImage(m), 3);
     push(p5, sAfterGrad(m), 2);
     push(p5, sContributeTo(m), 3);
     paras.push(p5);
@@ -956,9 +1005,10 @@
     paras.push(p3);
 
     const p4 = [];
-    push(p4, sMust(m), 2);
+    push(p4, sMust(m), 1);
     push(p4, sAfter(m), 1);
     push(p4, sAfterAction(m), 2);
+    push(p4, sDailyImage(m), 3);
     push(p4, sAfterGrad(m), 3);
     push(p4, sContributeTo(m), 3);
     paras.push(p4);
@@ -1012,13 +1062,14 @@
     m.cardSent(1, 3).forEach(function (s) { p3.push(s); });
     push(p3, sVisited(m), 3);
     push(p3, sAttract(m, '特に'), 3);
-    push(p3, sMust(m), 2);
+    push(p3, sMust(m), 1);
     paras.push(p3);
     paras.push([S(sValue(m), 1)]);
 
     const p4 = [];
     push(p4, sAfter(m), 1);
     push(p4, sAfterAction(m), 1);
+    push(p4, sDailyImage(m), 3);
     push(p4, sContribution(m), 2);
     push(p4, sAfterGrad(m), 2);
     push(p4, sContributeTo(m), 3);
@@ -1063,6 +1114,7 @@
     push(p3, sAttract(m, '特に'), 3);
     push(p3, sVisited(m), 3);
     push(p3, sPolicy(m), 3);
+    push(p3, sValue(m), 1);
     paras.push(p3);
 
     const p4 = [];
@@ -1083,9 +1135,10 @@
     paras.push(p4);
 
     const p5 = [];
-    push(p5, sMust(m), 2);
+    push(p5, sMust(m), 1);
     push(p5, sAfter(m), 1);
     push(p5, sAfterAction(m), 2);
+    push(p5, sDailyImage(m), 3);
     push(p5, sAfterGrad(m), 3);
     push(p5, sContributeTo(m), 3);
     paras.push(p5);
@@ -1252,11 +1305,16 @@
       .filter(function (p) { return p.length; });
 
     for (let i = 1; i < out.length - 1; i++) {
-      if (out[i].length === 1 && countChars(out[i][0].text) < 70) {
+      if (out[i].length !== 1 || countChars(out[i][0].text) >= 70) continue;
+
+      // 結びは独立させたいので、その手前の段落は前へ寄せる
+      if (i + 1 === out.length - 1) {
+        out[i - 1] = out[i - 1].concat(out[i]);
+      } else {
         out[i + 1] = out[i].concat(out[i + 1]);
-        out.splice(i, 1);
-        i--;
       }
+      out.splice(i, 1);
+      i--;
     }
     return out;
   }

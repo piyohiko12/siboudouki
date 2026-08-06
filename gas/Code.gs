@@ -87,6 +87,7 @@ var COLUMNS = [
   { key: 'afterGradWhen',    label: '将来の時期',            width: 100 },
   { key: 'afterGradKind',    label: '将来の書き方',          width: 130 },
   { key: 'afterGradWhat',    label: '卒業後・将来像',        width: 200 },
+  { key: 'dailyImage',       label: '思い描く場面',          width: 220 },
   { key: 'contributeTo',     label: '役に立ちたい相手',      width: 180 },
   { key: 'tone',             label: '文体',                  width: 90 }
 ];

@@ -117,6 +117,7 @@
       { label: '会社（民間企業）', honorific: '貴社', org: '会社', join: '入社', joinAfter: '入社後' },
       { label: '役所・公的機関（公務員）', honorific: '貴庁', org: '職場', join: '採用', joinAfter: '採用後' },
       { label: '病院・医療機関', honorific: '貴院', org: '職場', join: '就職', joinAfter: '就職後' },
+      { label: '美術館・図書館などの施設', honorific: '貴館', org: '職場', join: '就職', joinAfter: '就職後' },
       { label: '福祉施設・団体など', honorific: '貴施設', org: '職場', join: '就職', joinAfter: '就職後' }
     ]
   };
@@ -289,12 +290,20 @@
     '資格支援制度', '職場の体制', '仕事の進め方', '取り組み'];
 
   /** 志望理由のひとこと：語尾（{X} に生徒が書いた名詞が入る） */
+  // dup … 枠が足す名詞。答えがすでにその名詞で終わっていたら dupFrame を使う
+  //        （「倉庫管理の技術」＋「技術を身につけたい」＝「技術の技術」を防ぐ）
   const WANT_VERB_SHINGAKU = [
     { label: '学びたい', frame: '{X}について学びたい', pred: '{X}ことを学びたい' },
     { label: '身につけたい', frame: '{X}を身につけたい', pred: '{X}力を身につけたい' },
-    { label: '理解を深めたい', frame: '{X}への理解を深めたい', pred: '{X}ことへの理解を深めたい' },
+    {
+      label: '理解を深めたい', frame: '{X}への理解を深めたい', pred: '{X}ことへの理解を深めたい',
+      dup: '理解', dupFrame: '{X}を深めたい'
+    },
     { label: '研究したい', frame: '{X}について研究したい', pred: '{X}ことについて研究したい' },
-    { label: '経験を積みたい', frame: '{X}の経験を積みたい', pred: '{X}経験を積みたい' },
+    {
+      label: '経験を積みたい', frame: '{X}の経験を積みたい', pred: '{X}経験を積みたい',
+      dup: '経験', dupFrame: '{X}を積みたい'
+    },
     { label: '挑戦したい', frame: '{X}に挑戦したい', pred: '{X}ことに挑戦したい' },
     { label: '将来の仕事につなげたい', frame: '{X}を将来の仕事につなげたい', pred: '{X}ことを将来の仕事につなげたい' },
     { label: '役に立ちたい', frame: '{X}の役に立ちたい', pred: '{X}ことで人の役に立ちたい' }
@@ -302,12 +311,18 @@
 
   const WANT_VERB_SHUSHOKU = [
     { label: '取り組みたい', frame: '{X}に取り組みたい', pred: '{X}ことに取り組みたい' },
-    { label: '技術を身につけたい', frame: '{X}の技術を身につけたい', pred: '{X}技術を身につけたい' },
+    {
+      label: '技術を身につけたい', frame: '{X}の技術を身につけたい', pred: '{X}技術を身につけたい',
+      dup: '技術', dupFrame: '{X}を身につけたい'
+    },
     { label: '作りたい', frame: '{X}を作りたい', pred: '{X}ものを作りたい' },
     { label: '支えたい', frame: '{X}を支えたい', pred: '{X}人を支えたい' },
     { label: '任されるようになりたい', frame: '{X}を任されるようになりたい', pred: '{X}ことを任されるようになりたい' },
     { label: '挑戦したい', frame: '{X}に挑戦したい', pred: '{X}ことに挑戦したい' },
-    { label: '長く続けたい', frame: '{X}を長く続けたい', pred: '{X}仕事を長く続けたい' },
+    {
+      label: '長く続けたい', frame: '{X}を長く続けたい', pred: '{X}仕事を長く続けたい',
+      dup: '仕事', dupFrame: '{X}を長く続けたい'
+    },
     { label: '役に立ちたい', frame: '{X}の役に立ちたい', pred: '{X}ことで人の役に立ちたい' }
   ];
 
@@ -395,6 +410,10 @@
     if (/たい$/.test(w.replace(/[。．\s]+$/, ''))) return w.replace(/[。．\s]+$/, '');
     const list = wantVerbList(mode);
     const hit = list.find(function (v) { return v.label === verbLabel; }) || list[0];
+    // 答えがすでに枠と同じ名詞で終わっていたら、名詞を重ねない枠を使う
+    if (hit.dup && new RegExp(hit.dup + '$').test(plainWord(w))) {
+      return frame(w, hit.dupFrame, hit.dupFrame);
+    }
     return frame(w, hit.frame, hit.pred);
   }
 
@@ -590,7 +609,8 @@
             options: orgTypeList(mode).map(function (o) { return o.label; }),
             default: orgTypeList(mode)[0].label,
             hint: isJob
-              ? 'ここで「貴社」「貴庁」「貴院」の呼び分けと、「入社後」「採用後」の言い方が決まります。'
+              ? 'ここで「貴社」「貴庁」「貴院」「貴館」の呼び分けと、'
+                + '「入社後」「採用後」「就職後」の言い方が決まります。'
               : '大学あてに「貴校」と書くのは、じつはまちがいです（正しくは「貴学」）。ここで呼び方が決まります。',
             preview: function (d) {
               const o = orgTypeOf(mode, d.orgType);
@@ -776,6 +796,7 @@
           {
             id: 'effortHow', group: 'effort', type: 'text', maxChars: 30,
             only: ['prep', 'story', 'gap', 'three'],
+            requiredIn: ['story'],
             label: 'それを、どうやって乗り越えましたか',
             refer: function (d) { return about(d.effortHard); },
             placeholder: '朝練習への切り替え',
@@ -1054,7 +1075,8 @@
               : ['地域経済フィールドワーク', '海外研修プログラム', '医療事務コース'],
             hint: 'ここに固有名詞が入るかどうかで、文章の説得力が決まります。'
               + (isJob ? '求人票や会社案内の表記どおりに写します。' : 'パンフレットやシラバスの表記どおりに写します。'),
-            avoid: '「いろいろな授業」「幅広い仕事」のような、どこでも言えることは書かない',
+            avoid: '「〜に魅力を感じた」「〜がよかった」のような感想は書きません。'
+              + 'ものの名前か、そのものの特徴を書きます',
             preview: function (d) {
               if (!txt(d.featureName)) return '';
               const kind = txt(d.featureKind) || (isJob ? '取り組み' : '学び');
@@ -1210,11 +1232,12 @@
             },
             placeholder: '人と話しながら考えを深めること',
             examples: ['人と話しながら考えを深めること', '手を動かして確かめること',
-              '最後まで責任を持つこと', '人の話をよく聞くこと'],
+              '最後まで責任を持つこと', '声をかけ合って進めること'],
             hint: '心が動いた場面と、自分ががんばってきたこと。'
               + 'その両方に共通しているものを、ひとことで書きます。'
-              + '「〜すること」の形にすると入れやすいです。',
-            avoid: '志望先のいいところではなく、「あなたが大事にしていること」を書きます',
+              + '**あなたの行動**を「〜すること」の形で書くと入れやすいです。',
+            avoid: '「会社の雰囲気」「学校の設備」のような志望先のよさではなく、'
+              + 'あなた自身が大事にしている行動を書きます',
             preview: function (d) {
               return frame(d.valueFound,
                 'そこから私は、{X}を大切にするようになりました。',
@@ -1257,7 +1280,9 @@
             source: 'wantObject',
             hint: '同じ理由でも、3回掘り下げると「あなたにしか書けない動機」に変わります。'
               + '短い言葉で構いません。3つ目の答えが本文に使われます。',
-            avoid: '3つとも同じことを書き直すと、掘り下げになりません'
+            avoid: '3つとも同じことを書き直すと掘り下げになりません。'
+              + 'また「成長できる」「やりがいがある」は誰にでも当てはまるので、'
+              + '自分の体験に近い言葉まで降りてください'
           },
           {
             id: 'mustPoint', group: 'only', type: 'text', maxChars: 30, required: true,
@@ -1347,7 +1372,8 @@
             },
             placeholder: '手順を崩さずに作業を続ける力',
             examples: ['手順を崩さずに作業を続ける力', '初対面の人と話す力', '体力と早起きの習慣'],
-            hint: '大げさな力でなくて構いません。実際に続けてきたことほど信じてもらえます。'
+            hint: '大げさな力でなくて構いません。実際に続けてきたことほど信じてもらえます。',
+            avoid: '「〜を活かして頑張りたい」まで書くと文が二重になります。力の名前だけを書きます'
           },
           {
             id: 'contributionFrom', group: 'after', type: 'select',
@@ -1379,6 +1405,24 @@
             default: isJob ? '身につけていたい力・技術' : '目指していること',
             hint: '「後輩に教えられる技術」なら前者、「後輩に頼られる先輩」なら後者です。'
               + '選びまちがえると「先輩を身につけていたいです」という文になってしまいます。'
+          },
+          {
+            id: 'dailyImage', group: 'after', type: 'text', maxChars: 30,
+            label: isJob ? 'どんな場面で働いている自分を思い描きますか' : 'どんな場面で学んでいる自分を思い描きますか',
+            refer: function (d) {
+              const a = (d.afterEnter || []).slice(0, 2);
+              return a.length ? '「' + a.join('、') + '」について' : '';
+            },
+            placeholder: isJob ? '先輩と一緒に在庫を数えている場面' : 'ゼミで自分の考えを話している場面',
+            examples: isJob
+              ? ['先輩と一緒に在庫を数えている場面', '機械の音を聞き分けている場面', '後輩に手順を教えている場面']
+              : ['ゼミで自分の考えを話している場面', '実習先で患者さんと話している場面', '地域の方に取材している場面'],
+            hint: '入ってからの一場面を思い描いて書きます。'
+              + '具体的な絵が浮かぶほど、本気で考えていることが伝わります。空でも進めます。',
+            preview: function (d) {
+              return frame(d.dailyImage,
+                '{X}を思い描いています。', '{X}自分を思い描いています。');
+            }
           },
           {
             id: 'contributeTo', group: 'far', type: 'text', maxChars: 25,

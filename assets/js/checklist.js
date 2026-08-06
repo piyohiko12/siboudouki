@@ -42,14 +42,35 @@
     return result('length', '文字数', 'ok', n + '字。' + target + '字の9割〜10割におさまっています。');
   }
 
+  // 「です・ます」でも「である」でもない言い切り（「〜と合う。」「〜を作った。」）。
+  // どちらにも数えていなかったため、文体の混ざりを見逃していた。
+  const PLAIN_END = new RegExp(
+    '(?:する|した|なる|なった|ある|あった|いる|いた|できる|できた|わかる|分かった'
+    + '|思う|思った|考える|考えた|感じる|感じた|合う|合った|ない|なかった|たい|しい'
+    + '|[一-龥][ぁ-ん]{0,2}(?:る|う|く|ぐ|す|つ|ぬ|ぶ|む|た|だ))[。！？!?]?$');
+
+  // 「志望します。」も語尾だけ見れば「〜す。」なので、
+  // 先に丁寧な終わり方を除いてから判定する。
+  const POLITE_END = /(です|ます|ました|ません|でした|ましょう|ですが)[。！？!?]?$/;
+
+  function plainSentences(text) {
+    return sentences(text).filter(function (x) {
+      return !POLITE_END.test(x) && PLAIN_END.test(x);
+    });
+  }
+
   function checkTone(text, d) {
     const polite = (text.match(/(です|ます)[。、\s]/g) || []).length;
-    const plain = (text.match(/(である|だった|考えた|思う)[。、\s]/g) || []).length;
+    const plainWords = (text.match(/(である|だった)[。、\s]/g) || []).length;
+    const loose = plainSentences(text);
+    const plain = plainWords + loose.length;
     const want = d.tone === 'だ・である調' ? 'plain' : 'polite';
 
     if (polite > 0 && plain > 0) {
+      const samples = loose.slice(0, 3).map(function (x) { return '「' + x + '」'; });
       return result('tone', '文体の統一', 'error',
-        'です・ます調（' + polite + 'か所）と、だ・である調（' + plain + 'か所）が混ざっています。どちらかにそろえましょう。');
+        'です・ます調（' + polite + 'か所）と、だ・である調（' + plain + 'か所）が混ざっています。どちらかにそろえましょう。',
+        samples);
     }
     if (want === 'polite' && plain > 0) {
       return result('tone', '文体の統一', 'warn', 'です・ます調を選んでいますが、だ・である調の文が見つかりました。');
@@ -125,6 +146,29 @@
         '使われています。言い切れるところは「〜です」「〜します」と言い切ると力強くなります。');
     }
     return result('vague', '曖昧な表現', 'ok', '言い切る形で書けています。');
+  }
+
+  /**
+   * 「技術の技術」のように、同じ言葉がすぐ隣で重なっていないか。
+   * 選択肢と入力の組み合わせで生まれることがあるので、提出前に気づけるようにする。
+   */
+  function checkRepeatWord(text) {
+    const hits = [];
+    const re = /([一-龥ぁ-んァ-ヶー]{2,6})(の|を|に|が)?\1/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      // 「わくわく」「いろいろ」のような重ね言葉は正しい日本語なので、
+      // 漢字を含む語の重なりだけを拾う。
+      if (!/[一-龥]/.test(m[1])) continue;
+      if (hits.indexOf(m[0]) === -1) hits.push(m[0]);
+      if (hits.length >= 5) break;
+    }
+    if (!hits.length) {
+      return result('repeatWord', '言葉の重なり', 'ok', '同じ言葉が続いているところはありません。');
+    }
+    return result('repeatWord', '言葉の重なり', 'warn',
+      '同じ言葉がすぐ隣で重なっています。どちらかを消すか、言いかえましょう。',
+      hits.map(function (w) { return '「' + w + '」'; }));
   }
 
   function checkConcrete(text) {
@@ -323,6 +367,7 @@
       checkSentenceLength(t),
       checkVague(t),
       checkConcrete(t),
+      checkRepeatWord(t),
       checkRepeatEnding(t),
       checkOpening(t, d),
       checkNotation(t, d)

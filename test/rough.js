@@ -34,7 +34,7 @@ const CASES = {
     wantObject: '人の役に立つ', wantVerb: '身につけたい',
     whyChain: { why1: '楽しかったから', why2: '任されたから', why3: '自分で考えて動けると力が出る' },
     mustPoint: '提言まで行っている',
-    afterEnter: ['専門分野の勉強'], afterAction: '先輩に質問する',
+    afterEnter: ['専門分野の勉強'], afterAction: '先輩に質問する', dailyImage: 'ゼミで話し合っている場面',
     afterGradWhen: '卒業後', afterGradWhat: '地域に関わる仕事がしたい'
   },
   丁寧語: {
@@ -59,7 +59,7 @@ const CASES = {
     wantObject: '正確に作業したい', wantVerb: '取り組みたい',
     whyChain: { why1: '好きだからです', why2: '', why3: 'ものづくりが好きです' },
     mustPoint: '検査まで自社でやっています',
-    afterEnter: ['仕事を早く覚えること'], afterAction: '先輩に聞きます',
+    afterEnter: ['仕事を早く覚えること'], afterAction: '先輩に聞きます', dailyImage: '先輩と作業している場面',
     contributionFrom: 'アルバイト', contribution: '最後までやり切る',
     afterGradWhen: '5年後', afterGradWhat: '後輩に教えられる'
   },

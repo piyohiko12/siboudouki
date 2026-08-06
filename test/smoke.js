@@ -65,7 +65,7 @@ const shingaku = Object.assign({}, common, {
   wantObject: '地域の課題を調べる力', wantVerb: '身につけたい',
   mustPoint: '提言まで行う地域連携',
   afterEnter: ['専門分野の勉強', '実習・インターンシップ'],
-  afterAction: '地域の方への取材',
+  afterAction: '地域の方への取材', dailyImage: 'ゼミで自分の考えを話している場面',
   afterGradWhen: '卒業後', afterGradWhat: 'まちづくりに関わる仕事'
 });
 
@@ -98,7 +98,7 @@ const shushoku = Object.assign({}, common, {
   wantObject: '正確さを求められるものづくり', wantVerb: '取り組みたい',
   mustPoint: '検査工程まで自社で行う体制',
   afterEnter: ['仕事を早く覚えること', '資格の取得'],
-  afterAction: '先輩への質問',
+  afterAction: '先輩への質問', dailyImage: '先輩と一緒に部品を確かめている場面',
   contributionFrom: 'アルバイト', contribution: '手順を崩さずに作業を続ける力',
   afterGradWhen: '5年後', afterGradWhat: '後輩に教えられる技術'
 });
