@@ -473,6 +473,45 @@
     return w.frame.replace('{X}', which);
   }
 
+  /**
+   * 「そう思うきっかけ」を、文の頭につなげる形にする。
+   *   部室の道具置き場を整理した → 部室の道具置き場を整理した経験から、
+   *   毎日の片づけ               → 毎日の片づけの経験から、
+   *   毎日片づけをしています     → 毎日片づけをしている経験から、
+   */
+  function fromEpisode(v, short) {
+    const t = txt(v);
+    if (!t) return '';
+    const plain = txt(plainWord(t)).replace(/だ$/, '');
+    if (!plain) return '';
+    if (/経験$/.test(plain)) return plain + 'から、';
+    // 性格と得意なことで2文続くので、受け方を変えて同じ言い回しが並ばないようにする
+    if (short) return plain + (isPredicate(plain) ? 'ことから、' : 'から、');
+    return (isPredicate(plain) ? plain : plain + 'の') + '経験から、';
+  }
+
+  /** 得意なこと・性格の一文（プレビューと生成側で同じ形） */
+  function traitSentence(d, isJob) {
+    const t = ((d || {}).personality || [])[0];
+    if (!t) return '';
+    const from = fromEpisode(d.personalityEpisode);
+    const scene = sceneAt(d.personalityScene);
+    if (from) return from + '自分では「' + t + '」という点が持ち味だと思っています。';
+    if (scene) return '自分では「' + t + '」という点が持ち味で、' + scene + '活かせると思います。';
+    return '自分では「' + t + '」という点が持ち味だと思っています。';
+  }
+
+  function strengthSentence(d, isJob) {
+    const t = ((d || {}).strengths || [])[0];
+    if (!t) return '';
+    const from = fromEpisode(d.strengthEpisode, true);
+    const scene = sceneAt(d.strengthScene);
+    const head = isJob ? '仕事で活かせそうな点は' : '得意なのは';
+    if (from) return from + '「' + t + '」には自信があります。';
+    if (scene) return '得意な「' + t + '」は、' + scene + '役に立つと思います。';
+    return head + '「' + t + '」です。';
+  }
+
   /** 「いちばん力を入れてきたのは〜です。」の一文（プレビューと生成側で同じ形） */
   function effortTopSentence(d) {
     const word = effortTopWord(d) || '学校生活';
@@ -1185,7 +1224,7 @@
             }
           },
           {
-            id: 'strengths', group: 'youself', type: 'chips', max: 3,
+            id: 'strengths', group: 'youself', type: 'chips', max: 1,
             label: isJob ? '仕事で活かせそうな、自分の得意なこと' : '得意な教科・好きなこと',
             options: isJob
               ? ['体力がある', '手先が器用', '正確に作業できる', 'コツコツ続けられる', '人と話すこと',
@@ -1195,15 +1234,29 @@
                 '美術', '音楽', '書道', '簿記', '福祉・看護',
                 'プログラミング', 'ものづくり', '調べること', '発表すること', '文章を書くこと'],
             allowFree: true,
-            hint: '3つまで選べます。選んだあと、下に「どんな場面で活かせそうか」を書く欄が出ます。'
+            hint: '選べるのは1つです。いちばん自信のあるものを選んでください。'
+              + '選んだあと、下に「そう思うきっかけ」と「どんな場面で活かせそうか」を書く欄が出ます。'
               + '当てはまるものがなければ、「＋ 自分で追加」から書き足せます。',
             rerender: true,
-            preview: function (d) {
-              const a = (d.strengths || []).slice(0, 3);
-              if (!a.length) return '';
-              const q = a.map(function (x) { return '「' + x + '」'; }).join('');
-              return isJob ? '仕事で活かせそうな点は' + q + 'です。' : '得意なのは' + q + 'です。';
-            }
+            preview: function (d) { return strengthSentence(d, isJob); }
+          },
+          {
+            id: 'strengthEpisode', group: 'youself', type: 'text', maxChars: 30,
+            showIf: function (d) { return (d.strengths || []).length > 0; },
+            label: function (d) {
+              const t = ((d || {}).strengths || [])[0];
+              return (t ? '「' + t + '」' : 'それ') + 'を選んだのは、どんなことがあったからですか';
+            },
+            refer: function (d) { return listRefer(d.strengths); },
+            placeholder: isJob ? '部室の道具置き場を整理した' : 'クラスの発表資料をまとめた',
+            examples: isJob
+              ? ['部室の道具置き場を整理した', '毎日の片づけを任された', 'アルバイトで棚の並べ方を変えた']
+              : ['クラスの発表資料をまとめた', '定期考査で点が伸びた', '課題研究で資料を集めた'],
+            avoid: '「得意です」「好きです」だけでは、なぜそう思うのかが伝わりません',
+            hint: 'そう思うようになった出来事を、ひとつだけ短く書きます。'
+              + '選んだ言葉だけでは誰でも書ける文になりますが、'
+              + 'ここがあると「本当にそうなんだ」と読み手に伝わります。',
+            preview: function (d) { return strengthSentence(d, isJob); }
           },
           {
             id: 'strengthScene', group: 'youself', type: 'text', maxChars: 30,
@@ -1221,11 +1274,10 @@
               + '「〜する場面」「〜するとき」「〜の作業」のような書き方が入れやすいです。'
               + 'ここまで書けると、選んだだけの言葉が「使える力」に変わります。',
             preview: function (d) {
-              const a = (d.strengths || []).slice(0, 3);
-              if (!a.length || !txt(d.strengthScene)) return '';
-              const q = a.map(function (x) { return '「' + x + '」'; }).join('');
-              return (isJob ? '得意な' : '得意な') + q + 'は、'
-                + sceneAt(d.strengthScene) + '活かせると思います。';
+              const t = (d.strengths || [])[0];
+              if (!t || !txt(d.strengthScene)) return '';
+              if (!txt(d.strengthEpisode)) return strengthSentence(d, isJob);
+              return 'この力は、' + sceneAt(d.strengthScene) + '役に立つと思います。';
             }
           },
           {
@@ -1247,20 +1299,32 @@
             }
           },
           {
-            id: 'personality', group: 'youself', type: 'chips', max: 3, label: '自分の性格',
+            id: 'personality', group: 'youself', type: 'chips', max: 1, label: '自分の性格',
             options: ['まじめ', 'こつこつ続けられる', '責任感が強い', '好奇心が強い', '人の話をよく聞く',
               'まわりを見て動ける', 'リーダーシップがある', '前向き', '落ち着いている', '明るい',
               'ていねい', '協調性がある', 'がまん強い', '人に頼られやすい', '負けずぎらい'],
             allowFree: true,
-            hint: '自分で思うものでも、人からよく言われるものでも構いません。3つまで選べます。'
-              + '選んだあと、下に「どんな場面で活かせそうか」を書く欄が出ます。',
+            hint: '選べるのは1つです。自分で思うものでも、人からよく言われるものでも構いません。'
+              + '選んだあと、下に「そう思うきっかけ」と「どんな場面で活かせそうか」を書く欄が出ます。',
             rerender: true,
-            preview: function (d) {
-              const a = (d.personality || []).slice(0, 3);
-              if (!a.length) return '';
-              return '自分では' + a.map(function (x) { return '「' + x + '」'; }).join('')
-                + 'という点が持ち味だと思っています。';
-            }
+            preview: function (d) { return traitSentence(d, isJob); }
+          },
+          {
+            id: 'personalityEpisode', group: 'youself', type: 'text', maxChars: 30,
+            showIf: function (d) { return (d.personality || []).length > 0; },
+            label: function (d) {
+              const t = ((d || {}).personality || [])[0];
+              return (t ? '「' + t + '」' : 'それ') + 'を選んだのは、どんなことがあったからですか';
+            },
+            refer: function (d) { return listRefer(d.personality); },
+            placeholder: isJob ? '任された係を3年間続けた' : '班の記録係を最後まで務めた',
+            examples: isJob
+              ? ['任された係を3年間続けた', '先生に頼まれた仕事をやり切った', '毎朝いちばんに教室を開けた']
+              : ['班の記録係を最後まで務めた', '友人の相談によく乗った', '苦手な教科を3年間続けた'],
+            avoid: '「まじめです」だけでは、なぜそう言えるのかが伝わりません',
+            hint: '性格は、出来事とセットにして初めて信じてもらえます。'
+              + '自分でそう思った出来事でも、人からそう言われた場面でも構いません。',
+            preview: function (d) { return traitSentence(d, isJob); }
           },
           {
             id: 'personalityScene', group: 'youself', type: 'text', maxChars: 30,
@@ -1278,10 +1342,10 @@
               + '「まじめです」だけでは誰にでも書けますが、'
               + '「同じ作業を毎日続けるとき」まで書くと、あなたの話になります。',
             preview: function (d) {
-              const a = (d.personality || []).slice(0, 3);
-              if (!a.length || !txt(d.personalityScene)) return '';
-              return '自分では' + a.map(function (x) { return '「' + x + '」'; }).join('')
-                + 'という点が持ち味で、' + sceneAt(d.personalityScene) + '活かせると思います。';
+              const t = (d.personality || [])[0];
+              if (!t || !txt(d.personalityScene)) return '';
+              if (!txt(d.personalityEpisode)) return traitSentence(d, isJob);
+              return 'この持ち味は、' + sceneAt(d.personalityScene) + '活かせると思います。';
             }
           },
           {
@@ -1951,6 +2015,8 @@
     wantPhrase: wantPhrase,
     sceneAt: sceneAt,
     effortTopWord: effortTopWord,
+    traitSentence: traitSentence,
+    strengthSentence: strengthSentence,
     CHIP_JOIN_LIMIT: CHIP_JOIN_LIMIT
   };
 })(window);

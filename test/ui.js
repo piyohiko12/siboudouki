@@ -147,7 +147,30 @@ async function runMode(browser, key, errors) {
   await fillIf('#f_effortResult', '新しく入った人への引き継ぎ');
   await fillIf('#f_effortLearned', '手順を共有することの大切さ');
   await fillIf('#f_licenses', '危険物取扱者乙種4類');
-  await clickIf('[data-field="personality"] .chip:has-text("責任感が強い")');
+
+  // 得意なこと・性格：1つだけ選び、きっかけと場面を書く
+  await page.click('[data-field="strengths"] .chip >> nth=0');
+  await page.waitForTimeout(300);
+  console.log('  得意なこと・性格:');
+  console.log('    得意は', (await page.textContent('[data-field="strengths"] .chips__meter')).replace(/\s+/g, ' ').trim(),
+    '／押せなくなった数', await page.locator('[data-field="strengths"] .chip.is-locked').count());
+  await page.click('[data-field="personality"] .chip:has-text("責任感が強い")');
+  await page.waitForTimeout(300);
+  console.log('    性格は', (await page.textContent('[data-field="personality"] .chips__meter')).replace(/\s+/g, ' ').trim(),
+    '／押せなくなった数', await page.locator('[data-field="personality"] .chip.is-locked').count());
+  console.log('    きっかけ（得意）:', (await page.textContent('[data-field="strengthEpisode"] .field__q')).trim());
+  console.log('    場面（得意）　　:', (await page.textContent('[data-field="strengthScene"] .field__q')).trim());
+  console.log('    きっかけ（性格）:', (await page.textContent('[data-field="personalityEpisode"] .field__q')).trim());
+  console.log('    場面（性格）　　:', (await page.textContent('[data-field="personalityScene"] .field__q')).trim());
+  await page.fill('#f_strengthEpisode', key === 'shushoku' ? '部室の道具置き場を整理した' : 'クラスの発表資料をまとめた');
+  await page.fill('#f_strengthScene', key === 'shushoku' ? '部品を決まった場所に戻す作業' : 'グループで調べたことをまとめる場面');
+  await page.fill('#f_personalityEpisode', '任された係を3年間続けた');
+  await page.fill('#f_personalityScene', key === 'shushoku' ? '後輩に手順を教える場面' : '班で意見が分かれたとき');
+  await page.waitForTimeout(250);
+  console.log('    こう文になります（きっかけ）:',
+    (await page.textContent('[data-field="personalityEpisode"] .field__previewText')).trim());
+  console.log('    こう文になります（場面）　　:',
+    (await page.textContent('[data-field="personalityScene"] .field__previewText')).trim());
   await fillIf('#f_futureDream', 'ものづくり');
   if (await page.locator('#f_futureWhySource').count()) {
     await page.selectOption('#f_futureWhySource', '自分の体験から');

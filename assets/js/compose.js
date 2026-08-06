@@ -368,8 +368,10 @@
       effortTop: Q.effortTopWord(d) || efforts[0] || '学校生活',
       // 生徒がわざわざ書いた具体は、一般論より先に本文へ入れる。
       // （0=骨組み 1=必須 2=推奨 3=余裕があれば）
-      pTraits: bare(d.personalityScene) ? 2 : 3,
-      pStrengths: bare(d.strengthScene) ? 2 : 3,
+      pTraits: (bare(d.personalityScene) || bare(d.personalityEpisode)) ? 2 : 3,
+      pStrengths: (bare(d.strengthScene) || bare(d.strengthEpisode)) ? 2 : 3,
+      strengthEpisode: bare(d.strengthEpisode),
+      strengthScene: bare(d.strengthScene),
       effortWhen: bare(d.effortWhen),
       effortRole: bare(d.effortRole),
       effortAction: bare(d.effortAction),
@@ -379,10 +381,16 @@
       effortHow: bare(d.effortHow),
       effortLearned: bare(d.effortLearned),
 
-      strengths: d.strengths || [],
-      strengthScene: bare(d.strengthScene),
-      personality: d.personality || [],
-      personalityScene: bare(d.personalityScene),
+      // 得意なこと・性格は、設問側と同じ関数で文にする（プレビューとずれないように）
+      traitLine: Q.traitSentence(d, isJob),
+      traitScene: (d.personality || []).length && bare(d.personalityEpisode) && bare(d.personalityScene)
+        ? 'この持ち味は、' + Q.sceneAt(d.personalityScene)
+        : '',
+      strengthLine: Q.strengthSentence(d, isJob),
+      strengthScene2: (d.strengths || []).length && bare(d.strengthEpisode) && bare(d.strengthScene)
+        ? 'この力は、' + Q.sceneAt(d.strengthScene)
+        : '',
+      hasPersonality: (d.personality || []).length > 0,
       licenses: bare(d.licenses),
 
       futureLine: Q.futureSentence(d.futureKind, d.futureDream),
@@ -731,37 +739,39 @@
    * 「責任感が強い」のように述語で答える人と「国語」のように名詞で答える人がいるので、
    * かぎかっこで囲んで「という点」で受け、どちらでも文が壊れないようにする。
    */
+  /**
+   * 性格。きっかけの出来事まで答えた人は、そこから書き出す。
+   * 「まじめです」だけの文は誰にでも書けてしまうため。
+   */
   function sSelfTraits(m) {
-    const traits = (m.personality || []).slice(0, 3);
-    if (!traits.length) return '';
-    const quoted = traits.map(function (t) { return '「' + t + '」'; }).join('');
-    const scene = global.QUESTIONS.sceneAt(m.personalityScene);
-    // 場面まで答えてもらえたときは、性格と場面を1つの文にまとめる。
-    // 「まじめです」だけの文は誰にでも書けてしまうため。
-    if (scene) {
-      return '自分では' + quoted + 'という点が持ち味で、' + scene
-        + variant(m, ['活かせると思います。', '力になれると思います。', '役に立てると考えています。'], 23);
-    }
-    return '自分では' + quoted + 'という点が持ち味だと思っています。';
+    return m.traitLine;
+  }
+
+  /** その性格が働く場面。きっかけを別の文にしたときだけ、ここで受ける */
+  function sSelfTraitsScene(m) {
+    if (!m.traitScene) return '';
+    return m.traitScene
+      + variant(m, ['活かせると思います。', '力になれると思います。', '役に立てると考えています。'], 23);
   }
 
   /**
    * 得意なこと。
-   * 性格の文がすでにあるときは、場面まで答えている場合だけ足す。
+   * 性格の文がすでにあるときは、きっかけか場面まで答えている場合だけ足す。
    * 「持ち味の言いっぱなし」が2文続くのを避けるため。
    */
   function sStrengths(m) {
-    const good = (m.strengths || []).slice(0, 3);
-    if (!good.length) return '';
-    const quoted = good.map(function (t) { return '「' + t + '」'; }).join('');
-    const scene = global.QUESTIONS.sceneAt(m.strengthScene);
-    const also = (m.personality || []).length ? 'も' : 'は';
-    if (scene) {
-      return (m.job ? '得意な' : '得意な') + quoted + also + '、' + scene
-        + variant(m, ['活かせると考えています。', '役に立つと思います。', '活かしていきたいです。'], 24);
-    }
-    if ((m.personality || []).length) return '';
-    return m.job ? '仕事で活かせそうな点は' + quoted + 'です。' : '得意なのは' + quoted + 'です。';
+    if (!m.strengthLine) return '';
+    // 性格を答えている人の「得意なのは〇〇です」だけの文は、情報が薄いので落とす
+    if (m.hasPersonality && !m.strengthScene2
+      && !global.QUESTIONS.sceneAt(m.strengthScene) && !bare(m.strengthEpisode)) return '';
+    return m.strengthLine;
+  }
+
+  /** その得意なことが働く場面 */
+  function sStrengthsScene(m) {
+    if (!m.strengthScene2) return '';
+    return m.strengthScene2
+      + variant(m, ['活かせると考えています。', '役に立つと思います。', '活かしていきたいです。'], 24);
   }
 
   /**
@@ -852,7 +862,9 @@
     push(p4, sEffortHow(m), 2);
     push(p4, sEffortLearned(m), 1);
     push(p4, sSelfTraits(m), m.pTraits);
+    push(p4, sSelfTraitsScene(m), m.pTraits);
     push(p4, sStrengths(m), m.pStrengths);
+    push(p4, sStrengthsScene(m), 3);
     push(p4, sLicenses(m), 3);
     push(p4, sContribution(m), 1);
     paras.push(p4);
@@ -889,7 +901,9 @@
     push(p1, sEffortHow(m), 2);
     push(p1, sEffortLearned(m), 1);
     push(p1, sSelfTraits(m), m.pTraits);
+    push(p1, sSelfTraitsScene(m), m.pTraits);
     push(p1, sStrengths(m), m.pStrengths);
+    push(p1, sStrengthsScene(m), 3);
     push(p1, sLicenses(m), 3);
     paras.push(p1);
 
@@ -977,7 +991,9 @@
     push(p4, sEffortHow(m), 3);
     push(p4, sEffortLearned(m), 2);
     push(p4, sSelfTraits(m), m.pTraits);
+    push(p4, sSelfTraitsScene(m), m.pTraits);
     push(p4, sStrengths(m), m.pStrengths);
+    push(p4, sStrengthsScene(m), 3);
     push(p4, sLicenses(m), 3);
     push(p4, sContribution(m), 2);
     paras.push(p4);
@@ -1036,7 +1052,9 @@
     push(p3, sEffortHow(m), 2);
     push(p3, sEffortLearned(m), 1);
     push(p3, sSelfTraits(m), m.pTraits);
+    push(p3, sSelfTraitsScene(m), m.pTraits);
     push(p3, sStrengths(m), m.pStrengths);
+    push(p3, sStrengthsScene(m), 3);
     push(p3, sLicenses(m), 3);
     push(p3, sContribution(m), 1);
     paras.push(p3);
@@ -1083,7 +1101,9 @@
     push(p2, sEffortHow(m), 2);
     push(p2, sEffortLearned(m), 1);
     push(p2, sSelfTraits(m), m.pTraits);
+    push(p2, sSelfTraitsScene(m), m.pTraits);
     push(p2, sStrengths(m), m.pStrengths);
+    push(p2, sStrengthsScene(m), 3);
     push(p2, sLicenses(m), 3);
     push(p2, '同時に、自分にはまだ足りない部分もあります。', 2);
     paras.push(p2);
@@ -1168,7 +1188,9 @@
     push(p4, sEffortHow(m), 2);
     push(p4, sEffortLearned(m), 1);
     push(p4, sSelfTraits(m), m.pTraits);
+    push(p4, sSelfTraitsScene(m), m.pTraits);
     push(p4, sStrengths(m), m.pStrengths);
+    push(p4, sStrengthsScene(m), 3);
     push(p4, sLicenses(m), 3);
     push(p4, sContribution(m), 1);
     paras.push(p4);
@@ -1517,7 +1539,9 @@
       ['targetPolicy', '共感した理念', d.targetPolicy],
       ['licenses', '資格・免許', d.licenses],
       ['effortWhich', 'どの活動か', d.effortWhich],
+      ['strengthEpisode', '得意だと思うきっかけ', d.strengthEpisode],
       ['strengthScene', '得意なことを活かせる場面', d.strengthScene],
+      ['personalityEpisode', 'その性格だと思うきっかけ', d.personalityEpisode],
       ['personalityScene', '性格を活かせる場面', d.personalityScene]
     ].forEach(function (row) {
       if (asked[row[0]] && row[1] && bare(row[2])) items.push({ label: row[1], text: row[2] });

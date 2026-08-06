@@ -120,17 +120,20 @@ CASES['どれをテーマで'] = Object.assign({}, CASES.丁寧語, {
 CASES['場面の書き方いろいろ'] = Object.assign({}, CASES.述語, {
   targetChars: 1200,
   personality: ['責任感が強い'], personalityScene: '後輩に手順を教えること',
-  strengths: ['人と話すのが好き'], strengthScene: '意見が分かれたときに'
+  personalityEpisode: '任された係を3年間続けました',
+  strengths: ['人と話すのが好き'], strengthScene: '意見が分かれたときに',
+  strengthEpisode: '毎日の声かけ'
 });
 CASES['場面が体言止め'] = Object.assign({}, CASES.述語, {
   targetChars: 1200,
-  personality: ['まじめ'], personalityScene: '品出し',
-  strengths: ['調べること'], strengthScene: '安全確認'
+  personality: ['まじめ'], personalityScene: '品出し', personalityEpisode: '毎日の片づけ',
+  strengths: ['調べること'], strengthScene: '安全確認', strengthEpisode: '図書室に通った'
 });
 CASES['場面が丁寧語'] = Object.assign({}, CASES.述語, {
   targetChars: 1200,
   personality: ['明るい'], personalityScene: 'お客様に声をかけます',
-  strengths: ['あいさつ'], strengthScene: '朝の準備をします'
+  personalityEpisode: '毎朝いちばんに教室を開けています',
+  strengths: ['あいさつ'], strengthScene: '朝の準備をします', strengthEpisode: '毎日玄関に立ちました'
 });
 CASES['姿で締める'] = Object.assign({}, CASES.体言止めだけ, {
   orgType: '福祉施設・団体など', effortActionKind: '自分がやった行動',
