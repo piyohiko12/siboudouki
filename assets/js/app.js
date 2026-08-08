@@ -23,6 +23,9 @@
     },
     custom: {},          // チップの自由追加分 { fieldId: [..] }
     helpOpen: true,      // 設問の「書き方のヒント」を開いておくか
+    foldDone: true,      // 答え終わった設問を1行にたたむか
+    open: {},            // たたむ設定でも開いておく設問（画面を移ると空に戻す）
+    touched: {},         // 生徒が自分で触った設問
     bodyEdited: false,   // 本文を手で直したか（自動再生成の上書き確認に使う）
     submitted: null
   };
@@ -74,7 +77,8 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         data: state.data, custom: state.custom, index: state.index,
-        bodyEdited: state.bodyEdited, helpOpen: state.helpOpen
+        bodyEdited: state.bodyEdited, helpOpen: state.helpOpen, foldDone: state.foldDone,
+        touched: state.touched
       }));
       flashSaved();
     } catch (e) {
@@ -98,6 +102,8 @@
       state.custom = saved.custom || {};
       state.bodyEdited = !!saved.bodyEdited;
       state.helpOpen = saved.helpOpen !== false;
+      state.foldDone = saved.foldDone !== false;
+      state.touched = saved.touched || {};
       state.index = Math.min(saved.index || 0, views().length - 1);
       return true;
     } catch (e) {
@@ -107,6 +113,23 @@
 
   /** 旧バージョンの保存データを、今の形に寄せる */
   function migrate() {
+    // 「3年2組 15番」と1行で書かせていたものを、3つの選択に分けた。
+    // 前に書いた内容から、拾えるものだけ移す
+    if (state.data.className && !state.data.grade) {
+      const t = String(state.data.className);
+      const g = t.match(/([1-3１-３一二三])\s*年/);
+      const c = t.match(/([0-9０-９A-DＡ-Ｄ]+)\s*組/);
+      const n = t.match(/([0-9０-９]+)\s*番/);
+      const half = function (x) {
+        return x.replace(/[０-９Ａ-Ｄ]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
+          .replace(/一/, '1').replace(/二/, '2').replace(/三/, '3');
+      };
+      if (g) state.data.grade = half(g[1]) + '年';
+      if (c) state.data.classGroup = half(c[1]) + '組';
+      if (n) state.data.seatNo = String(Number(half(n[1]))) + '番';
+    }
+    delete state.data.className;
+
     // 「印象に残ったこと」は、魅力カードの②に置き換わった
     if (state.data.visitImpression && !(state.data.attractCards || []).length) {
       state.data.attractCards = [{
@@ -156,6 +179,8 @@
 
   function onDataChange(fn) { changeListeners.push(fn); }
   function emitChange(fieldId) {
+    // 生徒が自分で触った設問を覚えておく（たたんでよいかの判断に使う）
+    if (fieldId) state.touched[fieldId] = true;
     changeListeners.forEach(function (fn) { fn(fieldId); });
   }
 
@@ -201,7 +226,59 @@
     return typeof x === 'function' ? x(state.data) : x;
   }
 
+  /** 答えた設問の中身を、1行にまとめて見せる（たたんだときの表示） */
+  function answerSummary(field) {
+    const v = state.data[field.id];
+    if (field.type === 'chips') return (v || []).join('、');
+    if (field.type === 'whychain') {
+      const c = state.data.whyChain || {};
+      return [c.why1, c.why2, c.why3].filter(Boolean).join(' → ');
+    }
+    if (field.type === 'cards') {
+      const n = (v || []).filter(function (c) { return c && String(c.what || '').trim(); }).length;
+      return '魅力カード ' + n + '枚';
+    }
+    return String(v == null ? '' : v);
+  }
+
+  /**
+   * 答え終わった設問を、1行にたたむ。
+   * 答えるべき設問だけが開いている状態にして、長い画面でも迷わないようにする。
+   */
+  function renderFolded(field, no) {
+    const row = h('button', {
+      type: 'button',
+      class: 'fieldDone ' + (field.required ? 'fieldDone--required' : 'fieldDone--optional'),
+      'data-field': field.id,
+      onclick: function () { state.open[field.id] = true; render(field.id); }
+    }, [
+      h('span', { class: 'fieldDone__check', text: '✓' }),
+      h('span', { class: 'fieldDone__body' }, [
+        h('span', { class: 'fieldDone__q', text: (no ? 'Q' + no + '　' : '') + val(field.label) }),
+        h('span', { class: 'fieldDone__a', text: answerSummary(field) })
+      ]),
+      h('span', { class: 'fieldDone__edit', text: '直す' })
+    ]);
+    return row;
+  }
+
+  /**
+   * たたんでよい設問か。
+   * 初期値が入っているだけの設問は、生徒がまだ見ていないかもしれないので開いておく。
+   */
+  function foldable(f) {
+    if (!answered(f)) return false;
+    if (state.touched[f.id]) return true;
+    if (f.default != null && String(state.data[f.id]) === String(f.default)) return false;
+    return true;
+  }
+
   function renderField(field, no) {
+    // 答えた設問はたたんでおく。開き直すのはワンタップ
+    if (state.foldDone && foldable(field) && !state.open[field.id]) {
+      return renderFolded(field, no);
+    }
+
     // 必須か任意かは、左の帯・バッジ・質問文の印の3つで示す。
     // 色の濃さだけで分けると、並んだときに見分けがつかないため。
     const wrap = h('div', {
@@ -1172,10 +1249,21 @@
     ]);
 
     bar.appendChild(h('div', { class: 'stepBar__body' }, [count, track, legend]));
-    bar.appendChild(h('button', {
-      type: 'button', class: 'btn btn--ghost btn--sm',
-      onclick: function () { state.helpOpen = !state.helpOpen; save(); render(); }
-    }, [state.helpOpen ? '説明をたたむ' : '説明を表示']));
+    bar.appendChild(h('div', { class: 'stepBar__btns' }, [
+      h('button', {
+        type: 'button', class: 'btn btn--ghost btn--sm',
+        onclick: function () {
+          state.foldDone = !state.foldDone;
+          state.open = {};
+          save();
+          render();
+        }
+      }, [state.foldDone ? '答えた質問も表示' : '答えた質問をたたむ']),
+      h('button', {
+        type: 'button', class: 'btn btn--ghost btn--sm',
+        onclick: function () { state.helpOpen = !state.helpOpen; save(); render(); }
+      }, [state.helpOpen ? '説明をたたむ' : '説明を表示'])
+    ]));
     return bar;
   }
 
@@ -1382,7 +1470,10 @@
       courseName: course.name,
       studentName: d.studentName || '',
       highSchool: d.highSchool || '',
-      className: d.className || '',
+      grade: d.grade || '',
+      classGroup: d.classGroup || '',
+      seatNo: d.seatNo || '',
+      className: global.QUESTIONS.classLabel(d),
       targetName: d.targetName || '',
       targetSub: d.targetSub || '',
       orgType: d.orgType || '',
@@ -1576,6 +1667,12 @@
       const before = document.querySelector('[data-field="' + anchorId + '"]');
       if (before) anchorTop = before.getBoundingClientRect().top;
     }
+
+    // 画面が変わったら、開きっぱなしにしていた設問はたたみ直す
+    if (!sameView) state.open = {};
+    // いま触っていた設問は、答えたばかりでもたたまない
+    // （選択肢を押したとたんにその一覧が消えると、選び直せなくなる）
+    if (anchorId) state.open[anchorId] = true;
 
     const V = views();
     const view = V[state.index];

@@ -780,6 +780,69 @@ h1, h2, h3 { line-height: 1.5; letter-spacing: .01em; }
    （位置は render() 側で、触っていた設問を基準に戻している） */
 #view { overflow-anchor: none; }
 
+/* 答え終わった設問。1行にたたんで、まだ答えていないところを目立たせる */
+.fieldDone {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px 13px;
+  text-align: left;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--ok-line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background .12s, border-color .12s;
+}
+.fieldDone:hover { background: var(--accent-soft); border-color: var(--accent-line); }
+.fieldDone:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fieldDone--optional { border-left-style: dotted; border-left-color: var(--line); }
+
+.fieldDone__check {
+  flex: none;
+  width: 18px; height: 18px;
+  margin-top: 2px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--ok-soft);
+  color: var(--ok);
+  border: 1px solid var(--ok-line);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+.fieldDone__body { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.fieldDone__q {
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+.fieldDone__a {
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.65;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.fieldDone__a:empty::before { content: "（空のまま）"; font-weight: 400; color: var(--ink-3); }
+.fieldDone__edit {
+  flex: none;
+  align-self: center;
+  font-size: 11.5px;
+  color: var(--accent-ink);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-full);
+  padding: 2px 10px;
+  line-height: 1.7;
+}
+
+/* ステップバーのボタンは、画面が狭いときは縦に並べない */
+.stepBar__btns { display: flex; flex-wrap: wrap; gap: 8px; }
+
 .field { margin-bottom: 30px; }
 
 /* 必須と任意は、色の濃さではなく「帯があるか／ないか」で見分ける。

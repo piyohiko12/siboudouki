@@ -525,6 +525,26 @@
     return t ? '「' + t + '」' : 'その活動';
   }
 
+  /** 学年・クラス・出席番号。手で書かせると表記がばらつくので、選ぶ形にする */
+  const GRADES = ['1年', '2年', '3年'];
+  const CLASS_GROUPS = (function () {
+    const a = [];
+    for (let i = 1; i <= 12; i++) a.push(i + '組');
+    return a.concat(['A組', 'B組', 'C組', 'D組']);
+  })();
+  const SEAT_NUMBERS = (function () {
+    const a = [];
+    for (let i = 1; i <= 50; i++) a.push(i + '番');
+    return a;
+  })();
+
+  /** 3つの選択を1つの表示にまとめる（提出用・印刷用） */
+  function classLabel(d) {
+    const a = [txt((d || {}).grade), txt((d || {}).classGroup), txt((d || {}).seatNo)]
+      .filter(Boolean);
+    return a.length ? a.join(' ') : '';
+  }
+
   /** がんばったこと：いつのことか（そのまま「私は◯◯、〜」に入る） */
   const EFFORT_WHEN = ['1年生のとき', '2年生のとき', '3年生のとき',
     '1・2年生の2年間', '2年生からの2年間', '1年生から3年間',
@@ -951,8 +971,17 @@
             hint: '略さずに書きます。'
           },
           {
-            id: 'className', group: 'me', type: 'text', maxChars: 20, label: 'クラス・出席番号',
-            placeholder: '3年2組 15番'
+            id: 'grade', group: 'me', type: 'select', label: '学年',
+            options: GRADES,
+            hint: 'ここから3つは、先生が誰の下書きかを見分けるためのものです。本文には出ません。'
+          },
+          {
+            id: 'classGroup', group: 'me', type: 'select', label: 'クラス',
+            options: CLASS_GROUPS
+          },
+          {
+            id: 'seatNo', group: 'me', type: 'select', label: '出席番号',
+            options: SEAT_NUMBERS
           },
           {
             id: 'targetName', group: 'target', type: 'text', maxChars: 40, required: true,
@@ -2015,6 +2044,7 @@
     wantPhrase: wantPhrase,
     sceneAt: sceneAt,
     effortTopWord: effortTopWord,
+    classLabel: classLabel,
     traitSentence: traitSentence,
     strengthSentence: strengthSentence,
     CHIP_JOIN_LIMIT: CHIP_JOIN_LIMIT

@@ -51,10 +51,18 @@ async function runMode(browser, key, errors) {
   await page.waitForTimeout(300);
 
   // 型によって出る設問が変わるので、ある欄だけ埋める
+  // 答えた設問はたたまれる。生徒と同じように、押して開いてから触る
+  const open = async (id) => {
+    const folded = page.locator('.fieldDone[data-field="' + id + '"]');
+    if (await folded.count()) { await folded.click(); await page.waitForTimeout(250); }
+  };
   const fillIf = async (sel, val) => {
+    await open(sel.replace('#f_', ''));
     if (await page.locator(sel).count()) await page.fill(sel, val);
   };
   const clickIf = async (sel) => {
+    const m = sel.match(/data-field="([^"]+)"/);
+    if (m) await open(m[1]);
     if (await page.locator(sel).count()) await page.click(sel);
   };
 
@@ -94,16 +102,38 @@ async function runMode(browser, key, errors) {
   // ── STEP 2：基本情報 ────────────────────────────
   console.log('STEP2:', await page.textContent('#stepLabel'));
   console.log('  志望先ラベル:', (await page.textContent('[data-field="targetName"] .field__label')).trim());
+  await open('targetChars');
   console.log('  目標字数（STEP1の選択が入っているか）:', await page.inputValue('#f_targetChars'));
+  console.log('  学年・クラス・出席番号:',
+    (await page.locator('#f_grade option').count()) - 1, '/',
+    (await page.locator('#f_classGroup option').count()) - 1, '/',
+    (await page.locator('#f_seatNo option').count()) - 1, '通り');
+  await page.selectOption('#f_grade', '3年');
+  await page.selectOption('#f_classGroup', '2組');
+  await page.selectOption('#f_seatNo', '15番');
 
-  await page.fill('#f_studentName', '山田太郎');
-  await page.fill('#f_highSchool', '〇〇県立△△高等学校');
-  await page.fill('#f_targetName', d.basic.targetName);
-  await page.fill('#f_targetSub', d.basic.targetSub);
+  await fillIf('#f_studentName', '山田太郎');
+  await fillIf('#f_highSchool', '〇〇県立△△高等学校');
+  await fillIf('#f_targetName', d.basic.targetName);
+  await fillIf('#f_targetSub', d.basic.targetSub);
   await step();
 
   // ── STEP 3：自分を知る ──────────────────────────
   console.log('STEP3:', await page.textContent('#stepLabel'));
+
+  // 答えた設問はたたまれ、押すと開く（STEP2 に戻って確かめる）
+  await page.click('#prevBtn'); await page.waitForTimeout(500);
+  console.log('  【たたむ】STEP2 に戻ると たたまれた:', await page.locator('.fieldDone').count(),
+    '／開いている:', await page.locator('.field').count());
+  console.log('    1行の中身:',
+    (await page.locator('.fieldDone').first().textContent()).replace(/\s+/g, ' ').trim());
+  const foldedId = await page.locator('.fieldDone').first().getAttribute('data-field');
+  await page.click('.fieldDone >> nth=0'); await page.waitForTimeout(400);
+  console.log('    押すと開く:', await page.locator('.field[data-field="' + foldedId + '"]').count() === 1);
+  await page.click('.stepBar__btns button >> nth=0'); await page.waitForTimeout(400);
+  console.log('    「答えた質問も表示」→ たたまれた:', await page.locator('.fieldDone').count());
+  await page.click('.stepBar__btns button >> nth=0'); await page.waitForTimeout(400);
+  await step();
 
   // 打ち込んだこと：選べるのは1つ。選ぶと、あとの設問がその活動に合わせて変わる
   await page.click('[data-field="efforts"] .chip:has-text("学校行事")');
@@ -114,7 +144,7 @@ async function runMode(browser, key, errors) {
     await page.locator('[data-field="efforts"] .chip.is-locked').count());
   console.log('    どれかを聞く設問:', (await page.textContent('[data-field="effortWhich"] .field__q')).trim());
   console.log('    例:', (await page.locator('[data-field="effortWhich"] .field__ex').allTextContents()).join(' ').replace(/\s+/g, ' ').trim());
-  await page.fill('#f_effortWhich', '文化祭');
+  await fillIf('#f_effortWhich', '文化祭');
   await page.locator('#f_effortWhich').blur();
   await page.waitForTimeout(350);
   console.log('    こう文になります:', (await page.textContent('[data-field="effortWhich"] .field__previewText')).trim());
@@ -137,7 +167,7 @@ async function runMode(browser, key, errors) {
   console.log('  「部活動」に変えると:');
   console.log('    どれかを聞く設問:', (await page.textContent('[data-field="effortWhich"] .field__q')).trim());
   console.log('    役割の設問:', await page.locator('[data-field="effortRole"]').count(), '問');
-  await page.fill('#f_effortWhich', '吹奏楽部');
+  await fillIf('#f_effortWhich', '吹奏楽部');
   await page.locator('#f_effortWhich').blur();
   await page.waitForTimeout(350);
 
@@ -162,10 +192,10 @@ async function runMode(browser, key, errors) {
   console.log('    場面（得意）　　:', (await page.textContent('[data-field="strengthScene"] .field__q')).trim());
   console.log('    きっかけ（性格）:', (await page.textContent('[data-field="personalityEpisode"] .field__q')).trim());
   console.log('    場面（性格）　　:', (await page.textContent('[data-field="personalityScene"] .field__q')).trim());
-  await page.fill('#f_strengthEpisode', key === 'shushoku' ? '部室の道具置き場を整理した' : 'クラスの発表資料をまとめた');
-  await page.fill('#f_strengthScene', key === 'shushoku' ? '部品を決まった場所に戻す作業' : 'グループで調べたことをまとめる場面');
-  await page.fill('#f_personalityEpisode', '任された係を3年間続けた');
-  await page.fill('#f_personalityScene', key === 'shushoku' ? '後輩に手順を教える場面' : '班で意見が分かれたとき');
+  await fillIf('#f_strengthEpisode', key === 'shushoku' ? '部室の道具置き場を整理した' : 'クラスの発表資料をまとめた');
+  await fillIf('#f_strengthScene', key === 'shushoku' ? '部品を決まった場所に戻す作業' : 'グループで調べたことをまとめる場面');
+  await fillIf('#f_personalityEpisode', '任された係を3年間続けた');
+  await fillIf('#f_personalityScene', key === 'shushoku' ? '後輩に手順を教える場面' : '班で意見が分かれたとき');
   await page.waitForTimeout(250);
   console.log('    こう文になります（きっかけ）:',
     (await page.textContent('[data-field="personalityEpisode"] .field__previewText')).trim());
@@ -181,10 +211,11 @@ async function runMode(browser, key, errors) {
   const afterY = await page.evaluate(() => window.pageYOffset);
   await page.click('[data-field="personality"] .chip:has-text("責任感が強い")');
   await page.waitForTimeout(450);
-  await page.fill('#f_personalityEpisode', '任された係を3年間続けた');
-  await page.fill('#f_personalityScene', key === 'shushoku' ? '後輩に手順を教える場面' : '班で意見が分かれたとき');
+  await fillIf('#f_personalityEpisode', '任された係を3年間続けた');
+  await fillIf('#f_personalityScene', key === 'shushoku' ? '後輩に手順を教える場面' : '班で意見が分かれたとき');
   console.log('    解除しても先頭へ飛ばない:', beforeY > 200 && afterY > 200 ? 'OK（' + beforeY + '→' + afterY + '）' : '× ' + beforeY + '→' + afterY);
   console.log('    入力済の表示:', (await page.locator('.field__done').first().textContent()).trim());
+
   await fillIf('#f_futureDream', 'ものづくり');
   if (await page.locator('#f_futureWhySource').count()) {
     await page.selectOption('#f_futureWhySource', '自分の体験から');
@@ -216,7 +247,7 @@ async function runMode(browser, key, errors) {
 
   // ── STEP 5：調べる ─────────────────────────────
   console.log('STEP5:', await page.textContent('#stepLabel'));
-  await page.fill('#f_featureName', d.feature);
+  await fillIf('#f_featureName', d.feature);
   await fillIf('#f_featureDetail', d.featureDetail);
   await fillIf('#' + d.extraId, d.extra);
   await step();
@@ -224,20 +255,20 @@ async function runMode(browser, key, errors) {
   // ── STEP 6：つなげる ───────────────────────────
   console.log('STEP6:', await page.textContent('#stepLabel'));
   await fillIf('#f_valueFound', '人と話しながら考えを深めること');
-  await page.fill('#f_wantObject', d.mainReason);
+  await fillIf('#f_wantObject', d.mainReason);
   const whys = page.locator('.why textarea');
   await whys.nth(0).fill('文化祭の運営で自分たちで決めて動くのが楽しかったから');
   await whys.nth(1).fill('任されたほうが責任を感じて力が出たから');
   await whys.nth(2).fill('自分で考えて動ける環境のほうが力を発揮できると気づいたから');
-  await page.fill('#f_mustPoint', '最後まで責任を持つ体制');
+  await fillIf('#f_mustPoint', '最後まで責任を持つ体制');
   await step();
 
   // ── STEP 7：その先を書く ───────────────────────
   console.log('STEP7:', await page.textContent('#stepLabel'));
   await page.click('[data-field="afterEnter"] .chip:has-text("' + d.chips.after + '")');
-  await page.fill('#f_afterAction', '先輩への質問');
+  await fillIf('#f_afterAction', '先輩への質問');
   await fillIf('#f_contribution', d.contribution || '最後までやり切る力');
-  await page.fill('#f_afterGradWhat', '後輩に教えられる技術');
+  await fillIf('#f_afterGradWhat', '後輩に教えられる技術');
   await fillIf('#f_contributeTo', '同じ高校の後輩');
   await step();
 
