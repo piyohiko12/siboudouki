@@ -118,8 +118,54 @@ async function runMode(browser, key, errors) {
   await fillIf('#f_targetSub', d.basic.targetSub);
   await step();
 
-  // ── STEP 3：自分を知る ──────────────────────────
+  // ── STEP 3：思い出す（出会いと魅力カード）────────
   console.log('STEP3:', await page.textContent('#stepLabel'));
+
+  await page.selectOption('.attrCard select', d.cardWhere);
+  await page.fill('.attrCard textarea >> nth=0', d.cardWhat);
+  for (const f of d.cardFeel) await page.click('.attrCard .chip:has-text("' + f + '")');
+  await page.fill('.attrCard textarea >> nth=1', d.cardLink);
+  await page.click('.attrCard .star >> nth=2');
+  await page.waitForTimeout(150);
+  console.log('  カードのプレビュー:', (await page.textContent('.attrCard__previewText')).trim());
+  console.log('  ★:', (await page.textContent('.stars__label')).trim());
+  await page.click('.attrCard__add');
+  await page.waitForTimeout(150);
+  console.log('  カード枚数:', await page.locator('.attrCard').count());
+  await page.fill('.attrCard >> nth=1 >> textarea >> nth=0', 'もう1つ気づいたことがありました');
+  await page.waitForTimeout(150);
+
+  await clickIf('[data-field="visited"] .chip >> nth=0');
+  await page.click('[data-field="attractPoints"] .chip:has-text("' + d.chips.research + '")');
+  await step();
+
+  // ── STEP 4：調べる ─────────────────────────────
+  console.log('STEP4:', await page.textContent('#stepLabel'));
+  console.log('  並び:',
+    (await page.locator('.field, .fieldDone').evaluateAll(e => e.map(x => x.dataset.field))).join(' → '));
+  console.log('  Q1:', (await page.textContent('[data-field="featureKind"] .field__q')).trim());
+  console.log('  Q2:', (await page.textContent('[data-field="featureName"] .field__q')).trim());
+  // 種類を選び直すと、次の設問の文面と例が入れ替わる
+  await page.selectOption('#f_featureKind', d.featureKind);
+  await page.waitForTimeout(450);
+  console.log('  「' + d.featureKind + '」に変えると Q2:',
+    (await page.textContent('[data-field="featureName"] .field__q')).trim());
+  console.log('    例:', (await page.locator('[data-field="featureName"] .field__ex').allTextContents())
+    .join(' ').replace(/\s+/g, ' ').trim());
+  await fillIf('#f_featureName', d.feature);
+  await page.locator('#f_featureName').blur();
+  await page.waitForTimeout(400);
+  console.log('  Q3:', (await page.textContent('[data-field="featureDetail"] .field__q')).trim());
+  console.log('  Q2のプレビュー:',
+    (await page.textContent('[data-field="featureName"] .field__previewText')).trim());
+  await fillIf('#f_featureDetail', d.featureDetail);
+  console.log('  Q4のプレビュー:',
+    (await page.textContent('[data-field="featureDetail"] .field__previewText')).trim());
+  await fillIf('#' + d.extraId, d.extra);
+  await step();
+
+  // ── STEP 5：自分を知る ──────────────────────────
+  console.log('STEP5:', await page.textContent('#stepLabel'));
 
   // 答えた設問はたたまれ、押すと開く（STEP2 に戻って確かめる）
   await page.click('#prevBtn'); await page.waitForTimeout(500);
@@ -222,52 +268,6 @@ async function runMode(browser, key, errors) {
   }
   await fillIf('#f_futureWhyWhat', '先輩が新人に教えている姿');
   await fillIf('#f_gapNow', '自分から動く力');
-  await step();
-
-  // ── STEP 4：思い出す（出会いと魅力カード）────────
-  console.log('STEP4:', await page.textContent('#stepLabel'));
-
-  await page.selectOption('.attrCard select', d.cardWhere);
-  await page.fill('.attrCard textarea >> nth=0', d.cardWhat);
-  for (const f of d.cardFeel) await page.click('.attrCard .chip:has-text("' + f + '")');
-  await page.fill('.attrCard textarea >> nth=1', d.cardLink);
-  await page.click('.attrCard .star >> nth=2');
-  await page.waitForTimeout(150);
-  console.log('  カードのプレビュー:', (await page.textContent('.attrCard__previewText')).trim());
-  console.log('  ★:', (await page.textContent('.stars__label')).trim());
-  await page.click('.attrCard__add');
-  await page.waitForTimeout(150);
-  console.log('  カード枚数:', await page.locator('.attrCard').count());
-  await page.fill('.attrCard >> nth=1 >> textarea >> nth=0', 'もう1つ気づいたことがありました');
-  await page.waitForTimeout(150);
-
-  await clickIf('[data-field="visited"] .chip >> nth=0');
-  await page.click('[data-field="attractPoints"] .chip:has-text("' + d.chips.research + '")');
-  await step();
-
-  // ── STEP 5：調べる ─────────────────────────────
-  console.log('STEP5:', await page.textContent('#stepLabel'));
-  console.log('  並び:',
-    (await page.locator('.field, .fieldDone').evaluateAll(e => e.map(x => x.dataset.field))).join(' → '));
-  console.log('  Q1:', (await page.textContent('[data-field="featureKind"] .field__q')).trim());
-  console.log('  Q2:', (await page.textContent('[data-field="featureName"] .field__q')).trim());
-  // 種類を選び直すと、次の設問の文面と例が入れ替わる
-  await page.selectOption('#f_featureKind', d.featureKind);
-  await page.waitForTimeout(450);
-  console.log('  「' + d.featureKind + '」に変えると Q2:',
-    (await page.textContent('[data-field="featureName"] .field__q')).trim());
-  console.log('    例:', (await page.locator('[data-field="featureName"] .field__ex').allTextContents())
-    .join(' ').replace(/\s+/g, ' ').trim());
-  await fillIf('#f_featureName', d.feature);
-  await page.locator('#f_featureName').blur();
-  await page.waitForTimeout(400);
-  console.log('  Q3:', (await page.textContent('[data-field="featureDetail"] .field__q')).trim());
-  console.log('  Q2のプレビュー:',
-    (await page.textContent('[data-field="featureName"] .field__previewText')).trim());
-  await fillIf('#f_featureDetail', d.featureDetail);
-  console.log('  Q4のプレビュー:',
-    (await page.textContent('[data-field="featureDetail"] .field__previewText')).trim());
-  await fillIf('#' + d.extraId, d.extra);
   await step();
 
   // ── STEP 6：つなげる ───────────────────────────

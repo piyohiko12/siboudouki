@@ -56,15 +56,21 @@
       { id: 'start', title: '進路をえらぶ', short: '進路' },
       { id: 'pick', title: '文章の型をえらぶ', short: '型' },
       { id: 'basic', title: '基本情報', short: '基本' },
-      { id: 'self', title: '自分を知る', short: '自分' },
       { id: 'recall', title: '思い出す', short: '場面' },
       { id: 'research', title: isJob() ? '会社を調べる' : '学校を調べる', short: '調べる' },
+      { id: 'self', title: '自分を知る', short: '自分' },
       { id: 'connect', title: 'つなげる', short: 'つなぐ' },
       { id: 'after', title: 'その先を書く', short: 'その先' },
       { id: 'compose', title: '組み立てる', short: '組立' },
       { id: 'review', title: '見直す', short: '見直し' },
       { id: 'submit', title: '提出する', short: '提出' }
     ];
+  }
+
+  /** 画面のIDから、いま何番目かを返す（並びを変えても迷子にならない） */
+  function indexOf(viewId) {
+    const i = views().findIndex(function (v) { return v.id === viewId; });
+    return i < 0 ? 0 : i;
   }
 
   // ── 保存／復元 ────────────────────────────────────
@@ -1002,13 +1008,16 @@
 
     const job = isJob();
     card.appendChild(h('h3', { class: 'card__sub', text: 'この先の流れ' }));
+    // 番号は views() から引く。ステップの並びを変えても、ここがずれないように
+    const st = function (id) { return 'STEP ' + indexOf(id); };
     card.appendChild(h('ol', { class: 'flow' }, [
-      ['型をきめる', 'STEP 1。3つの質問に答えると、あなたに向いた文章の型が決まります。'],
-      ['材料を集める', 'STEP 2〜5。単語や短い文で答えるだけ。選んだ型に必要な質問しか出ません。'],
-      ['魅力を書きとめる', 'STEP 4 の「魅力カード」がいちばん大事。心が動いた場面をそのまま書きます。'],
-      ['組み立てる', 'STEP 6。集めた材料が、型どおりの順番で下書きになります。'],
-      ['見直す', 'STEP 7。文字数・話し言葉・文体などを自動でチェックします。'],
-      ['提出する', 'STEP 8。先生のスプレッドシートに送信、印刷、コピーができます。']
+      ['型をきめる', st('pick') + '。3つの質問に答えると、あなたに向いた文章の型が決まります。'],
+      ['材料を集める', st('basic') + '〜' + indexOf('after')
+        + '。単語や短い文で答えるだけ。選んだ型に必要な質問しか出ません。'],
+      ['魅力を書きとめる', st('recall') + ' の「魅力カード」がいちばん大事。心が動いた場面をそのまま書きます。'],
+      ['組み立てる', st('compose') + '。集めた材料が、型どおりの順番で下書きになります。'],
+      ['見直す', st('review') + '。文字数・話し言葉・文体などを自動でチェックします。'],
+      ['提出する', st('submit') + '。先生のスプレッドシートに送信、印刷、コピーができます。']
     ].map(function (x) {
       return h('li', {}, [h('strong', { text: x[0] }), h('span', { text: x[1] })]);
     })));
@@ -1016,16 +1025,20 @@
     card.appendChild(h('div', { class: 'notice' }, [
       h('strong', { text: 'かかる時間の目安：40〜60分' }),
       h('p', {
-        text: job
-          ? '求人票と、会社のホームページを手元に用意しておくと、STEP 4 がスムーズです。'
-          : '学校案内のパンフレットと、学校のホームページを手元に用意しておくと、STEP 4 がスムーズです。'
+        text: (job
+          ? '求人票と、会社のホームページを手元に用意しておくと、'
+          : '学校案内のパンフレットと、学校のホームページを手元に用意しておくと、')
+          + 'STEP ' + indexOf('research') + ' がスムーズです。'
       })
     ]));
 
     if (!global.API.isConfigured()) {
       card.appendChild(h('div', { class: 'notice notice--warn' }, [
         h('strong', { text: '送信先が未設定です' }),
-        h('p', { text: 'config.js に GAS のURLが入っていないため、STEP 8 の「スプレッドシートに送信」は使えません。下書き作成・チェック・印刷・コピーはそのまま使えます。' })
+        h('p', {
+          text: 'config.js に GAS のURLが入っていないため、STEP ' + indexOf('submit')
+            + ' の「スプレッドシートに送信」は使えません。下書き作成・チェック・印刷・コピーはそのまま使えます。'
+        })
       ]));
     }
     return card;
@@ -1183,7 +1196,7 @@
       h('span', { class: 'tplNote__text', text: 'に必要な質問だけを出しています' }),
       h('button', {
         type: 'button', class: 'tplNote__link',
-        onclick: function () { state.index = 1; render(); }
+        onclick: function () { state.index = indexOf('pick'); render(); }
       }, ['型を変える'])
     ]));
 
@@ -1292,7 +1305,7 @@
       ]),
       h('button', {
         type: 'button', class: 'btn btn--ghost btn--sm',
-        onclick: function () { state.index = 1; render(); }
+        onclick: function () { state.index = indexOf('pick'); render(); }
       }, ['型を選び直す'])
     ]));
 
@@ -1446,7 +1459,7 @@
     card.appendChild(h('div', { class: 'toolbar' }, [
       h('button', {
         type: 'button', class: 'btn btn--sub',
-        onclick: function () { state.index = 5; render(); }
+        onclick: function () { state.index = indexOf('compose'); render(); }
       }, ['本文を直しに戻る'])
     ]));
 
