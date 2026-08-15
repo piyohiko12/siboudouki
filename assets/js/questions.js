@@ -656,6 +656,30 @@
     '取り組み': ['地域の清掃活動', '不良品ゼロへの取り組み']
   };
 
+  /** 名詞で言い切っている語尾（「という点」を足すと二重になる） */
+  const FEATURE_NOUN_TAIL = /(点|ところ|こと|違い|ちがい|さ|性|力|制度|体制|方針|環境|雰囲気)$/;
+
+  /**
+   * 「調べていて心をひかれたもの」の一文（生成側 sFeature と同じ形）。
+   * かぎかっこを付けるかどうかは、Q3の答えで決まる。
+   *   載っていた言葉    → 貴社の技術「〇〇部品の精密加工」です。
+   *   自分の言葉        → 貴社の技術のうち、少人数で進めるという点です。
+   *   自分の言葉（名詞）→ 貴社の技術のうち、安全への意識の高さです。
+   */
+  function featureSentence(d, mode) {
+    const name = txt((d || {}).featureName);
+    if (!name) return '';
+    const isJobMode = job(mode);
+    const kind = txt(d.featureKind) || (isJobMode ? '取り組み' : '学び');
+    const org = txt(d.targetName) || orgTypeOf(mode, d.orgType).honorific;
+    const lead = '私が特に関心を持ったのは、' + org + 'の';
+    if (d.featureNamed !== 'いいえ、自分の言葉で書いた') {
+      return lead + kind + '「' + name + '」です。';
+    }
+    return lead + kind + 'のうち、' + name
+      + (FEATURE_NOUN_TAIL.test(name) ? 'です。' : 'という点です。');
+  }
+
   /**
    * 「それを、なぜ魅力に感じましたか」の一文（生成側 sFeatureDetail と同じ形）。
    * 「〜だから」と理由で書く人、「〜できること」と名詞で書く人がいるので分ける。
@@ -1669,13 +1693,8 @@
               + '載っていなければ「少人数で進める」のように、自分の言葉で魅力を書いて構いません。'
               + 'ここに固有名詞が入るかどうかで、文章の説得力が決まります。',
             avoid: '「〜に魅力を感じた」「〜がよかった」のような感想は書きません。'
-              + '名前がついていればその名前を、なければ「少人数で進める」のように特徴を書きます',
-            preview: function (d) {
-              if (!txt(d.featureName)) return '';
-              const kind = txt(d.featureKind) || (isJob ? '取り組み' : '学び');
-              const n = txt(d.targetName) || (isJob ? '貴社' : '貴校');
-              return '私が特に関心を持ったのは、' + n + 'の' + kind + '「' + txt(d.featureName) + '」です。';
-            }
+              + '載っていればその名前を、なければ「少人数で進める」のように短く言い表します',
+            preview: function (d) { return featureSentence(d, mode); }
           },
           {
             id: 'featureNamed', group: 'found', type: 'select', required: true,
@@ -1688,18 +1707,14 @@
             },
             options: ['はい、載っていた言葉をそのまま書いた', 'いいえ、自分の言葉で書いた'],
             default: 'はい、載っていた言葉をそのまま書いた',
-            hint: 'かぎかっこを付けるかどうかが変わるだけの設問です。'
-              + '載っていた言葉なら「貴社の技術「〇〇」」、自分の言葉なら'
-              + '「貴社の技術のうち、〇〇という点」という文になります。',
-            preview: function (d) {
-              const n = txt(d.featureName);
-              if (!n) return '';
+            hint: function (d) {
               const kind = txt(d.featureKind) || (isJob ? '取り組み' : '学び');
-              const org = txt(d.targetName) || orgTypeOf(mode, d.orgType).honorific;
-              return d.featureNamed === 'いいえ、自分の言葉で書いた'
-                ? '私が特に関心を持ったのは、' + org + 'の' + n + 'という' + kind + 'です。'
-                : '私が特に関心を持ったのは、' + org + 'の' + kind + '「' + n + '」です。';
-            }
+              const h = orgTypeOf(mode, d.orgType).honorific;
+              return 'かぎかっこを付けるかどうかが変わるだけの設問です。'
+                + '「はい」なら『' + h + 'の' + kind + '「◯◯」です。』、'
+                + '「いいえ」なら『' + h + 'の' + kind + 'のうち、◯◯という点です。』という文になります。';
+            },
+            preview: function (d) { return featureSentence(d, mode); }
           },
           {
             id: 'featureDetail', group: 'found', type: 'text', maxChars: 30,
@@ -2126,6 +2141,7 @@
     effortTopWord: effortTopWord,
     classLabel: classLabel,
     traitSentence: traitSentence,
+    featureSentence: featureSentence,
     strengthSentence: strengthSentence,
     CHIP_JOIN_LIMIT: CHIP_JOIN_LIMIT
   };
