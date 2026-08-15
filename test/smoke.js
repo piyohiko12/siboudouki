@@ -55,7 +55,7 @@ const shingaku = Object.assign({}, common, {
   attractCards: [
     { where: '体験授業', weight: 3, feel: ['わくわくした', '自分もやってみたい'],
       what: '学生同士が、答えではなく考え方のほうを話し合っていた',
-      link: '課題研究で、人と話すほど自分の考えが整理された経験と重なります' },
+      link: '課題研究で、人と話すほど自分の考えが整理された' },
     { where: '在校生・卒業生の話', weight: 2, feel: ['おどろいた'],
       what: '3年生の方が、自分の研究テーマを自分の言葉で説明してくれた', link: '' }
   ],
@@ -92,7 +92,7 @@ const shushoku = Object.assign({}, common, {
   attractCards: [
     { where: '職場見学', weight: 3, feel: ['おどろいた', '見習いたい'],
       what: '社員の方が、作業を始める前に必ずおたがいに声をかけ合っていた',
-      link: 'アルバイトで、声をかけ合うとミスが減った経験と重なります' }
+      link: 'アルバイトで、声をかけ合うとミスが減ったことがある' }
   ],
   attractPoints: ['仕事の内容', '技術力'],
   featureKind: '技術', featureName: '〇〇部品の精密加工',

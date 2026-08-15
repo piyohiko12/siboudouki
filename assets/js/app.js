@@ -660,12 +660,17 @@
         }));
         el.appendChild(renderFeelChips(card, field));
 
-        // ④ 自分とのつながり
-        el.appendChild(h('label', { class: 'attrCard__label', text: '④ 自分のどんな経験と重なりますか' }));
+        // ④ そう感じた理由
+        el.appendChild(h('label', {
+          class: 'attrCard__label', text: '④ そこに心をひかれたのは、なぜですか'
+        }));
         el.appendChild(h('p', {
           class: 'attrCard__hint',
-          text: '②とよく似た自分の体験を思い出して書きます。空でも進めますが、'
-            + 'ここが書けると「その学校でなければならない理由」がぐっと強くなります。'
+          text: '②で見たことについて、あなたがそう感じた理由を書きます。'
+            + '「前に似たことがあったから」でも「自分もこうなりたいと思ったから」でも構いません。'
+            + '空でも進めますが、ここが書けると'
+            + (isJob() ? '「この会社でなければならない理由」' : '「この学校でなければならない理由」')
+            + 'がぐっと強くなります。'
         }));
         const link = h('textarea', {
           class: 'input input--area', rows: 2,

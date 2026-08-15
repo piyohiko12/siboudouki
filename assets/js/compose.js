@@ -692,20 +692,26 @@
   }
 
   /**
-   * 魅力カードの④。
-   * 「〜と重なります」まで文で書く人はその言葉を尊重し（本文はです・ます調で
-   * 組み立てるので、ここだけは常体に直さない）、体験の名前だけの人には枠をつける。
+   * 魅力カードの④「そこに心をひかれたのは、なぜですか」。
+   * 「〜だから」と理由の形で書く人、「〜した」と出来事だけ書く人、
+   * 「部活動での経験」と名詞で書く人がいるので、どれも同じ枠で受ける。
    */
   function cardLink(text) {
     const t = bare(text);
     if (!t) return '';
     // すでに「です・ます」で書いてあれば、その言葉をそのまま尊重する
     if (/(です|ます|ました|ません|でした)$/.test(t)) return flow(t);
-    // 常体の文で書かれたら、そのまま入れると文体が混ざるので枠にはめ直す
-    if (global.QUESTIONS.isPredicate(t)) {
-      return global.QUESTIONS.frame(t, '{X}ように感じています。', '{X}ように感じています。');
-    }
-    return t + 'と重なる部分があります。';
+
+    const lead = 'そう感じたのは、';
+    // 「〜ので」「〜ため」は「〜から」にそろえてから、末尾を落とす
+    const plain = global.QUESTIONS.plainWord(t)
+      .replace(/(ので|ため)$/, 'から')
+      .replace(/から$/, '');
+    if (!plain) return '';
+    if (global.QUESTIONS.isPredicate(plain)) return lead + plain + 'からです。';
+    // 「大切さ」「難しさ」のような言葉は「〜がある」では受けられない
+    if (/(さ|点)$/.test(plain)) return lead + plain + 'を知っているからです。';
+    return lead + plain + 'があるからです。';
   }
 
   function sAfterGrad(m) {
