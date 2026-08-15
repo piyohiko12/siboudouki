@@ -11,7 +11,7 @@ const DATA = {
     basic: { targetName: '株式会社〇〇製作所', targetSub: '製造職' },
     chips: { research: '仕事の内容', after: '仕事を早く覚えること' },
     feature: '〇〇部品の精密加工',
-    featureKind: '研修制度', featureDetail: '若手でも挑戦できること',
+    featureKind: '研修制度', featureDetail: '若手でも挑戦できるから',
     cardWhere: '職場見学',
     cardWhat: '社員の方が、作業を始める前に必ずおたがいに声をかけ合っていた',
     cardFeel: ['おどろいた', '見習いたい'],
@@ -29,7 +29,7 @@ const DATA = {
     basic: { targetName: '〇〇大学', targetSub: '経済学部経済学科' },
     chips: { research: '学べる内容・カリキュラム', after: '専門分野の勉強' },
     feature: '地域経済フィールドワーク',
-    featureKind: 'ゼミ', featureDetail: '自治体と組んだ課題調査',
+    featureKind: 'ゼミ', featureDetail: '自治体と組んで課題を調べられるから',
     cardWhere: '体験授業',
     cardWhat: '学生同士が、答えではなく考え方のほうを話し合っていた',
     cardFeel: ['わくわくした', '自分もやってみたい'],
@@ -259,6 +259,10 @@ async function runMode(browser, key, errors) {
   console.log('    例:', (await page.locator('[data-field="featureName"] .field__ex').allTextContents())
     .join(' ').replace(/\s+/g, ' ').trim());
   await fillIf('#f_featureName', d.feature);
+  await page.locator('#f_featureName').blur();
+  await page.waitForTimeout(400);
+  console.log('  Q3:', (await page.textContent('[data-field="featureNamed"] .field__q')).trim());
+  console.log('  Q4:', (await page.textContent('[data-field="featureDetail"] .field__q')).trim());
   await fillIf('#f_featureDetail', d.featureDetail);
   console.log('  Q4のプレビュー:',
     (await page.textContent('[data-field="featureDetail"] .field__previewText')).trim());

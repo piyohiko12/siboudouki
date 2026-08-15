@@ -84,7 +84,7 @@ var COLUMNS = [
   { key: 'featureNamed',     label: '名前の有無',            width: 130 },
   { key: 'featureSource',    label: '特色の情報源',          width: 150 },
   { key: 'featureSource',    label: '特色の情報源',          width: 150 },
-  { key: 'featureDetail',    label: 'そこでできること',      width: 200 },
+  { key: 'featureDetail',    label: '魅力に感じた理由',      width: 200 },
   { key: 'studyWant',        label: '受けたい授業（進学）',  width: 200 },
   { key: 'jobTask',          label: '仕事の理解（就職）',    width: 200 },
   { key: 'targetPolicy',     label: '共感した理念',          width: 200 },

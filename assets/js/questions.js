@@ -657,17 +657,18 @@
   };
 
   /**
-   * 「そこでできること・その特徴・魅力」の一文（生成側 sFeatureDetail と同じ形）。
-   * 「若手でも挑戦できること」のように魅力そのものを書く人がいるので、
-   * 「〜に関わることができる」では受けられない場合を分ける。
+   * 「それを、なぜ魅力に感じましたか」の一文（生成側 sFeatureDetail と同じ形）。
+   * 「〜だから」と理由で書く人、「〜できること」と名詞で書く人がいるので分ける。
    */
   function featureDetailSentence(v) {
     const t = txt(v);
     if (!t) return '';
-    if (/(こと|点|ところ)$/.test(t)) return t + 'にも、強くひかれました。';
-    return frame(t,
-      'そこでは{X}に関わることができると知りました。',
-      'そこでは{X}ことを知りました。');
+    if (/(こと|点|ところ)$/.test(t)) return t + 'に、大きな魅力を感じています。';
+    const plain = txt(plainWord(t)).replace(/(ので|ため)$/, 'から').replace(/から$/, '');
+    if (!plain) return '';
+    return isPredicate(plain)
+      ? '魅力に感じたのは、' + plain + 'からです。'
+      : plain + 'という点に、大きな魅力を感じています。';
   }
 
   /** 種類に合った例。表にないものは、進路ごとの共通の例を返す */
@@ -1658,6 +1659,8 @@
               const kind = txt(d.featureKind);
               return kind ? '「' + kind + '」を選びました' : '';
             },
+            // ここに書いた言葉を、あとの設問がそのまま引用する
+            rerender: true,
             placeholder: function (d) { return featureExamples(d, isJob)[0]; },
             examples: function (d) { return featureExamples(d, isJob); },
             hint: (isJob
@@ -1676,22 +1679,24 @@
           },
           {
             id: 'featureNamed', group: 'found', type: 'select', required: true,
-            // かぎかっこを付けるかどうかが変わるので、この1問だけは残す
-            label: '上の欄に書いたのは、どちらですか',
-            refer: function (d) { return about(d.featureName); },
-            options: ['そのままの名前が載っていた', '名前はなく、自分の言葉でまとめた'],
-            default: 'そのままの名前が載っていた',
-            hint: (isJob
-              ? '「〇〇部品の精密加工」のように求人票やホームページに載っている言葉を写したなら、上。'
-              : '「地域経済フィールドワーク」のようにパンフレットに載っている言葉を写したなら、上。')
-              + '「少人数で進める」のように自分でまとめたなら、下を選びます。'
-              + 'かぎかっこを付けるかどうかが変わります。',
+            // かぎかっこを付けるかどうかが変わるので、この1問だけは残す。
+            // 生徒が実際に書いた言葉を引用して、はい／いいえで答えられるようにする
+            label: function (d) {
+              const n = txt(d.featureName);
+              const src = isJob ? '求人票やホームページ' : 'パンフレットやホームページ';
+              return (n ? '「' + n + '」' : 'その言葉') + 'は、' + src + 'に載っていた言葉ですか';
+            },
+            options: ['はい、載っていた言葉をそのまま書いた', 'いいえ、自分の言葉で書いた'],
+            default: 'はい、載っていた言葉をそのまま書いた',
+            hint: 'かぎかっこを付けるかどうかが変わるだけの設問です。'
+              + '載っていた言葉なら「貴社の技術「〇〇」」、自分の言葉なら'
+              + '「貴社の技術のうち、〇〇という点」という文になります。',
             preview: function (d) {
               const n = txt(d.featureName);
               if (!n) return '';
               const kind = txt(d.featureKind) || (isJob ? '取り組み' : '学び');
               const org = txt(d.targetName) || orgTypeOf(mode, d.orgType).honorific;
-              return d.featureNamed === '名前はなく、自分の言葉でまとめた'
+              return d.featureNamed === 'いいえ、自分の言葉で書いた'
                 ? '私が特に関心を持ったのは、' + org + 'の' + n + 'という' + kind + 'です。'
                 : '私が特に関心を持ったのは、' + org + 'の' + kind + '「' + n + '」です。';
             }
@@ -1701,17 +1706,21 @@
             only: ['prep', 'future', 'scene', 'three'],
             requiredIn: ['prep', 'scene'],
             noteIn: {
-              prep: '結論先行型では、この一文が結論を支える具体になります。',
+              prep: '結論先行型では、この一文が結論を支える理由になります。',
               scene: '場面描写型では、あの場面のあとに続く「調べて分かったこと」になります。'
             },
-            label: 'そこでできること・その特徴・魅力',
+            label: function (d) {
+              const n = txt(d.featureName);
+              return (n ? '「' + n + '」' : 'それ') + 'を、なぜ魅力に感じましたか';
+            },
             refer: function (d) { return about(d.featureName); },
-            placeholder: isJob ? '検査から出荷までの一貫生産' : '自治体と組んだ課題調査',
+            placeholder: isJob ? '若手でも挑戦できるから' : '自治体と組んで課題を調べられるから',
             examples: isJob
-              ? ['検査から出荷までの一貫生産', '海外向け製品の設計', '若手でも挑戦できること']
-              : ['自治体と組んだ課題調査', '2年次からの少人数ゼミ', '学生同士で教え合えること'],
-            hint: '「〜すること」「〜の◯◯」のように、ものごとの名前で書きます。'
-              + '「若手でも挑戦できること」のように、感じた魅力をそのまま書いても構いません。',
+              ? ['若手でも挑戦できるから', '検査から出荷まで自社でやっているから', '安全への意識の高さ']
+              : ['自治体と組んで課題を調べられるから', '2年次から少人数で学べるから', '現場で実習できること'],
+            hint: 'そこに心をひかれた理由を、ひとことで。'
+              + '「〜だから」で書いても、「〜できること」「〜の◯◯」のように名詞で書いても構いません。'
+              + 'ここが書けると、調べたことが「自分の理由」に変わります。',
             avoid: '「すごい」「よかった」だけでは、何がよいのか読み手に伝わりません',
             preview: function (d) { return featureDetailSentence(d.featureDetail); }
           },

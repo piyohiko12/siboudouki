@@ -403,7 +403,7 @@
       attract: d.attractPoints || [],
       featureKind: bare(d.featureKind),
       featureName: bare(d.featureName),
-      featureNamed: d.featureNamed !== '名前はなく、自分の言葉でまとめた',
+      featureNamed: d.featureNamed !== 'いいえ、自分の言葉で書いた',
       featureDetail: bare(d.featureDetail),
       featureSource: bare(d.featureSource),
       studyWant: bare(d.studyWant),
@@ -526,24 +526,35 @@
       + (NOUN_TAIL.test(name) ? 'です。' : 'という点です。'));
   }
 
+  /**
+   * 「それを、なぜ魅力に感じましたか」。
+   * 「〜だから」と理由で書く人、「〜できること」と名詞で書く人がいるので分ける。
+   * すぐ前の文が「強く心を引かれたのは〜です」なので、ここは別の言い方で受ける。
+   */
   function sFeatureDetail(m) {
     const t = bare(m.featureDetail);
     if (!t) return '';
-    // 「若手でも挑戦できること」のように魅力そのものを書いた人は、
-    // 「〜に関わることができる」では受けられない
     if (/(こと|点|ところ)$/.test(t)) {
-      return t + variant(m, [
-        'にも、強くひかれました。',
-        'も、大きな魅力だと感じています。',
-        'にも心を動かされました。'
-      ], 27);
+      // 「〜点こそ…心を動かされた点です」と同じ言葉が並ばないようにする
+      const tails = ['に、大きな魅力を感じています。', 'は、ほかにはない魅力だと感じました。']
+        .concat(/点$/.test(t) ? [] : ['こそ、私が調べていて心を動かされた点です。']);
+      return t + variant(m, tails, 27);
     }
-    const pair = variant(m, [
-      ['そこでは{X}に関わることができると知りました。', 'そこでは{X}ことを知りました。'],
-      ['調べていくうちに、{X}に関われることが分かりました。', '調べていくうちに、{X}ことが分かりました。'],
-      ['{X}に関われる点にも、強くひかれました。', '{X}という点にも、強くひかれました。']
-    ], 10);
-    return fit(m.featureDetail, pair[0], pair[1]);
+    const plain = bare(global.QUESTIONS.plainWord(t))
+      .replace(/(ので|ため)$/, 'から')
+      .replace(/から$/, '');
+    if (!plain) return '';
+    if (global.QUESTIONS.isPredicate(plain)) {
+      return variant(m, [
+        '魅力に感じたのは、{X}からです。',
+        '{X}という点に、大きな魅力を感じました。',
+        'そこにひかれたのは、{X}からです。'
+      ], 10).replace('{X}', plain);
+    }
+    return plain + variant(m, [
+      'という点に、大きな魅力を感じています。',
+      'という点が、いちばんの魅力だと感じました。'
+    ], 28);
   }
 
   /** 進学＝学びたい科目 ／ 就職＝仕事の理解 */
@@ -1547,7 +1558,7 @@
       ['futureWhyWhat', '将来の目標のきっかけ', d.futureWhyWhat],
       ['gapNow', '今の自分に足りない力', d.gapNow],
       ['featureName', '志望先の特色（名前）', d.featureName],
-      ['featureDetail', 'そこでできること', d.featureDetail],
+      ['featureDetail', '魅力に感じた理由', d.featureDetail],
       [job ? 'jobTask' : 'studyWant', job ? '仕事の理解' : '受けたい授業', job ? d.jobTask : d.studyWant],
       ['mustPoint', 'ここでなければの違い', d.mustPoint],
       ['contribution', job ? '活かせる力' : null, job ? d.contribution : null],
