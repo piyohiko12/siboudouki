@@ -113,10 +113,11 @@ head('取り組んだことが行動か、作ったものか');
   console.log('  ' + k + '：' + (t ? t[0] : '（なし）'));
 });
 
-head('志望先の特色に名前があるか');
-[['はい、載っていた言葉をそのまま書いた', '地域経済フィールドワーク'], ['いいえ、自分の言葉で書いた', '少人数で進める']].forEach(([k, w]) => {
-  const d = { course: 'shingaku', targetName: '〇〇大学', featureNamed: k, featureName: w, featureKind: '演習', whyChain: {} };
-  const t = C.generate(d, 'prep').text.match(/私が特に関心を持ったのは、[^。]*。/);
+head('志望先の特色は、名前でも自分の言葉でも同じ形になる');
+[['名前', '地域経済フィールドワーク'], ['述語', '少人数で進める'],
+ ['名詞', '安全への意識の高さ'], ['丁寧語', '少人数で進めます']].forEach(([k, w]) => {
+  const d = { course: 'shingaku', targetName: '〇〇大学', featureName: w, featureKind: '演習', whyChain: {} };
+  const t = C.generate(d, 'prep').text.match(/[^。\n]*(関心を持った|心を引かれた|心をひかれた)[^。]*。/);
   console.log('  ' + k + '：' + (t ? t[0] : '（なし）'));
 });
 

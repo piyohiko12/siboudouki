@@ -403,7 +403,6 @@
       attract: d.attractPoints || [],
       featureKind: bare(d.featureKind),
       featureName: bare(d.featureName),
-      featureNamed: d.featureNamed !== 'いいえ、自分の言葉で書いた',
       featureDetail: bare(d.featureDetail),
       featureSource: bare(d.featureSource),
       studyWant: bare(d.studyWant),
@@ -519,11 +518,8 @@
       'とりわけ関心を持ったのは、'
     ], 2) + m.name + 'の';
 
-    // 固有名詞はかぎかっこで受ける
-    if (m.featureNamed) return lead + kind + '「' + name + '」です。';
-    // 特徴を書いた人は「◯◯のうち、△△という点」で受ける（「という授業です」より座る）
-    return fit(name, lead + kind + 'のうち、{X}'
-      + (FEATURE_NOUN_TAIL.test(name) ? 'です。' : 'という点です。'));
+    // 形は1つだけ。「少人数で進める」のような述語だけ、名詞の形に受け直す
+    return lead + kind + 'の' + global.QUESTIONS.featureWord(name) + 'です。';
   }
 
   /**
@@ -667,8 +663,6 @@
 
   /** 「◯◯という点」の◯◯がすでに「点」で終わっていないか（「点という点」を防ぐ） */
   const NOUN_TAIL = /(点|ところ|こと|違い|ちがい)$/;
-  // 「安全への意識の高さという点です」のような二重を防ぐため、特色の欄だけ広めに見る
-  const FEATURE_NOUN_TAIL = /(点|ところ|こと|違い|ちがい|さ|性|力|制度|体制|方針|環境|雰囲気)$/;
 
   function sMust(m) {
     const dup = NOUN_TAIL.test(bare(m.mustPoint));

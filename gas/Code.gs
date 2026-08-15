@@ -81,7 +81,6 @@ var COLUMNS = [
   { key: 'card3Link',        label: '魅力3 自分とのつながり', width: 240 },
   { key: 'featureKind',      label: '特色の種類',            width: 120 },
   { key: 'featureName',      label: '特色の名前',            width: 220 },
-  { key: 'featureNamed',     label: '名前の有無',            width: 130 },
   { key: 'featureSource',    label: '特色の情報源',          width: 150 },
   { key: 'featureSource',    label: '特色の情報源',          width: 150 },
   { key: 'featureDetail',    label: '魅力に感じた理由',      width: 200 },

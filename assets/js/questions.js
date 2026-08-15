@@ -656,28 +656,27 @@
     '取り組み': ['地域の清掃活動', '不良品ゼロへの取り組み']
   };
 
-  /** 名詞で言い切っている語尾（「という点」を足すと二重になる） */
-  const FEATURE_NOUN_TAIL = /(点|ところ|こと|違い|ちがい|さ|性|力|制度|体制|方針|環境|雰囲気)$/;
-
   /**
    * 「調べていて心をひかれたもの」の一文（生成側 sFeature と同じ形）。
-   * かぎかっこを付けるかどうかは、Q3の答えで決まる。
-   *   載っていた言葉    → 貴社の技術「〇〇部品の精密加工」です。
-   *   自分の言葉        → 貴社の技術のうち、少人数で進めるという点です。
-   *   自分の言葉（名詞）→ 貴社の技術のうち、安全への意識の高さです。
+   * 形は1つだけ：「貴社の〈種類〉の〈書いた言葉〉です。」
+   *   貴社の技術の〇〇部品の精密加工です。
+   *   貴学の授業の地域経済フィールドワークです。
+   * ただし「少人数で進める」のように述語で書かれると
+   * 「〜の少人数で進めるです」になってしまうので、そこだけ名詞の形に受け直す。
    */
+  function featureWord(name) {
+    const t = txt(name);
+    if (!t) return '';
+    const plain = plainWord(t);
+    return isPredicate(plain) ? plain + 'という点' : t;
+  }
+
   function featureSentence(d, mode) {
-    const name = txt((d || {}).featureName);
+    const name = featureWord((d || {}).featureName);
     if (!name) return '';
-    const isJobMode = job(mode);
-    const kind = txt(d.featureKind) || (isJobMode ? '取り組み' : '学び');
+    const kind = txt(d.featureKind) || (job(mode) ? '取り組み' : '学び');
     const org = txt(d.targetName) || orgTypeOf(mode, d.orgType).honorific;
-    const lead = '私が特に関心を持ったのは、' + org + 'の';
-    if (d.featureNamed !== 'いいえ、自分の言葉で書いた') {
-      return lead + kind + '「' + name + '」です。';
-    }
-    return lead + kind + 'のうち、' + name
-      + (FEATURE_NOUN_TAIL.test(name) ? 'です。' : 'という点です。');
+    return '私が特に関心を持ったのは、' + org + 'の' + kind + 'の' + name + 'です。';
   }
 
   /**
@@ -1691,29 +1690,10 @@
               ? '求人票や会社案内に載っている表記どおりに写します。'
               : 'パンフレットやシラバスに載っている表記どおりに写します。')
               + '載っていなければ「少人数で進める」のように、自分の言葉で魅力を書いて構いません。'
-              + 'ここに固有名詞が入るかどうかで、文章の説得力が決まります。',
+              + 'ここに固有名詞が入るかどうかで、文章の説得力が決まります。'
+              + 'この言葉は、そのまま「◯◯の〜です」という一文になります。',
             avoid: '「〜に魅力を感じた」「〜がよかった」のような感想は書きません。'
               + '載っていればその名前を、なければ「少人数で進める」のように短く言い表します',
-            preview: function (d) { return featureSentence(d, mode); }
-          },
-          {
-            id: 'featureNamed', group: 'found', type: 'select', required: true,
-            // かぎかっこを付けるかどうかが変わるので、この1問だけは残す。
-            // 生徒が実際に書いた言葉を引用して、はい／いいえで答えられるようにする
-            label: function (d) {
-              const n = txt(d.featureName);
-              const src = isJob ? '求人票やホームページ' : 'パンフレットやホームページ';
-              return (n ? '「' + n + '」' : 'その言葉') + 'は、' + src + 'に載っていた言葉ですか';
-            },
-            options: ['はい、載っていた言葉をそのまま書いた', 'いいえ、自分の言葉で書いた'],
-            default: 'はい、載っていた言葉をそのまま書いた',
-            hint: function (d) {
-              const kind = txt(d.featureKind) || (isJob ? '取り組み' : '学び');
-              const h = orgTypeOf(mode, d.orgType).honorific;
-              return 'かぎかっこを付けるかどうかが変わるだけの設問です。'
-                + '「はい」なら『' + h + 'の' + kind + '「◯◯」です。』、'
-                + '「いいえ」なら『' + h + 'の' + kind + 'のうち、◯◯という点です。』という文になります。';
-            },
             preview: function (d) { return featureSentence(d, mode); }
           },
           {
@@ -1746,9 +1726,9 @@
             refer: function (d) { return about(d.featureName); },
             options: isJob
               ? ['求人票', '会社のホームページ', '会社案内・パンフレット', '会社説明会',
-                '職場見学', '先輩社員の話', '先生の話']
+                '職場見学', '先輩社員の話', '先生の話', '親戚の話', '知人の話']
               : ['学校案内・パンフレット', '学校のホームページ', 'シラバス', 'オープンキャンパス',
-                '体験授業', '在校生・卒業生の話', '先生の話'],
+                '体験授業', '在校生・卒業生の話', '先生の話', '親戚の話', '知人の話'],
             hint: '「どこで知ったか」まで書けると、調べた事実がはっきり伝わります。',
             preview: function (d) {
               return txt(d.featureName) && txt(d.featureSource)
@@ -2142,6 +2122,7 @@
     classLabel: classLabel,
     traitSentence: traitSentence,
     featureSentence: featureSentence,
+    featureWord: featureWord,
     strengthSentence: strengthSentence,
     CHIP_JOIN_LIMIT: CHIP_JOIN_LIMIT
   };

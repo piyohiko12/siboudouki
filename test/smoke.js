@@ -37,7 +37,7 @@ const common = {
 const shingaku = Object.assign({}, common, {
   course: 'shingaku', targetName: '〇〇大学', targetSub: '経済学部経済学科', targetChars: 500,
   orgType: '大学・短期大学', effortActionKind: '自分がやった行動',
-  featureNamed: 'はい、載っていた言葉をそのまま書いた', afterGradKind: '目指していること',
+  afterGradKind: '目指していること',
   efforts: ['課題研究・探究学習'], effortWhich: '地元商店街の活性化',
   effortWhen: '2年生からの2年間', effortRole: '班長',
   effortAction: '地元商店街での聞き取り調査',
@@ -74,7 +74,7 @@ const shingaku = Object.assign({}, common, {
 const shushoku = Object.assign({}, common, {
   course: 'shushoku', targetName: '株式会社〇〇製作所', targetSub: '製造職', targetChars: 300,
   orgType: '会社（民間企業）', effortActionKind: '自分がやった行動',
-  featureNamed: 'はい、載っていた言葉をそのまま書いた', afterGradKind: '身につけていたい力・技術',
+  afterGradKind: '身につけていたい力・技術',
   efforts: ['アルバイト'], effortWhich: 'コンビニ',
   effortWhen: '2年生からの2年間', effortRole: '',
   effortAction: '混雑する時間帯の動き方のメモ作り',

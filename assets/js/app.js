@@ -129,6 +129,8 @@
       if (n) state.data.seatNo = String(Number(half(n[1]))) + '番';
     }
     delete state.data.className;
+    // 「決まった名前がついていますか」は、文の形を1つにしたのでなくなった
+    delete state.data.featureNamed;
 
     // 「印象に残ったこと」は、魅力カードの②に置き換わった
     if (state.data.visitImpression && !(state.data.attractCards || []).length) {
@@ -1510,7 +1512,6 @@
       attractPoints: (d.attractPoints || []).join('、'),
       featureKind: d.featureKind || '',
       featureName: d.featureName || '',
-      featureNamed: d.featureNamed || '',
       featureSource: d.featureSource || '',
       featureDetail: d.featureDetail || '',
       studyWant: d.studyWant || '',

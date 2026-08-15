@@ -261,8 +261,9 @@ async function runMode(browser, key, errors) {
   await fillIf('#f_featureName', d.feature);
   await page.locator('#f_featureName').blur();
   await page.waitForTimeout(400);
-  console.log('  Q3:', (await page.textContent('[data-field="featureNamed"] .field__q')).trim());
-  console.log('  Q4:', (await page.textContent('[data-field="featureDetail"] .field__q')).trim());
+  console.log('  Q3:', (await page.textContent('[data-field="featureDetail"] .field__q')).trim());
+  console.log('  Q2のプレビュー:',
+    (await page.textContent('[data-field="featureName"] .field__previewText')).trim());
   await fillIf('#f_featureDetail', d.featureDetail);
   console.log('  Q4のプレビュー:',
     (await page.textContent('[data-field="featureDetail"] .field__previewText')).trim());
