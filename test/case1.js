@@ -22,7 +22,7 @@ const D = {
   }],
   attractPoints: [],
   featureName: '倉庫作業の管理方法に魅力を感じた',
-  featureNamed: '名前はなく、特徴を書いた', featureKind: '仕事の進め方',
+  featureNamed: '名前はなく、自分の言葉でまとめた', featureKind: '仕事の進め方',
   featureDetail: '倉庫管理', featureSource: '',
   jobTask: '', targetPolicy: '',
   valueFound: '会社の雰囲気',

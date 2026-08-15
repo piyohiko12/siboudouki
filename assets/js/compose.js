@@ -403,7 +403,7 @@
       attract: d.attractPoints || [],
       featureKind: bare(d.featureKind),
       featureName: bare(d.featureName),
-      featureNamed: d.featureNamed !== '名前はなく、特徴を書いた',
+      featureNamed: d.featureNamed !== '名前はなく、自分の言葉でまとめた',
       featureDetail: bare(d.featureDetail),
       featureSource: bare(d.featureSource),
       studyWant: bare(d.studyWant),
@@ -527,6 +527,17 @@
   }
 
   function sFeatureDetail(m) {
+    const t = bare(m.featureDetail);
+    if (!t) return '';
+    // 「若手でも挑戦できること」のように魅力そのものを書いた人は、
+    // 「〜に関わることができる」では受けられない
+    if (/(こと|点|ところ)$/.test(t)) {
+      return t + variant(m, [
+        'にも、強くひかれました。',
+        'も、大きな魅力だと感じています。',
+        'にも心を動かされました。'
+      ], 27);
+    }
     const pair = variant(m, [
       ['そこでは{X}に関わることができると知りました。', 'そこでは{X}ことを知りました。'],
       ['調べていくうちに、{X}に関われることが分かりました。', '調べていくうちに、{X}ことが分かりました。'],

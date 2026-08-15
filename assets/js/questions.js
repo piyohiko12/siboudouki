@@ -628,6 +628,57 @@
   const FEATURE_KIND_SHUSHOKU = ['製品', '技術', 'サービス', '設備', '事業', '研修制度',
     '資格支援制度', '職場の体制', '仕事の進め方', '取り組み'];
 
+  /** 種類を選んだあと、その種類に合った書き方の例を出す */
+  const FEATURE_EXAMPLES = {
+    // 進学
+    '授業': ['地域経済フィールドワーク', '簿記演習Ⅰ', '医療事務総論'],
+    '演習': ['少人数での課題演習', 'グループ発表の演習'],
+    'ゼミ': ['地域経済ゼミ', '2年次からのゼミ'],
+    '実習': ['病院での臨地実習', '企業インターンシップ'],
+    '研究室': ['環境デザイン研究室', '食品科学研究室'],
+    '学科': ['経済学科', '医療事務学科'],
+    'コース': ['医療事務コース', '国際ビジネスコース'],
+    'プログラム': ['海外研修プログラム', '地域連携プログラム'],
+    '留学制度': ['半年間の交換留学', '短期語学研修'],
+    '施設': ['実習用の模擬病室', '24時間使える自習室'],
+    '行事': ['学科合同の発表会', '地域との交流イベント'],
+    // 就職
+    '製品': ['自社ブランド「△△」', '〇〇向けの精密部品'],
+    '技術': ['〇〇部品の精密加工', 'ミクロン単位の測定技術'],
+    'サービス': ['24時間体制の保守サービス', '設置後の定期点検'],
+    '設備': ['最新の5軸加工機', '自社の検査ライン'],
+    '事業': ['地域の建物のリフォーム事業', '海外向けの輸出事業'],
+    '研修制度': ['3か月の新人研修', '先輩がつくメンター制度'],
+    '職場の体制': ['作業前の声かけの徹底', '2人1組での安全確認'],
+    '仕事の進め方': ['検査から出荷までの一貫生産', '毎朝の作業計画の共有'],
+    // 共通
+    '資格支援制度': ['資格取得の費用補助', '対策講座の無料開講'],
+    '取り組み': ['地域の清掃活動', '不良品ゼロへの取り組み']
+  };
+
+  /**
+   * 「そこでできること・その特徴・魅力」の一文（生成側 sFeatureDetail と同じ形）。
+   * 「若手でも挑戦できること」のように魅力そのものを書く人がいるので、
+   * 「〜に関わることができる」では受けられない場合を分ける。
+   */
+  function featureDetailSentence(v) {
+    const t = txt(v);
+    if (!t) return '';
+    if (/(こと|点|ところ)$/.test(t)) return t + 'にも、強くひかれました。';
+    return frame(t,
+      'そこでは{X}に関わることができると知りました。',
+      'そこでは{X}ことを知りました。');
+  }
+
+  /** 種類に合った例。表にないものは、進路ごとの共通の例を返す */
+  function featureExamples(d, isJob) {
+    const k = txt((d || {}).featureKind);
+    if (FEATURE_EXAMPLES[k]) return FEATURE_EXAMPLES[k];
+    return isJob
+      ? ['〇〇部品の精密加工', '自社ブランド「△△」', '24時間体制の保守サービス']
+      : ['地域経済フィールドワーク', '海外研修プログラム', '医療事務コース'];
+  }
+
   /** 志望理由のひとこと：語尾（{X} に生徒が書いた名詞が入る） */
   // dup … 枠が足す名詞。答えがすでにその名詞で終わっていたら dupFrame を使う
   //        （「倉庫管理の技術」＋「技術を身につけたい」＝「技術の技術」を防ぐ）
@@ -1575,19 +1626,44 @@
         ],
         fields: [
           {
-            id: 'featureName', group: 'found', type: 'text', maxChars: 40, required: true,
+            id: 'featureKind', group: 'found', type: 'select', required: true,
+            // 先に「どの種類か」を決めておくと、次の欄で何を書けばよいかが定まる
             label: isJob
-              ? '調べていて、いちばん心をひかれた技術・制度・製品などの魅力'
-              : '調べていて、いちばん心をひかれた学び・制度・施設などの魅力',
-            placeholder: isJob ? '〇〇部品の精密加工' : '地域経済フィールドワーク',
-            examples: isJob
-              ? ['〇〇部品の精密加工', '自社ブランド「△△」', '24時間体制の保守サービス']
-              : ['地域経済フィールドワーク', '海外研修プログラム', '医療事務コース'],
+              ? '調べていて、いちばん心をひかれたのは、どれですか'
+              : '調べていて、いちばん心をひかれたのは、どれですか',
+            rerender: true,
+            options: isJob ? FEATURE_KIND_SHUSHOKU : FEATURE_KIND_SHINGAKU,
+            default: isJob ? '技術' : '授業',
             hint: (isJob
-              ? '技術・制度・製品・サービスなど、その会社ならではのものを1つ。'
-                + '求人票や会社案内の表記どおりに写します。'
-              : '学び・制度・施設・プログラムなど、その学校ならではのものを1つ。'
-                + 'パンフレットやシラバスの表記どおりに写します。')
+              ? '求人票や会社のホームページを見ながら、いちばん「いいな」と思ったものの種類を選びます。'
+              : 'パンフレットや学校のホームページを見ながら、いちばん「いいな」と思ったものの種類を選びます。')
+              + '次の欄で、その名前や魅力をくわしく書きます。',
+            preview: function (d) {
+              const kind = txt(d.featureKind);
+              if (!kind) return '';
+              const org = txt(d.targetName) || orgTypeOf(mode, d.orgType).honorific;
+              return '私が特に関心を持ったのは、' + org + 'の' + kind + '「……」です。';
+            }
+          },
+          {
+            id: 'featureName', group: 'found', type: 'text', maxChars: 40, required: true,
+            label: function (d) {
+              const kind = txt(d.featureKind);
+              if (kind) return 'その「' + kind + '」の名前、または魅力';
+              return isJob
+                ? '調べていて、いちばん心をひかれた技術・制度・製品などの魅力'
+                : '調べていて、いちばん心をひかれた学び・制度・施設などの魅力';
+            },
+            refer: function (d) {
+              const kind = txt(d.featureKind);
+              return kind ? '「' + kind + '」を選びました' : '';
+            },
+            placeholder: function (d) { return featureExamples(d, isJob)[0]; },
+            examples: function (d) { return featureExamples(d, isJob); },
+            hint: (isJob
+              ? '求人票や会社案内に載っている表記どおりに写します。'
+              : 'パンフレットやシラバスに載っている表記どおりに写します。')
+              + '載っていなければ「少人数で進める」のように、自分の言葉で魅力を書いて構いません。'
               + 'ここに固有名詞が入るかどうかで、文章の説得力が決まります。',
             avoid: '「〜に魅力を感じた」「〜がよかった」のような感想は書きません。'
               + '名前がついていればその名前を、なければ「少人数で進める」のように特徴を書きます',
@@ -1600,32 +1676,25 @@
           },
           {
             id: 'featureNamed', group: 'found', type: 'select', required: true,
-            label: 'それには、決まった名前がついていますか',
+            // かぎかっこを付けるかどうかが変わるので、この1問だけは残す
+            label: '上の欄に書いたのは、どちらですか',
             refer: function (d) { return about(d.featureName); },
-            options: ['決まった名前がある', '名前はなく、特徴を書いた'],
-            default: '決まった名前がある',
-            hint: 'パンフレットにその名前で載っているなら「決まった名前がある」。'
-              + '「少人数で進める」のように特徴のほうを書いたなら、もう一方を選びます。'
+            options: ['そのままの名前が載っていた', '名前はなく、自分の言葉でまとめた'],
+            default: 'そのままの名前が載っていた',
+            hint: (isJob
+              ? '「〇〇部品の精密加工」のように求人票やホームページに載っている言葉を写したなら、上。'
+              : '「地域経済フィールドワーク」のようにパンフレットに載っている言葉を写したなら、上。')
+              + '「少人数で進める」のように自分でまとめたなら、下を選びます。'
               + 'かぎかっこを付けるかどうかが変わります。',
             preview: function (d) {
               const n = txt(d.featureName);
               if (!n) return '';
               const kind = txt(d.featureKind) || (isJob ? '取り組み' : '学び');
               const org = txt(d.targetName) || orgTypeOf(mode, d.orgType).honorific;
-              return d.featureNamed === '名前はなく、特徴を書いた'
+              return d.featureNamed === '名前はなく、自分の言葉でまとめた'
                 ? '私が特に関心を持ったのは、' + org + 'の' + n + 'という' + kind + 'です。'
                 : '私が特に関心を持ったのは、' + org + 'の' + kind + '「' + n + '」です。';
             }
-          },
-          {
-            id: 'featureKind', group: 'found', type: 'select', required: true,
-            label: 'それは、どの種類のものですか',
-            refer: function (d) { return about(d.featureName); },
-            options: isJob ? FEATURE_KIND_SHUSHOKU : FEATURE_KIND_SHINGAKU,
-            default: isJob ? '技術' : '授業',
-            hint: isJob
-              ? '選んだ言葉が「貴社の◯◯「△△」」の◯◯に入ります。'
-              : '選んだ言葉が「貴校の◯◯「△△」」の◯◯に入ります。'
           },
           {
             id: 'featureDetail', group: 'found', type: 'text', maxChars: 30,
@@ -1635,18 +1704,16 @@
               prep: '結論先行型では、この一文が結論を支える具体になります。',
               scene: '場面描写型では、あの場面のあとに続く「調べて分かったこと」になります。'
             },
-            label: 'そこでできること・その特徴',
+            label: 'そこでできること・その特徴・魅力',
             refer: function (d) { return about(d.featureName); },
             placeholder: isJob ? '検査から出荷までの一貫生産' : '自治体と組んだ課題調査',
             examples: isJob
-              ? ['検査から出荷までの一貫生産', '海外向け製品の設計', '若手のうちからの現場配属']
-              : ['自治体と組んだ課題調査', '2年次からの少人数ゼミ', '現場の病院での実習'],
-            hint: '「〜すること」「〜の◯◯」のように、ものごとの名前で書きます。',
-            avoid: '「〜を担当」「〜ができる」のように文の形で書くと、うまくつながりません',
-            preview: function (d) {
-              return txt(d.featureDetail)
-                ? 'そこでは' + txt(d.featureDetail) + 'に関わることができると知りました。' : '';
-            }
+              ? ['検査から出荷までの一貫生産', '海外向け製品の設計', '若手でも挑戦できること']
+              : ['自治体と組んだ課題調査', '2年次からの少人数ゼミ', '学生同士で教え合えること'],
+            hint: '「〜すること」「〜の◯◯」のように、ものごとの名前で書きます。'
+              + '「若手でも挑戦できること」のように、感じた魅力をそのまま書いても構いません。',
+            avoid: '「すごい」「よかった」だけでは、何がよいのか読み手に伝わりません',
+            preview: function (d) { return featureDetailSentence(d.featureDetail); }
           },
           {
             id: 'featureSource', group: 'found', type: 'select',

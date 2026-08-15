@@ -380,6 +380,8 @@
         input.addEventListener('change', function () {
           state.data[field.id] = input.value;
           emitChange(field.id);
+          // 選んだ内容で、あとの設問の文面や例が変わる欄は画面ごと作り直す
+          if (field.rerender) { save(); render(field.id); return; }
           scheduleSave();
         });
         if (!state.data[field.id] && field.default) state.data[field.id] = field.default;

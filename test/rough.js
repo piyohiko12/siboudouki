@@ -13,7 +13,7 @@ const CASES = {
   述語: {
     course: 'shingaku', targetName: '〇〇大学', targetSub: '経済学部', targetChars: 600,
     orgType: '大学・短期大学', effortActionKind: '自分がやった行動',
-    featureNamed: '決まった名前がある', afterGradKind: 'なっていたい自分の姿',
+    featureNamed: 'そのままの名前が載っていた', afterGradKind: 'なっていたい自分の姿',
     efforts: ['毎日走った'], effortWhen: '1年生から3年間', effortRole: '',
     effortAction: '練習メニューを毎日考えた',
     effortResult: '県大会に出場した',
@@ -40,7 +40,7 @@ const CASES = {
   丁寧語: {
     course: 'shushoku', targetName: '株式会社〇〇', targetSub: '製造職', targetChars: 600,
     orgType: '役所・公的機関（公務員）', effortActionKind: '自分が作ったもの・仕組み',
-    featureNamed: '名前はなく、特徴を書いた', afterGradKind: 'なっていたい自分の姿',
+    featureNamed: '名前はなく、自分の言葉でまとめた', afterGradKind: 'なっていたい自分の姿',
     efforts: ['アルバイト'], effortWhen: '2年生からの2年間', effortRole: 'リーダー',
     effortAction: '毎日メモを取りました',
     effortResult: 'ミスが減りました',
@@ -70,7 +70,7 @@ const CASES = {
   体言止めだけ: {
     course: 'shushoku', targetName: '〇〇工業', targetChars: 400,
     orgType: '病院・医療機関', effortActionKind: '自分が作ったもの・仕組み',
-    featureNamed: '名前はなく、特徴を書いた', afterGradKind: 'なっていたい自分の姿',
+    featureNamed: '名前はなく、自分の言葉でまとめた', afterGradKind: 'なっていたい自分の姿',
     efforts: ['部活動'], effortWhen: '1年生から3年間',
     effortAction: 'あいさつ', effortResult: '皆勤', effortHard: '早起き', effortHow: '目覚まし',
     effortLearned: '手伝い', valueFound: 'あいさつ', contributeTo: '職場',
@@ -94,7 +94,7 @@ CASES['選択の反対側'] = Object.assign({}, CASES.述語, {
   course: 'shingaku', targetName: '△△専門学校', targetSub: '情報処理科',
   orgType: '専門学校', effortActionKind: '自分が作ったもの・仕組み',
   effortAction: '練習メニュー表',
-  featureNamed: '名前はなく、特徴を書いた', featureName: '少人数で進める',
+  featureNamed: '名前はなく、自分の言葉でまとめた', featureName: '少人数で進める',
   afterGradKind: '目指していること', afterGradWhat: '地元での就職',
   wantObject: '設計の技術', wantVerb: '身につけたい'
 });
@@ -114,6 +114,17 @@ CASES['理由を名詞で'] = Object.assign({}, CASES.丁寧語, {
   targetChars: 1200,
   attractCards: [{ where: '体験授業', weight: 3, feel: ['わくわくした'],
     what: '学生同士が話し合っていました', link: 'チームで動くことの大切さ' }]
+});
+
+// 「そこでできること・その特徴・魅力」に、魅力そのものを書いたとき
+CASES['特徴を魅力で'] = Object.assign({}, CASES.述語, {
+  targetChars: 1200, featureDetail: '若手でも挑戦できること'
+});
+CASES['特徴を点で'] = Object.assign({}, CASES.体言止めだけ, {
+  targetChars: 1200, featureDetail: 'だれもが挑戦できる点'
+});
+CASES['特徴を述語で'] = Object.assign({}, CASES.丁寧語, {
+  targetChars: 1200, featureDetail: '1人1台の機械を任されます'
 });
 
 CASES['どれを名前で'] = Object.assign({}, CASES.述語, {
@@ -154,7 +165,7 @@ CASES['場面が丁寧語'] = Object.assign({}, CASES.述語, {
 });
 CASES['姿で締める'] = Object.assign({}, CASES.体言止めだけ, {
   orgType: '福祉施設・団体など', effortActionKind: '自分がやった行動',
-  featureNamed: '決まった名前がある',
+  featureNamed: 'そのままの名前が載っていた',
   afterGradKind: 'なっていたい自分の姿', afterGradWhat: '後輩に頼られる先輩'
 });
 
