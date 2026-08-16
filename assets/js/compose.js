@@ -639,6 +639,13 @@
   /** 特色をどこで知ったか。調べた事実をはっきりさせる */
   function sFeatureSource(m) {
     if (!m.featureName || !m.featureSource) return '';
+    // 「知ったきっかけ」の文と「知りました」が並ばないよう、受け方を分ける
+    if (m.knewBy) {
+      return variant(m, [
+        'このことは、' + m.featureSource + 'で確かめました。',
+        m.featureSource + 'を読んで、この点を確かめました。'
+      ], 30);
+    }
     return 'このことは、' + m.featureSource + 'で知りました。';
   }
 
@@ -814,6 +821,21 @@
   }
 
   /**
+   * その志望先を知ったきっかけ。
+   * エピソード型は sBridge が同じことを言うので、そちらに任せる。
+   */
+  function sKnewBy(m, kind) {
+    if (kind === 'story') return '';
+    const by = m.knewBy && m.knewBy !== 'その他' ? m.knewBy : '';
+    if (!by) return '';
+    return variant(m, [
+      m.nameFull + 'を知ったのは、' + by + 'がきっかけでした。',
+      by + 'で' + m.nameFull + 'を知りました。',
+      m.nameFull + 'のことは、' + by + 'で知りました。'
+    ], 29);
+  }
+
+  /**
    * 自分の話から志望先の話へ渡る一文。
    * 段落が急に切り替わると読みにくいので、型ごとに橋を架ける。
    */
@@ -861,6 +883,7 @@
     paras.push(p1);
 
     const p2 = [];
+    push(p2, sKnewBy(m, 'prep'), 3);
     push(p2, sFeature(m), 1);
     push(p2, sFeatureDetail(m), 2);
     push(p2, sFeatureSource(m), 3);
@@ -935,7 +958,8 @@
     push(p2, sBridge(m, 'story'), 0);
     push(p2, variant(m, [
       m.L.metPhrase + 'と感じたことを、今でも覚えています。',
-      m.L.metPhrase + '。そう感じたことを、今でもよく覚えています。',
+      // 「ここで働きたい。」と言い切ると、本文だけが常体になってしまう
+      '「' + m.L.metPhrase + '」。そう感じたことを、今でもよく覚えています。',
       'そのとき' + m.L.metPhrase + 'と思ったことは、今も心に残っています。'
     ], 26), 2);
     push(p2, sVisited(m), 3);
@@ -952,6 +976,7 @@
       'そして私は、' + m.want + 'と考えるようになりました。',
       'こうして、' + m.want + 'という思いが固まりました。'
     ], 34), 1);
+    push(p3, sKnewBy(m, 'story'), 3);
     push(p3, sFeature(m), 1);
     push(p3, sLearnOrTask(m), 2);
     push(p3, sDeep(m, 'why'), 2);
@@ -996,6 +1021,7 @@
     paras.push(p2);
 
     const p3 = [];
+    push(p3, sKnewBy(m, 'future'), 3);
     push(p3, sFeature(m), 1);
     push(p3, sFeatureDetail(m), 3);
     push(p3, sFeatureSource(m), 3);
@@ -1058,6 +1084,7 @@
       : sHead(m), 0);
     push(p2, sDeep(m, 'felt'), 2);
     // 志望先の固有名詞は「調べた証拠」そのもの。字数が苦しくても最後まで残す
+    push(p2, sKnewBy(m, 'scene'), 3);
     push(p2, sFeature(m), 1);
     push(p2, sLearnOrTask(m), 2);
     push(p2, sFeatureDetail(m), 3);
@@ -1138,6 +1165,7 @@
       'この課題を越えるために、' + m.want + 'と考えました。',
       'だから私は、' + m.want + 'と考えています。'
     ], 29), 1);
+    push(p3, sKnewBy(m, 'gap'), 3);
     push(p3, sFeature(m), 1);
     push(p3, sLearnOrTask(m), 3);
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
@@ -1179,6 +1207,7 @@
     const p2 = [];
     push(p2, '一つ目は、' + m.want + 'からです。', 0);
     push(p2, sDeep(m, 'think'), 2);
+    push(p2, sKnewBy(m, 'three'), 3);
     push(p2, sFeature(m), 1);
     push(p2, sLearnOrTask(m), 2);
     push(p2, sFeatureDetail(m), 3);
@@ -1520,7 +1549,10 @@
   // ── 使われていない材料の検出 ───────────────────────────
   /** 本文に入っているかを、先頭の数文字で照合する */
   function usedIn(body, text, len) {
-    const key = String(text || '').replace(/[\s　]/g, '').slice(0, len || 10);
+    // 「〜から」「〜ので」のような語尾は、本文に入れるときに落ちる。
+    // そのままの形で探すと「使われていない」と誤って出てしまう
+    const raw = String(text || '').replace(/[\s　]/g, '').replace(/(から|ので|ため|こと)$/, '');
+    const key = raw.slice(0, len || 10);
     if (!key) return true;
     return body.replace(/[\s　]/g, '').indexOf(key) !== -1;
   }
@@ -1563,6 +1595,7 @@
       ['targetPolicy', '共感した理念', d.targetPolicy],
       ['licenses', '資格・免許', d.licenses],
       ['effortWhich', 'どの活動か', d.effortWhich],
+      ['knewBy', '知ったきっかけ', d.knewBy],
       ['strengthEpisode', '得意だと思うきっかけ', d.strengthEpisode],
       ['strengthScene', '得意なことを活かせる場面', d.strengthScene],
       ['personalityEpisode', 'その性格だと思うきっかけ', d.personalityEpisode],

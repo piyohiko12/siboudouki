@@ -12,7 +12,7 @@ const DATA = {
     chips: { research: '仕事の内容', after: '仕事を早く覚えること' },
     feature: '〇〇部品の精密加工',
     featureKind: '研修制度', featureDetail: '若手でも挑戦できるから',
-    cardWhere: '職場見学',
+    knewBy: '職場見学', cardWhere: '職場見学',
     cardWhat: '社員の方が、作業を始める前に必ずおたがいに声をかけ合っていた',
     cardFeel: ['おどろいた', '見習いたい'],
     cardLink: 'アルバイトで、声をかけ合うとミスが減ったことがある',
@@ -30,7 +30,7 @@ const DATA = {
     chips: { research: '学べる内容・カリキュラム', after: '専門分野の勉強' },
     feature: '地域経済フィールドワーク',
     featureKind: 'ゼミ', featureDetail: '自治体と組んで課題を調べられるから',
-    cardWhere: '体験授業',
+    knewBy: 'オープンキャンパス', cardWhere: '体験授業',
     cardWhat: '学生同士が、答えではなく考え方のほうを話し合っていた',
     cardFeel: ['わくわくした', '自分もやってみたい'],
     cardLink: '課題研究で、人と話すほど自分の考えが整理された',
@@ -118,8 +118,14 @@ async function runMode(browser, key, errors) {
   await fillIf('#f_targetSub', d.basic.targetSub);
   await step();
 
-  // ── STEP 3：調べる ─────────────────────────────
+  // ── STEP 3：会社／学校を選んだきっかけ ──────────
   console.log('STEP3:', await page.textContent('#stepLabel'));
+  console.log('  Q1:', (await page.textContent('[data-field="knewBy"] .field__q')).trim(),
+    '／選択肢', (await page.locator('#f_knewBy option').count()) - 1, '個');
+  await page.selectOption('#f_knewBy', d.knewBy);
+  await page.waitForTimeout(250);
+  console.log('    こう文になります:',
+    (await page.textContent('[data-field="knewBy"] .field__previewText')).trim());
   console.log('  並び:',
     (await page.locator('.field, .fieldDone').evaluateAll(e => e.map(x => x.dataset.field))).join(' → '));
   console.log('  Q1:', (await page.textContent('[data-field="featureKind"] .field__q')).trim());

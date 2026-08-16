@@ -1619,10 +1619,8 @@
         ],
         fields: [
           {
-            id: 'knewBy', group: 'meet', type: 'select',
-            only: ['story'],
-            requiredIn: ['story'],
-            label: isJob ? 'その会社を知ったきっかけは何ですか' : 'その学校を知ったきっかけは何ですか',
+            id: 'knewBy', group: 'meet', type: 'select', required: true,
+            label: isJob ? 'その会社を知ったきっかけ' : 'その学校を知ったきっかけ',
             refer: function (d) { return about(d.targetName); },
             options: isJob
               ? ['学校に届いた求人票', '会社説明会', '職場見学', '職場体験', 'インターンシップ',
@@ -1631,7 +1629,14 @@
               : ['オープンキャンパス', '体験授業', '学校見学', '進学ガイダンス', '入試説明会',
                 '学校案内・パンフレット', '学校のホームページ', '先生からの紹介',
                 '先輩・家族の話', 'その他'],
-            hint: 'エピソード型では、ここが「出会いの場面」として文章に出てきます。'
+            hint: '近いものを1つ選びます。ここが「その会社と出会った場面」として文章の書き出し近くに出ます。'
+              .replace('その会社', isJob ? 'その会社' : 'その学校'),
+            preview: function (d) {
+              const by = txt(d.knewBy);
+              if (!by || by === 'その他') return '';
+              const n = txt(d.targetName) || orgTypeOf(mode, d.orgType).honorific;
+              return n + 'を知ったのは、' + by + 'がきっかけでした。';
+            }
           },
           {
             id: 'visited', group: 'meet', type: 'chips', max: 4,
