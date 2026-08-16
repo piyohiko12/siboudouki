@@ -143,7 +143,7 @@ async function runMode(browser, key, errors) {
   await fillIf('#' + d.extraId, d.extra);
   await step();
 
-  // ── STEP 4：思い出す（出会いと魅力カード）────────
+  // ── STEP 4：そこに決めた理由（出会いと魅力カード）────
   console.log('STEP4:', await page.textContent('#stepLabel'));
 
   await page.selectOption('.attrCard select', d.cardWhere);
@@ -164,7 +164,7 @@ async function runMode(browser, key, errors) {
   await page.click('[data-field="attractPoints"] .chip:has-text("' + d.chips.research + '")');
   await step();
 
-  // ── STEP 5：自分を知る ──────────────────────────
+  // ── STEP 5：その志望先と自分が合っていると思う理由 ────
   console.log('STEP5:', await page.textContent('#stepLabel'));
 
   // 答えた設問はたたまれ、押すと開く（STEP2 に戻って確かめる）

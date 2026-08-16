@@ -302,9 +302,16 @@ h1, h2, h3 { line-height: 1.5; letter-spacing: .01em; }
   font-weight: 700;
   letter-spacing: .04em;
   color: var(--accent-ink);
+  /* 見出しが長いステップがあるので、上の帯では1行に収める
+     （全文は下のカードの見出しに出る） */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .saveIndicator {
+  flex: none;
   opacity: 0;
   transform: translateY(-2px);
   transition: opacity .35s, transform .35s;
