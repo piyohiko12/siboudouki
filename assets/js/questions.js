@@ -680,6 +680,30 @@
   }
 
   /**
+   * 「その職種／学科を選んだのは、なぜですか」の一文（生成側 sSubReason と同じ形）。
+   *   ものづくりに関わりたいから → 製造職を選んだのは、ものづくりに関わりたいからです。
+   *   細かい作業が得意なので     → 製造職を選んだのは、細かい作業が得意だからです。
+   *   ものづくり                 → 製造職を選んだのは、ものづくりに関わりたいからです。
+   */
+  function subReasonSentence(d, mode) {
+    const t = txt((d || {}).subReason);
+    const sub = txt((d || {}).targetSub);
+    if (!t || !sub) return '';
+    const head = sub + 'を選んだのは、';
+    const hadWhy = /(から|ので|ため)$/.test(t);
+    const core = txt(plainWord(t))
+      .replace(/(なので|ので|ため)$/, 'から')
+      .replace(/から$/, '');
+    if (!core) return '';
+    if (hadWhy) {
+      const da = (isPredicate(core) || /だ$/.test(core)) ? '' : 'だ';
+      return head + core + da + 'からです。';
+    }
+    if (isPredicate(core)) return head + core + 'からです。';
+    return head + core + (job(mode) ? 'に関わりたいからです。' : 'を学びたいからです。');
+  }
+
+  /**
    * 「それを、なぜ魅力に感じましたか」の一文（生成側 sFeatureDetail と同じ形）。
    * 「〜だから」と理由で書く人、「〜できること」と名詞で書く人がいるので分ける。
    */
@@ -1607,7 +1631,7 @@
           {
             id: 'meet',
             name: isJob ? 'その会社との出会い' : 'その学校との出会い',
-            desc: 'どこで知って、どこまで足を運んだか。事実をそのまま選びます。'
+            desc: 'まず、その名前を知ったところから。事実をそのまま選びます。'
           },
           {
             id: 'found',
@@ -1636,26 +1660,6 @@
               if (!by || by === 'その他') return '';
               const n = txt(d.targetName) || orgTypeOf(mode, d.orgType).honorific;
               return n + 'を知ったのは、' + by + 'がきっかけでした。';
-            }
-          },
-          {
-            id: 'visited', group: 'meet', type: 'chips', max: 4,
-            label: isJob ? 'その会社について、実際に行った・参加したこと' : 'その学校について、実際に行った・参加したこと',
-            refer: function (d) { return about(d.targetName); },
-            options: isJob
-              ? ['会社説明会', '職場見学', '職場体験', 'インターンシップ', '個別面談',
-                'オンライン説明会', 'まだ行っていない']
-              : ['オープンキャンパス', '体験授業', '学校見学', '個別相談会', '学園祭',
-                '進学説明会', 'オンライン説明会', '部活動の見学', 'まだ行っていない'],
-            allowFree: true,
-            hint: '足を運んだ事実そのものが、志望の本気度を示します。'
-              + 'このあとの「魅力カード」に書く場面と重なるものは、同じ話をくり返さないよう文章では省かれます。'
-              + 'まだなら「まだ行っていない」を選んでください（文章には出ません）。',
-            preview: function (d) {
-              const been = (d.visited || []).filter(function (v) { return String(v).indexOf('まだ') !== 0; });
-              if (!been.length) return '';
-              const two = been.slice(0, 2);
-              return (two.length === 2 ? two[0] + 'や' + two[1] : two[0]) + 'にも参加し、自分の目で確かめました。';
             }
           },
           {
@@ -1743,6 +1747,26 @@
               return txt(d.featureName) && txt(d.featureSource)
                 ? 'このことは、' + txt(d.featureSource) + 'で知りました。' : '';
             }
+          },
+          {
+            id: 'subReason', group: 'found', type: 'text', maxChars: 30,
+            label: function (d) {
+              const sub = txt(d.targetSub);
+              return (sub ? '「' + sub + '」' : (isJob ? 'その職種' : 'その学科・コース'))
+                + 'を選んだのは、なぜですか';
+            },
+            required: true,
+            refer: function (d) { return about(d.targetSub); },
+            placeholder: isJob ? 'ものづくりに関わりたいから' : '地域の課題を調べたいから',
+            examples: isJob
+              ? ['ものづくりに関わりたいから', '手を動かす仕事が好きだから', '人と話す仕事が向いていると思ったから']
+              : ['地域の課題を調べたいから', '子どもと関わる仕事に就きたいから', '数字を扱うことが得意だから'],
+            avoid: '「なんとなく」「勧められたから」だけでは、選んだ理由になりません',
+            hint: (isJob
+              ? '会社を選んだ理由とは別に、「なぜこの職種か」も読み手が知りたいところです。'
+              : '学校を選んだ理由とは別に、「なぜこの学科・コースか」も読み手が知りたいところです。')
+              + '「〜だから」で書いても、「ものづくり」のように言葉だけでも構いません。',
+            preview: function (d) { return subReasonSentence(d, mode); }
           },
           isJob
             ? {
@@ -2131,6 +2155,7 @@
     classLabel: classLabel,
     traitSentence: traitSentence,
     featureSentence: featureSentence,
+    subReasonSentence: subReasonSentence,
     featureWord: featureWord,
     strengthSentence: strengthSentence,
     CHIP_JOIN_LIMIT: CHIP_JOIN_LIMIT

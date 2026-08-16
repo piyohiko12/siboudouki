@@ -51,8 +51,7 @@ const shingaku = Object.assign({}, common, {
   futureKind: '興味のある分野がある', futureDream: '地域づくり',
   futureWhySource: '自分の体験から', futureWhyWhat: '商店街の空き店舗の増加',
   gapNow: '人に伝える力',
-  knewBy: 'オープンキャンパス', visited: ['オープンキャンパス', '体験授業'],
-  attractCards: [
+  knewBy: 'オープンキャンパス', subReason: 'ものづくりに関わりたいから', attractCards: [
     { where: '体験授業', weight: 3, feel: ['わくわくした', '自分もやってみたい'],
       what: '学生同士が、答えではなく考え方のほうを話し合っていた',
       link: '課題研究で、人と話すほど自分の考えが整理された' },
@@ -88,8 +87,7 @@ const shushoku = Object.assign({}, common, {
   futureKind: 'なりたい職業がある', futureDream: '後輩に教えられる技術者',
   futureWhySource: 'アルバイトで', futureWhyWhat: '先輩が新人に丁寧に教えている姿',
   gapNow: '自分から動く力',
-  knewBy: '職場見学', visited: ['会社説明会', '職場見学'],
-  attractCards: [
+  knewBy: '職場見学', subReason: 'ものづくりに関わりたいから', attractCards: [
     { where: '職場見学', weight: 3, feel: ['おどろいた', '見習いたい'],
       what: '社員の方が、作業を始める前に必ずおたがいに声をかけ合っていた',
       link: 'アルバイトで、声をかけ合うとミスが減ったことがある' }

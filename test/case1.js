@@ -15,8 +15,7 @@ const D = {
   effortHard: 'みんなの意見を反映させること', effortHow: '',
   effortLearned: 'みんなの意見をまとめることの難しさ',
   personality: [], strengths: [], licenses: '',
-  knewBy: '職場見学', visited: [],
-  attractCards: [{
+  knewBy: '職場見学', subReason: 'ものづくりに関わりたいから', attractCards: [{
     where: '職場見学', weight: 3, feel: ['見習いたい', '安心した'],
     what: '会社の人の雰囲気が良かった', link: '自分の落ち着いた雰囲気と合う'
   }],

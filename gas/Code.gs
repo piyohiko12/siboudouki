@@ -61,7 +61,7 @@ var COLUMNS = [
   { key: 'futureWhyWhat',    label: 'きっかけの出来事',      width: 200 },
   { key: 'gapNow',           label: '足りない力',            width: 180 },
   { key: 'knewBy',           label: '知ったきっかけ',        width: 150 },
-  { key: 'visited',          label: '参加したもの',          width: 150 },
+  { key: 'subReason',        label: '職種・学科を選んだ理由', width: 200 },
   { key: 'attractPoints',    label: '魅力を感じた点(分類)',  width: 180 },
   // 魅力カード：生徒が実際に見て感じたこと。添削で最も見るべき列。
   { key: 'card1Weight',      label: '魅力1 ★',              width: 55 },

@@ -399,7 +399,7 @@
       gapNow: bare(d.gapNow),
 
       knewBy: bare(d.knewBy),
-      visited: d.visited || [],
+      subReasonLine: Q.subReasonSentence(d, mode),
       attract: d.attractPoints || [],
       featureKind: bare(d.featureKind),
       featureName: bare(d.featureName),
@@ -806,18 +806,11 @@
   }
 
   /**
-   * 実際に足を運んだこと。
-   * 「まだ行っていない」は文にしない。
-   * 魅力カードの場面や、知ったきっかけと重なるものも、同じ話をくり返さないよう外す。
+   * その職種／学科を選んだ理由。
+   * 会社を選んだ理由とは別の軸なので、特色の文とは離して置く。
    */
-  function sVisited(m) {
-    const said = m.cards.map(function (c) { return bare(c.where); }).concat([m.knewBy]);
-    const been = (m.visited || []).filter(function (v) {
-      return String(v).indexOf('まだ') !== 0 && said.indexOf(v) === -1;
-    });
-    return fit(joinNouns(been, 2),
-      '{X}にも参加し、自分の目で確かめました。',
-      '{X}など、自分の目で確かめる機会も持ちました。');
+  function sSubReason(m) {
+    return m.subReasonLine;
   }
 
   /**
@@ -889,7 +882,7 @@
     push(p2, sFeatureSource(m), 3);
     push(p2, sLearnOrTask(m), 2);
     push(p2, sPolicy(m), 3);
-    push(p2, sVisited(m), 3);
+    push(p2, sSubReason(m), 1);
     paras.push(p2);
 
     // 魅力カード：自分が見てきた場面を、そのまま段落にする
@@ -962,7 +955,7 @@
       '「' + m.L.metPhrase + '」。そう感じたことを、今でもよく覚えています。',
       'そのとき' + m.L.metPhrase + 'と思ったことは、今も心に残っています。'
     ], 26), 2);
-    push(p2, sVisited(m), 3);
+    push(p2, sSubReason(m), 1);
     m.cardSent(0, 0).forEach(function (s) { p2.push(s); });
     m.cardSent(1, 2).forEach(function (s) { p2.push(s); });
     push(p2, sAttract(m, '中でも'), 3);
@@ -1028,7 +1021,7 @@
     push(p3, sLearnOrTask(m), 3);
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 3).forEach(function (s) { p3.push(s); });
-    push(p3, sVisited(m), 3);
+    push(p3, sSubReason(m), 1);
     push(p3, sAttract(m, '特に'), 3);
     push(p3, sMust(m), 1);
     paras.push(p3);
@@ -1089,7 +1082,7 @@
     push(p2, sLearnOrTask(m), 2);
     push(p2, sFeatureDetail(m), 3);
     push(p2, sFeatureSource(m), 3);
-    push(p2, sVisited(m), 3);
+    push(p2, sSubReason(m), 1);
     m.cardSent(1, 2).forEach(function (s) { p2.push(s); });
     m.cardSent(2, 3).forEach(function (s) { p2.push(s); });
     push(p2, sAttract(m, '特に'), 3);
@@ -1170,7 +1163,7 @@
     push(p3, sLearnOrTask(m), 3);
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 3).forEach(function (s) { p3.push(s); });
-    push(p3, sVisited(m), 3);
+    push(p3, sSubReason(m), 1);
     push(p3, sAttract(m, '特に'), 3);
     push(p3, sMust(m), 1);
     paras.push(p3);
@@ -1223,7 +1216,7 @@
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 2).forEach(function (s) { p3.push(s); });
     push(p3, sAttract(m, '特に'), 3);
-    push(p3, sVisited(m), 3);
+    push(p3, sSubReason(m), 1);
     push(p3, sPolicy(m), 3);
     push(p3, sValue(m), 1);
     paras.push(p3);
@@ -1596,6 +1589,7 @@
       ['licenses', '資格・免許', d.licenses],
       ['effortWhich', 'どの活動か', d.effortWhich],
       ['knewBy', '知ったきっかけ', d.knewBy],
+      ['subReason', '職種・学科を選んだ理由', d.subReason],
       ['strengthEpisode', '得意だと思うきっかけ', d.strengthEpisode],
       ['strengthScene', '得意なことを活かせる場面', d.strengthScene],
       ['personalityEpisode', 'その性格だと思うきっかけ', d.personalityEpisode],

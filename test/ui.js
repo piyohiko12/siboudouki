@@ -12,7 +12,7 @@ const DATA = {
     chips: { research: '仕事の内容', after: '仕事を早く覚えること' },
     feature: '〇〇部品の精密加工',
     featureKind: '研修制度', featureDetail: '若手でも挑戦できるから',
-    knewBy: '職場見学', cardWhere: '職場見学',
+    knewBy: '職場見学', subReason: 'ものづくりに関わりたいから', cardWhere: '職場見学',
     cardWhat: '社員の方が、作業を始める前に必ずおたがいに声をかけ合っていた',
     cardFeel: ['おどろいた', '見習いたい'],
     cardLink: 'アルバイトで、声をかけ合うとミスが減ったことがある',
@@ -30,7 +30,7 @@ const DATA = {
     chips: { research: '学べる内容・カリキュラム', after: '専門分野の勉強' },
     feature: '地域経済フィールドワーク',
     featureKind: 'ゼミ', featureDetail: '自治体と組んで課題を調べられるから',
-    knewBy: 'オープンキャンパス', cardWhere: '体験授業',
+    knewBy: 'オープンキャンパス', subReason: 'ものづくりに関わりたいから', cardWhere: '体験授業',
     cardWhat: '学生同士が、答えではなく考え方のほうを話し合っていた',
     cardFeel: ['わくわくした', '自分もやってみたい'],
     cardLink: '課題研究で、人と話すほど自分の考えが整理された',
@@ -137,6 +137,11 @@ async function runMode(browser, key, errors) {
     (await page.textContent('[data-field="featureName"] .field__q')).trim());
   console.log('    例:', (await page.locator('[data-field="featureName"] .field__ex').allTextContents())
     .join(' ').replace(/\s+/g, ' ').trim());
+  await fillIf('#f_subReason', d.subReason);
+  console.log('  職種の理由:', (await page.textContent('[data-field="subReason"] .field__q')).trim());
+  await page.waitForTimeout(200);
+  console.log('    こう文になります:',
+    (await page.textContent('[data-field="subReason"] .field__previewText')).trim());
   await fillIf('#f_featureName', d.feature);
   await page.locator('#f_featureName').blur();
   await page.waitForTimeout(400);
@@ -148,7 +153,6 @@ async function runMode(browser, key, errors) {
     (await page.textContent('[data-field="featureDetail"] .field__previewText')).trim());
   await fillIf('#' + d.extraId, d.extra);
   await step();
-  await clickIf('[data-field="visited"] .chip >> nth=0');
 
   // ── STEP 4：そこに決めた理由（出会いと魅力カード）────
   console.log('STEP4:', await page.textContent('#stepLabel'));

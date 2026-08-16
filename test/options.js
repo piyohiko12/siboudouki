@@ -70,12 +70,15 @@ ws.forEach(w => {
     console.log('  1年生から3年間、いちばん力を入れてきたのは' + e + 'です。');
   });
 
-  head((job ? '就職' : '進学') + '：実際に行ったこと');
-  flat(st).find(f => f.id === 'visited').options
-    .filter(v => v.indexOf('まだ') !== 0)
-    .forEach(v => console.log('  ' + v + 'にも参加し、自分の目で確かめました。'));
+  head((job ? '就職' : '進学') + '：職種・学科を選んだ理由');
+  [job ? 'ものづくりに関わりたいから' : '地域の課題を調べたいから',
+   job ? '細かい作業が得意なので' : '数字を扱うことが得意なので',
+   job ? 'ものづくり' : '地域経済'].forEach(r => {
+    console.log('  ' + Q.subReasonSentence(
+      { subReason: r, targetSub: job ? '製造職' : '経済学科' }, mode));
+  });
 
-  head((job ? '就職' : '進学') + '：知ったきっかけ（エピソード型でだけ聞く）');
+  head((job ? '就職' : '進学') + '：知ったきっかけ');
   const story = Q.buildSteps(mode, 'story');
   flat(story).find(f => f.id === 'knewBy').options.forEach(k => {
     const by = k === 'その他' ? '' : k;

@@ -139,6 +139,8 @@
     delete state.data.className;
     // 「決まった名前がついていますか」は、文の形を1つにしたのでなくなった
     delete state.data.featureNamed;
+    // 「実際に行った・参加したこと」は設問ごとなくした
+    delete state.data.visited;
 
     // 「印象に残ったこと」は、魅力カードの②に置き換わった
     if (state.data.visitImpression && !(state.data.attractCards || []).length) {
@@ -946,7 +948,7 @@
   const COURSE_SPECIFIC_FIELDS = [
     'orgType', 'examType', 'featureSource',      // 志望先の種類・応募方法・情報源
     'strengths', 'strengthScene',                // 得意なことは選択肢が進路でちがう
-    'attractPoints', 'afterEnter', 'visited', 'knewBy',
+    'attractPoints', 'afterEnter', 'knewBy',
     'featureKind', 'wantVerb',                   // 特色の種類・どうしたいか
     'studyWant', 'jobTask',                      // 進学だけ／就職だけの欄
     'contribution', 'contributionFrom',
@@ -1523,7 +1525,7 @@
       futureWhyWhat: d.futureWhyWhat || '',
       gapNow: d.gapNow || '',
       knewBy: d.knewBy || '',
-      visited: (d.visited || []).join('、'),
+      subReason: d.subReason || '',
       attractPoints: (d.attractPoints || []).join('、'),
       featureKind: d.featureKind || '',
       featureName: d.featureName || '',
