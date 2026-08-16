@@ -142,6 +142,7 @@ async function runMode(browser, key, errors) {
     (await page.textContent('[data-field="featureDetail"] .field__previewText')).trim());
   await fillIf('#' + d.extraId, d.extra);
   await step();
+  await clickIf('[data-field="visited"] .chip >> nth=0');
 
   // ── STEP 4：そこに決めた理由（出会いと魅力カード）────
   console.log('STEP4:', await page.textContent('#stepLabel'));
@@ -160,7 +161,6 @@ async function runMode(browser, key, errors) {
   await page.fill('.attrCard >> nth=1 >> textarea >> nth=0', 'もう1つ気づいたことがありました');
   await page.waitForTimeout(150);
 
-  await clickIf('[data-field="visited"] .chip >> nth=0');
   await page.click('[data-field="attractPoints"] .chip:has-text("' + d.chips.research + '")');
   await step();
 
