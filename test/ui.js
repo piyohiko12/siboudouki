@@ -277,7 +277,7 @@ async function runMode(browser, key, errors) {
     await page.selectOption('#f_futureWhySource', '自分の体験から');
   }
   await fillIf('#f_futureWhyWhat', '先輩が新人に教えている姿');
-  await fillIf('#f_gapNow', '自分から動く力');
+  await fillIf('#f_gapNow', '新しい機械の操作');
   await step();
 
   // ── STEP 6：つなげる ───────────────────────────
@@ -334,13 +334,14 @@ async function runMode(browser, key, errors) {
   // 型を選び直すと、設問も入れかわるか
   await page.click('#stepTabs .tab:nth-child(2)');
   await page.waitForTimeout(250);
-  await page.click('.tplCard:has-text("成長課題型")');
+  await page.click('.tplCard:has-text("挑戦意欲型")');
   await page.waitForTimeout(250);
-  console.log('\n型を「成長課題型」に変更 →',
+  console.log('\n型を「挑戦意欲型」に変更 →',
     (await page.textContent('.notice--tip')).replace(/\s+/g, ' ').trim());
-  await page.click('#stepTabs .tab:nth-child(4)');
-  await page.waitForTimeout(250);
-  console.log('  STEP3 に「今の自分に足りないこと」が出たか:',
+  // 「自分」のタブ（進路・型・基本・きっかけ・場面 の次）
+  await page.click('#stepTabs .tab:nth-child(6)');
+  await page.waitForTimeout(300);
+  console.log('  STEP5 に「挑戦したいこと」が出たか:',
     await page.locator('#f_gapNow').count() === 1);
   console.log('  「将来の夢」は消えたか:', await page.locator('#f_futureDream').count() === 0);
 
