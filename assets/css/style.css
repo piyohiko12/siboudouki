@@ -1670,6 +1670,40 @@ select.input {
 }
 .btn--sub:not(:disabled):hover { border-color: var(--accent); color: var(--accent-ink); background: var(--surface-2); }
 
+/* 押すと元にもどせない操作。ふだんは静かに、押すときははっきりと */
+.btn--danger {
+  background: var(--surface);
+  border-color: var(--err-line);
+  color: var(--err);
+  font-weight: 700;
+}
+.btn--danger:not(:disabled):hover {
+  background: var(--err);
+  border-color: var(--err);
+  color: var(--on-err);
+}
+
+/* 提出画面のいちばん下に置く、入力を消すためのまとまり */
+.reset {
+  margin-top: 30px;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.reset__title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.reset__note {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.85;
+  color: var(--ink-3);
+}
+
 .btn--ghost {
   background: transparent;
   border-color: var(--line);

@@ -317,6 +317,11 @@ async function runMode(browser, key, errors) {
   await step();
 
   console.log('\nSTEP10:', (await page.textContent('.summary')).replace(/\s+/g, ' ').trim());
+  console.log('  リセット:', (await page.textContent('.reset__title')).trim(),
+    '／', (await page.textContent('.reset .btn--danger')).trim());
+  await page.locator('.reset').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: SHOT + 'reset-' + key + '.png' });
   return page;
 }
 
@@ -384,7 +389,11 @@ async function runMode(browser, key, errors) {
       return raw ? (JSON.parse(raw).data || {}).studentName || '空' : '（保存なし）';
     });
     console.log('\n【やり直す】押す前の保存:', await read());
+    let dialogText = '';
+    page.on('dialog', d => { dialogText = d.message(); });
     await page.click('#resetBtn');
+    await page.waitForTimeout(300);
+    console.log('  確認ダイアログ:', dialogText.replace(/\n+/g, ' ／ '));
     await page.waitForTimeout(1500);
     console.log('  押したあとの保存:', await read());
     console.log('  画面:', (await page.textContent('#stepLabel')).trim(),

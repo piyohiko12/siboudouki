@@ -1642,6 +1642,21 @@
       }, ['印刷する'])
     ]));
 
+    // 共用パソコンでは、終わったら消してから席を立ってもらう
+    card.appendChild(h('div', { class: 'reset' }, [
+      h('h3', { class: 'reset__title', text: '終わったら' }),
+      h('p', {
+        class: 'reset__note',
+        text: '入力した内容は、このブラウザの中だけに保存されています。'
+          + '学校の共用パソコンを使ったときは、送信・保存・印刷が終わったあとに'
+          + '下のボタンを押して、内容を消してから席を立ってください。'
+      }),
+      h('button', {
+        type: 'button', class: 'btn btn--danger',
+        onclick: function () { resetAll(); }
+      }, ['入力した内容をすべて消す'])
+    ]));
+
     return card;
   }
 
@@ -1803,22 +1818,41 @@
     render();
   }
 
+  /**
+   * 入力した内容をすべて消して、まっさらな状態に戻す。
+   * 共用パソコンで次の生徒に内容が残らないようにするための機能でもある。
+   */
+  function resetAll() {
+    if (!confirm('入力した内容をすべて消します。\n\n'
+      + '・答えた質問（' + answeredCount() + '問）\n'
+      + '・魅力カード\n'
+      + '・組み立てた本文\n\n'
+      + 'このブラウザに保存された内容が消え、最初の画面に戻ります。元にはもどせません。')) return;
+    // 消したあとに beforeunload と自動保存が走ると、同じ内容が書き戻ってしまう。
+    // 先に保存の口をすべて閉じてから消す
+    window.removeEventListener('beforeunload', save);
+    if (saveTimer) clearTimeout(saveTimer);
+    saveOff = true;
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  }
+
+  /** いま何問答えているか（消す前の確認に出す） */
+  function answeredCount() {
+    let n = 0;
+    steps().forEach(function (st) {
+      st.fields.forEach(function (f) { if (answered(f)) n += 1; });
+    });
+    return n;
+  }
+
   // ── 起動 ─────────────────────────────────────────
   function boot() {
     document.getElementById('appTitle').textContent = cfg.APP_TITLE || '志望動機メーカー';
     document.getElementById('appSubtitle').textContent = cfg.SUBTITLE || '';
     document.getElementById('nextBtn').addEventListener('click', goNext);
     document.getElementById('prevBtn').addEventListener('click', goPrev);
-    document.getElementById('resetBtn').addEventListener('click', function () {
-      if (!confirm('入力した内容をすべて消して、最初からやり直しますか？')) return;
-      // 消したあとに beforeunload と自動保存が走ると、同じ内容が書き戻ってしまう。
-      // 先に保存の口をすべて閉じてから消す
-      window.removeEventListener('beforeunload', save);
-      if (saveTimer) clearTimeout(saveTimer);
-      saveOff = true;
-      localStorage.removeItem(STORAGE_KEY);
-      location.reload();
-    });
+    document.getElementById('resetBtn').addEventListener('click', function () { resetAll(); });
 
     const restored = load();
     render();
