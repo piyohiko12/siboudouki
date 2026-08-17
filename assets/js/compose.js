@@ -206,10 +206,10 @@
     {
       id: 'gap',
       name: '成長課題型',
-      summary: '「今の自分に足りないこと」から入る型。背伸びせずに意欲を示せる。',
+      summary: '「これから伸ばしたい力」から入る型。背伸びせずに意欲を示せる。',
       order: function (job) {
-        return job ? '今の課題 → 埋めたい → ここなら埋まる → 経験 → 将来像'
-          : '今の課題 → 埋めたい → ここなら学べる → 経験 → 卒業後';
+        return job ? '伸ばしたい力 → だから志望 → ここなら伸ばせる → 経験 → 将来像'
+          : '伸ばしたい力 → だから志望 → ここなら学べる → 経験 → 卒業後';
       },
       build: buildGap
     },
@@ -1121,18 +1121,18 @@
   }
 
   // ── テンプレート5: 成長課題型 ──────────────────────────
-  // 「今の自分に足りないこと」を出発点にする。背伸びせずに意欲を示せる。
+  // 「これから伸ばしたい力」を出発点にする。背伸びせずに意欲を示せる。
   function buildGap(m) {
     const paras = [];
 
     const p1 = [];
     push(p1, fit(m.gapNow,
-      '私には今、{X}が足りないと感じています。',
-      '私には今、{X}ところがあると感じています。')
+      '私がこれから伸ばしたいのは、{X}です。',
+      '私がこれから伸ばしたいのは、{X}という力です。')
       || '私には、高校生活の中で「もっとこうなりたい」と感じるようになったことがあります。', 0);
     push(p1, variant(m, [
       'その気持ちが、' + m.nameFull + 'を志望するきっかけになりました。',
-      'この足りなさをどこで埋めるかを考えたとき、たどり着いたのが' + m.nameFull + 'でした。',
+      'この力をどこで伸ばすかを考えたとき、たどり着いたのが' + m.nameFull + 'でした。',
       'だからこそ、' + m.nameFull + 'を志望します。'
     ], 28), 0);
     paras.push(p1);
@@ -1149,13 +1149,13 @@
     push(p2, sStrengths(m), m.pStrengths);
     push(p2, sStrengthsScene(m), 3);
     push(p2, sLicenses(m), 3);
-    push(p2, '同時に、自分にはまだ足りない部分もあります。', 2);
+    push(p2, '同時に、まだ伸ばせるところがあるとも感じています。', 2);
     paras.push(p2);
 
     const p3 = [];
     push(p3, variant(m, [
       'そこで、' + m.want + 'と考えるようになりました。',
-      'この課題を越えるために、' + m.want + 'と考えました。',
+      'この力を伸ばすために、' + m.want + 'と考えました。',
       'だから私は、' + m.want + 'と考えています。'
     ], 29), 1);
     push(p3, sKnewBy(m, 'gap'), 3);
@@ -1179,9 +1179,9 @@
     paras.push(p4);
 
     paras.push([S(variant(m, [
-      '今の自分を変えたいという気持ちを持って、' + m.nameFull + 'を志望します。',
-      '足りないところを埋めたいという気持ちで、' + m.nameFull + 'を志望します。',
-      '今の自分から一歩進みたいと考え、' + m.nameFull + 'を志望します。'
+      'ここでもっと伸びたいという気持ちを持って、' + m.nameFull + 'を志望します。',
+      'ここでさらに伸びたいという気持ちで、' + m.nameFull + 'を志望します。',
+      'さらに一歩進みたいと考え、' + m.nameFull + 'を志望します。'
     ], 24), 0)]);
     return paras;
   }
@@ -1577,7 +1577,7 @@
       ['effortResult', 'その結果', d.effortResult],
       ['effortLearned', 'そこから学んだこと', d.effortLearned],
       ['futureWhyWhat', '将来の目標のきっかけ', d.futureWhyWhat],
-      ['gapNow', '今の自分に足りない力', d.gapNow],
+      ['gapNow', 'これから伸ばしたい力', d.gapNow],
       ['featureName', '志望先の特色（名前）', d.featureName],
       ['featureDetail', '魅力に感じた理由', d.featureDetail],
       [job ? 'jobTask' : 'studyWant', job ? '仕事の理解' : '受けたい授業', job ? d.jobTask : d.studyWant],

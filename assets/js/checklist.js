@@ -86,7 +86,8 @@
     ['だけど', 'しかし'],
     ['ですけど', 'ですが'],
     ['けど', 'が'],
-    ['でも、', 'しかし、'],
+    // 「それでも、」「けれども、」は書き言葉。文の頭に来る「でも、」だけを見る
+    ['でも、', 'しかし、', /(?:^|[。！？\n「])でも、/],
     ['すごく', '非常に / とても'],
     ['すごい', '大きな / 優れた'],
     ['いっぱい', '多く'],
@@ -100,7 +101,9 @@
   ];
 
   function checkSpoken(text) {
-    const hits = SPOKEN.filter(function (p) { return text.indexOf(p[0]) !== -1; });
+    const hits = SPOKEN.filter(function (p) {
+      return p[2] ? p[2].test(text) : text.indexOf(p[0]) !== -1;
+    });
     if (!hits.length) return result('spoken', '話し言葉', 'ok', '話し言葉は見つかりませんでした。');
     return result('spoken', '話し言葉', 'error',
       '書き言葉に直しましょう。',

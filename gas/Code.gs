@@ -59,7 +59,7 @@ var COLUMNS = [
   { key: 'futureDream',      label: '将来の目標',            width: 180 },
   { key: 'futureWhySource',  label: 'きっかけの場',          width: 140 },
   { key: 'futureWhyWhat',    label: 'きっかけの出来事',      width: 200 },
-  { key: 'gapNow',           label: '足りない力',            width: 180 },
+  { key: 'gapNow',           label: '伸ばしたい力',          width: 180 },
   { key: 'knewBy',           label: '知ったきっかけ',        width: 150 },
   { key: 'subReason',        label: '職種・学科を選んだ理由', width: 200 },
   { key: 'attractPoints',    label: '魅力を感じた点(分類)',  width: 180 },
