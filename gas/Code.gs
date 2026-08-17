@@ -48,6 +48,7 @@ var COLUMNS = [
   { key: 'effortHard',       label: '大変だったこと',        width: 200 },
   { key: 'effortHow',        label: '乗り越え方',            width: 200 },
   { key: 'effortLearned',    label: '学んだこと',            width: 200 },
+  { key: 'effortUse',        label: '学びを活かせる場面',    width: 200 },
   { key: 'strengths',        label: '得意なこと',            width: 160 },
   { key: 'strengthEpisode',  label: '得意だと思うきっかけ',  width: 200 },
   { key: 'strengthScene',    label: '得意を活かせる場面',    width: 200 },
@@ -61,6 +62,7 @@ var COLUMNS = [
   { key: 'futureWhyWhat',    label: 'きっかけの出来事',      width: 200 },
   { key: 'gapNow',           label: '挑戦したいこと',        width: 180 },
   { key: 'knewBy',           label: '知ったきっかけ',        width: 150 },
+  { key: 'knewByOther',      label: 'きっかけ（その他）',    width: 180 },
   { key: 'subReason',        label: '職種・学科を選んだ理由', width: 200 },
   { key: 'attractPoints',    label: '魅力を感じた点(分類)',  width: 180 },
   // 魅力カード：生徒が実際に見て感じたこと。添削で最も見るべき列。

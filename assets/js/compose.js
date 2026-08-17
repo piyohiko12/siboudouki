@@ -380,6 +380,7 @@
       effortHard: bare(d.effortHard),
       effortHow: bare(d.effortHow),
       effortLearned: bare(d.effortLearned),
+      effortUseLine: Q.effortUseLine(d),
 
       // 得意なこと・性格は、設問側と同じ関数で文にする（プレビューとずれないように）
       traitLine: Q.traitSentence(d, isJob),
@@ -399,6 +400,7 @@
       gapNow: bare(d.gapNow),
 
       knewBy: bare(d.knewBy),
+      knewBySource: Q.knewBySource(d),
       subReasonLine: Q.subReasonSentence(d, mode),
       attract: d.attractPoints || [],
       featureKind: bare(d.featureKind),
@@ -668,6 +670,11 @@
     return fit(m.effortLearned, lead + '{X}を学びました。', lead + '{X}ということを学びました。');
   }
 
+  /** 学んだことを、志望先の場面につなぐ。設問側のプレビューと同じ関数を使う */
+  function sEffortUse(m) {
+    return m.effortUseLine;
+  }
+
   /** 「◯◯という点」の◯◯がすでに「点」で終わっていないか（「点という点」を防ぐ） */
   const NOUN_TAIL = /(点|ところ|こと|違い|ちがい)$/;
 
@@ -819,7 +826,7 @@
    */
   function sKnewBy(m, kind) {
     if (kind === 'story') return '';
-    const by = m.knewBy && m.knewBy !== 'その他' ? m.knewBy : '';
+    const by = m.knewBySource;
     if (!by) return '';
     return variant(m, [
       m.nameFull + 'を知ったのは、' + by + 'がきっかけでした。',
@@ -834,8 +841,7 @@
    */
   function sBridge(m, kind) {
     if (kind === 'story') {
-      // 「その他」を選んだ人は、きっかけの言葉を持っていない
-      const by = m.knewBy && m.knewBy !== 'その他' ? m.knewBy : '';
+      const by = m.knewBySource;
       return by
         ? 'そんな私が' + m.nameFull + 'を知ったのは、' + by + 'がきっかけでした。'
         : 'そんな中で出会ったのが、' + m.nameFull + 'でした。';
@@ -901,6 +907,7 @@
     push(p4, sEffortHard(m), 2);
     push(p4, sEffortHow(m), 2);
     push(p4, sEffortLearned(m), 1);
+    push(p4, sEffortUse(m), 2);
     push(p4, sSelfTraits(m), m.pTraits);
     push(p4, sSelfTraitsScene(m), m.pTraits);
     push(p4, sStrengths(m), m.pStrengths);
@@ -940,6 +947,7 @@
     push(p1, sEffortHard(m), 2);
     push(p1, sEffortHow(m), 2);
     push(p1, sEffortLearned(m), 1);
+    push(p1, sEffortUse(m), 2);
     push(p1, sSelfTraits(m), m.pTraits);
     push(p1, sSelfTraitsScene(m), m.pTraits);
     push(p1, sStrengths(m), m.pStrengths);
@@ -971,6 +979,7 @@
     ], 34), 1);
     push(p3, sKnewBy(m, 'story'), 3);
     push(p3, sFeature(m), 1);
+    push(p3, sFeatureDetail(m), 2);
     push(p3, sLearnOrTask(m), 2);
     push(p3, sDeep(m, 'why'), 2);
     push(p3, sMust(m), 1);
@@ -1033,6 +1042,7 @@
     push(p4, sEffortHard(m), 3);
     push(p4, sEffortHow(m), 3);
     push(p4, sEffortLearned(m), 2);
+    push(p4, sEffortUse(m), 2);
     push(p4, sSelfTraits(m), m.pTraits);
     push(p4, sSelfTraitsScene(m), m.pTraits);
     push(p4, sStrengths(m), m.pStrengths);
@@ -1095,6 +1105,7 @@
     push(p3, sEffortHard(m), 2);
     push(p3, sEffortHow(m), 2);
     push(p3, sEffortLearned(m), 1);
+    push(p3, sEffortUse(m), 2);
     push(p3, sSelfTraits(m), m.pTraits);
     push(p3, sSelfTraitsScene(m), m.pTraits);
     push(p3, sStrengths(m), m.pStrengths);
@@ -1146,6 +1157,7 @@
     push(p2, sEffortHard(m), 2);
     push(p2, sEffortHow(m), 2);
     push(p2, sEffortLearned(m), 1);
+    push(p2, sEffortUse(m), 2);
     push(p2, sSelfTraits(m), m.pTraits);
     push(p2, sSelfTraitsScene(m), m.pTraits);
     push(p2, sStrengths(m), m.pStrengths);
@@ -1162,6 +1174,7 @@
     ], 29), 1);
     push(p3, sKnewBy(m, 'gap'), 3);
     push(p3, sFeature(m), 1);
+    push(p3, sFeatureDetail(m), 2);
     push(p3, sLearnOrTask(m), 3);
     m.cardSent(0, 0).forEach(function (s) { p3.push(s); });
     m.cardSent(1, 3).forEach(function (s) { p3.push(s); });
@@ -1235,6 +1248,7 @@
     push(p4, sEffortHard(m), 2);
     push(p4, sEffortHow(m), 2);
     push(p4, sEffortLearned(m), 1);
+    push(p4, sEffortUse(m), 2);
     push(p4, sSelfTraits(m), m.pTraits);
     push(p4, sSelfTraitsScene(m), m.pTraits);
     push(p4, sStrengths(m), m.pStrengths);
@@ -1304,8 +1318,12 @@
   // 「取り組みたいと考えています」と「活かせると考えています」は
   // 別の語尾に見えて、読むと同じ響きになるため。
   const ENDING_VARIANTS = [
-    { key: 'たいと考えています。', family: 'kangae', alts: ['たいと思っています。', 'たいです。'] },
-    { key: 'と考えています。', family: 'kangae', alts: ['と思っています。', 'と考えました。'] },
+    { key: 'たいと考えています。', family: 'kangae', alts: ['たいです。', 'たいと思っています。'] },
+    // 「〜ています。」で終わる仲間は、響きが同じなので同じ family でまとめて数える。
+    // 別々に扱うと「考えています→思っています」の言いかえで単調さが残ってしまう
+    { key: 'たいと思っています。', family: 'kangae', alts: ['たいです。', 'たいと考えています。'] },
+    { key: 'と考えています。', family: 'kangae', alts: ['と考えました。', 'と思っています。'] },
+    { key: 'と思っています。', family: 'kangae', alts: ['と思います。', 'と考えました。'] },
     { key: 'と考えました。', family: 'kangae', alts: ['と思いました。'] },
     { key: 'と思いました。', family: 'omoi', alts: ['と感じました。'] },
     { key: 'に残りました。', family: 'nokori', alts: ['に残っています。'] },
@@ -1578,6 +1596,7 @@
       ['effortAction', '取り組んだこと', d.effortAction],
       ['effortResult', 'その結果', d.effortResult],
       ['effortLearned', 'そこから学んだこと', d.effortLearned],
+      ['effortUse', '学びを活かせる場面', d.effortUse],
       ['futureWhyWhat', '将来の目標のきっかけ', d.futureWhyWhat],
       ['gapNow', '挑戦したいこと', d.gapNow],
       ['featureName', '志望先の特色（名前）', d.featureName],
@@ -1591,6 +1610,7 @@
       ['licenses', '資格・免許', d.licenses],
       ['effortWhich', 'どの活動か', d.effortWhich],
       ['knewBy', '知ったきっかけ', d.knewBy],
+      ['knewByOther', 'きっかけ（その他）', d.knewByOther],
       ['subReason', '職種・学科を選んだ理由', d.subReason],
       ['strengthEpisode', '得意だと思うきっかけ', d.strengthEpisode],
       ['strengthScene', '得意なことを活かせる場面', d.strengthScene],

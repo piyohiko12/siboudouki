@@ -14,9 +14,10 @@ const D = {
   effortAction: 'デザイン作成', effortActionKind: '自分が作ったもの・仕組み',
   effortHard: 'みんなの意見を反映させること', effortHow: '',
   effortLearned: 'みんなの意見をまとめることの難しさ',
+  effortUse: 'チームで一つの製品を仕上げる作業',
   personality: [], strengths: [], licenses: '',
   knewBy: '職場見学', subReason: 'ものづくりに関わりたいから', attractCards: [{
-    where: '職場見学', weight: 3, feel: ['見習いたい', '安心した'],
+    where: '職場見学', weight: 3, feel: ['自分も見習いたいと思った', '安心した'],
     what: '会社の人の雰囲気が良かった', link: '自分の落ち着いた雰囲気と合う'
   }],
   attractPoints: [],

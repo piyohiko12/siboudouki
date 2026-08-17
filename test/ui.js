@@ -14,7 +14,7 @@ const DATA = {
     featureKind: '研修制度', featureDetail: '若手でも挑戦できるから',
     knewBy: '職場見学', subReason: 'ものづくりに関わりたいから', cardWhere: '職場見学',
     cardWhat: '社員の方が、作業を始める前に必ずおたがいに声をかけ合っていた',
-    cardFeel: ['おどろいた', '見習いたい'],
+    cardFeel: ['おどろいた', '自分も見習いたいと思った'],
     cardLink: 'アルバイトで、声をかけ合うとミスが減ったことがある',
     extraId: 'f_jobTask',
     extra: '部品の加工と寸法の確認',
@@ -32,7 +32,7 @@ const DATA = {
     featureKind: 'ゼミ', featureDetail: '自治体と組んで課題を調べられるから',
     knewBy: 'オープンキャンパス', subReason: 'ものづくりに関わりたいから', cardWhere: '体験授業',
     cardWhat: '学生同士が、答えではなく考え方のほうを話し合っていた',
-    cardFeel: ['わくわくした', '自分もやってみたい'],
+    cardFeel: ['わくわくした', '自分もやってみたいと思った'],
     cardLink: '課題研究で、人と話すほど自分の考えが整理された',
     extraId: 'f_studyWant',
     extra: '地域経済論',
@@ -232,6 +232,7 @@ async function runMode(browser, key, errors) {
   await fillIf('#f_effortAction', '混雑する時間帯の動き方のメモ作り');
   await fillIf('#f_effortResult', '新しく入った人への引き継ぎ');
   await fillIf('#f_effortLearned', '手順を共有することの大切さ');
+  await fillIf('#f_effortUse', key === 'shushoku' ? '手順を確認しながら作業する場面' : '実習で記録をとる場面');
   await fillIf('#f_licenses', '危険物取扱者乙種4類');
 
   // 得意なこと・性格：1つだけ選び、きっかけと場面を書く

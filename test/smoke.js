@@ -44,6 +44,7 @@ const shingaku = Object.assign({}, common, {
   effortResult: '200人分のアンケート集計と校内発表',
   effortHard: '聞き取りに応じてもらえないこと', effortHow: '事前の手紙での依頼',
   effortLearned: '数字にして伝えることの大切さ',
+  effortUse: 'グループで研究を進めるとき',
   strengths: ['地歴・公民', '調べること'], licenses: '実用英語技能検定2級',
   personality: ['こつこつ続けられる'], personalityScene: '長い期間の課題に取り組むとき',
   personalityEpisode: '班の記録係を最後まで務めた',
@@ -52,7 +53,7 @@ const shingaku = Object.assign({}, common, {
   futureWhySource: '自分の体験から', futureWhyWhat: '商店街の空き店舗の増加',
   gapNow: '地域の課題を調べる研究',
   knewBy: 'オープンキャンパス', subReason: 'ものづくりに関わりたいから', attractCards: [
-    { where: '体験授業', weight: 3, feel: ['わくわくした', '自分もやってみたい'],
+    { where: '体験授業', weight: 3, feel: ['わくわくした', '自分もやってみたいと思った'],
       what: '学生同士が、答えではなく考え方のほうを話し合っていた',
       link: '課題研究で、人と話すほど自分の考えが整理された' },
     { where: '在校生・卒業生の話', weight: 2, feel: ['おどろいた'],
@@ -80,6 +81,7 @@ const shushoku = Object.assign({}, common, {
   effortResult: '新しく入った人への引き継ぎ',
   effortHard: '新しく入った人ごとの覚え方のちがい', effortHow: '一人ずつ手順を見せること',
   effortLearned: '手順を共有することの大切さ',
+  effortUse: '手順を確認しながら作業する場面',
   strengths: ['正確に作業できる', 'コツコツ続けられる'], licenses: '危険物取扱者乙種4類',
   personality: ['責任感が強い'], personalityScene: '後輩に手順を教える場面',
   personalityEpisode: '任された係を3年間続けた',
@@ -88,7 +90,7 @@ const shushoku = Object.assign({}, common, {
   futureWhySource: 'アルバイトで', futureWhyWhat: '先輩が新人に丁寧に教えている姿',
   gapNow: '新しい機械の操作',
   knewBy: '職場見学', subReason: 'ものづくりに関わりたいから', attractCards: [
-    { where: '職場見学', weight: 3, feel: ['おどろいた', '見習いたい'],
+    { where: '職場見学', weight: 3, feel: ['おどろいた', '自分も見習いたいと思った'],
       what: '社員の方が、作業を始める前に必ずおたがいに声をかけ合っていた',
       link: 'アルバイトで、声をかけ合うとミスが減ったことがある' }
   ],

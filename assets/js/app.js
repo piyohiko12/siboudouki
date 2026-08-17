@@ -623,7 +623,9 @@
         ]));
 
         // ① どこで感じたか
-        el.appendChild(h('label', { class: 'attrCard__label', text: '① それは、どこでのことですか' }));
+        el.appendChild(h('label', {
+          class: 'attrCard__label', text: '①「いいな」と心が動いた瞬間は、どこでのことですか'
+        }));
         el.appendChild(h('p', { class: 'attrCard__hint', text: '選んだ場面が、そのまま文章の書き出しになります。' }));
         const sel = h('select', { class: 'input' });
         sel.appendChild(h('option', { value: '', text: '選んでください' }));
@@ -1516,6 +1518,7 @@
       effortHard: d.effortHard || '',
       effortHow: d.effortHow || '',
       effortLearned: d.effortLearned || '',
+      effortUse: d.effortUse || '',
       strengths: (d.strengths || []).join('、'),
       licenses: d.licenses || '',
       personality: (d.personality || []).join('、'),
@@ -1525,6 +1528,7 @@
       futureWhyWhat: d.futureWhyWhat || '',
       gapNow: d.gapNow || '',
       knewBy: d.knewBy || '',
+      knewByOther: d.knewByOther || '',
       subReason: d.subReason || '',
       attractPoints: (d.attractPoints || []).join('、'),
       featureKind: d.featureKind || '',

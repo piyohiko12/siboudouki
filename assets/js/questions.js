@@ -188,22 +188,37 @@
   const FEELINGS = [
     { label: 'わくわくした', te: 'わくわくし', end: 'わくわくしました' },
     { label: 'おどろいた', te: 'おどろき', end: 'おどろきました' },
-    { label: '自分もやってみたい', te: '自分もやってみたいと思い', end: '自分もやってみたいと思いました' },
-    { label: '見習いたい', te: '自分も見習いたいと思い', end: '自分も見習いたいと思いました' },
+    { label: '自分もやってみたいと思った', te: '自分もやってみたいと思い', end: '自分もやってみたいと思いました' },
+    { label: '自分も見習いたいと思った', te: '自分も見習いたいと思い', end: '自分も見習いたいと思いました' },
     { label: '安心した', te: '安心し', end: '安心しました' },
-    { label: '想像とちがった', te: '思っていたものとのちがいにおどろき', end: '思っていたものとちがい、見方が変わりました' },
-    { label: '自分に合うと感じた', te: '自分に合っていると感じ', end: '自分に合っていると感じました' },
+    { label: '想像していたのとちがった', te: '思っていたものとのちがいにおどろき', end: '思っていたものとちがい、見方が変わりました' },
+    { label: '自分に合っていると感じた', te: '自分に合っていると感じ', end: '自分に合っていると感じました' },
     { label: 'あこがれた', te: 'あこがれを持ち', end: 'あこがれを持ちました' },
     { label: '刺激を受けた', te: '強い刺激を受け', end: '強い刺激を受けました' },
     { label: '責任の重さを感じた', te: '責任の重さを感じ', end: '責任の重さを感じました' },
     { label: '楽しそうだと思った', te: '楽しそうだと感じ', end: '楽しそうだと感じました' },
-    { label: '真剣さが伝わった', te: 'その真剣さを感じ', end: 'その真剣さを感じました' },
+    { label: '真剣さが伝わってきた', te: 'その真剣さが伝わり', end: 'その真剣さが伝わってきました' },
     { label: 'もっと知りたくなった', te: 'もっと知りたいと思い', end: 'もっと知りたいと思いました' },
     { label: '自分にもできそうだと思った', te: '自分にもできそうだと感じ', end: '自分にもできそうだと感じました' },
     { label: '支え合っていると感じた', te: '支え合う空気を感じ', end: '支え合う空気を感じました' },
     { label: '自分の目標に近いと感じた', te: '自分の目標に近いと感じ', end: '自分の目標に近いと感じました' },
     { label: 'ていねいさにおどろいた', te: 'そのていねいさにおどろき', end: 'そのていねいさにおどろきました' },
-    { label: 'もっと力をつけたいと思った', te: 'もっと力をつけたいと感じ', end: 'もっと力をつけたいと感じました' }
+    { label: 'もっと力をつけたいと思った', te: 'もっと力をつけたいと感じ', end: 'もっと力をつけたいと感じました' },
+    // ここから追加
+    { label: 'ここで働く自分を思い描けた', te: 'ここで働く自分を思い描き', end: 'ここで働く自分を思い描きました' },
+    { label: 'ここで学ぶ自分を思い描けた', te: 'ここで学ぶ自分を思い描き', end: 'ここで学ぶ自分を思い描きました' },
+    { label: '一つひとつの仕事の重みを知った', te: '一つひとつの仕事の重みを知り', end: '一つひとつの仕事の重みを知りました' },
+    { label: '想像より高い技術におどろいた', te: 'その技術の高さにおどろき', end: 'その技術の高さにおどろきました' },
+    { label: '人を大切にしていると感じた', te: '人を大切にしていると感じ', end: '人を大切にしていると感じました' },
+    { label: '自分の知らない世界だと思った', te: '自分の知らない世界だと感じ', end: '自分の知らない世界だと感じました' },
+    { label: '説明が分かりやすくて引き込まれた', te: 'その分かりやすさに引き込まれ', end: 'その分かりやすさに引き込まれました' },
+    { label: '質問に真剣に答えてもらえてうれしかった', te: '真剣に答えてもらえたことをうれしく思い', end: '真剣に答えてもらえたことをうれしく思いました' },
+    { label: '雰囲気が自分に合っていると感じた', te: 'その雰囲気が自分に合っていると感じ', end: 'その雰囲気が自分に合っていると感じました' },
+    { label: '働く人の表情が印象に残った', te: '働く人の表情に強く心を動かされ', end: '働く人の表情に強く心を動かされました' },
+    { label: '学ぶ人の表情が印象に残った', te: '学ぶ人の表情に強く心を動かされ', end: '学ぶ人の表情に強く心を動かされました' },
+    { label: '自分もこの一員になりたいと思った', te: '自分もこの一員になりたいと思い', end: '自分もこの一員になりたいと思いました' },
+    { label: 'ここでなら続けられそうだと思った', te: 'ここでなら続けられそうだと感じ', end: 'ここでなら続けられそうだと感じました' },
+    { label: '細かいところまで行き届いていると感じた', te: '細かいところまで行き届いていると感じ', end: '細かいところまで行き届いていると感じました' }
   ];
 
   // ══════════════════════════════════════════════════════
@@ -512,6 +527,16 @@
     return head + '「' + t + '」です。';
   }
 
+  /**
+   * 学んだことを、志望先のどの場面で活かすかにつなぐ一文。
+   * 「学んで終わり」の文章になりやすいところを、ここで先の話に変える。
+   */
+  function effortUseLine(d) {
+    const scene = sceneAt((d || {}).effortUse);
+    if (!scene) return '';
+    return 'この学びは、' + scene + '活かしていきたいと考えています。';
+  }
+
   /** 「いちばん力を入れてきたのは〜です。」の一文（プレビューと生成側で同じ形） */
   function effortTopSentence(d) {
     const word = effortTopWord(d) || '学校生活';
@@ -625,8 +650,8 @@
   /** 志望先の特色：それが何の種類か（「◯◯大学の授業「△△」」の◯◯の部分） */
   const FEATURE_KIND_SHINGAKU = ['授業', '演習', 'ゼミ', '実習', '研究室', '学科', 'コース',
     'プログラム', '資格支援制度', '留学制度', '施設', '行事', '取り組み'];
-  const FEATURE_KIND_SHUSHOKU = ['製品', '技術', 'サービス', '設備', '事業', '研修制度',
-    '資格支援制度', '職場の体制', '仕事の進め方', '取り組み'];
+  const FEATURE_KIND_SHUSHOKU = ['仕事内容', '製品', '技術', 'サービス', '設備', '事業',
+    '研修制度', '資格支援制度', '職場の体制', '仕事の進め方', '取り組み'];
 
   /** 種類を選んだあと、その種類に合った書き方の例を出す */
   const FEATURE_EXAMPLES = {
@@ -643,6 +668,7 @@
     '施設': ['実習用の模擬病室', '24時間使える自習室'],
     '行事': ['学科合同の発表会', '地域との交流イベント'],
     // 就職
+    '仕事内容': ['部品の加工と寸法の確認', 'お客様への納品と点検', '在庫の管理と発送'],
     '製品': ['自社ブランド「△△」', '〇〇向けの精密部品'],
     '技術': ['〇〇部品の精密加工', 'ミクロン単位の測定技術'],
     'サービス': ['24時間体制の保守サービス', '設置後の定期点検'],
@@ -677,6 +703,31 @@
     const kind = txt(d.featureKind) || (job(mode) ? '取り組み' : '学び');
     const org = txt(d.targetName) || orgTypeOf(mode, d.orgType).honorific;
     return '私が特に関心を持ったのは、' + org + 'の' + kind + 'の' + name + 'です。';
+  }
+
+  /**
+   * 「知ったきっかけ」を文に入れる形にする。
+   * 「その他」を選んだ人は、書いてもらった言葉を使う。
+   *   家族から聞いた → 家族から聞いたこと（述語は「こと」で受ける）
+   */
+  function knewBySource(d) {
+    const sel = txt((d || {}).knewBy);
+    if (!sel) return '';
+    if (sel !== 'その他') return sel;
+    const free = txt(d.knewByOther);
+    if (!free) return '';
+    const plain = plainWord(free);
+    // 丁寧語で書かれていた＝述語。isPredicate が拾えない「見た」なども、ここで受かる
+    const isPred = plain !== free || isPredicate(plain);
+    return isPred ? plain + 'こと' : free;
+  }
+
+  /** 「◯◯を知ったのは、△△がきっかけでした。」（生成側 sKnewBy と同じ形） */
+  function knewByLine(d, mode) {
+    const by = knewBySource(d);
+    if (!by) return '';
+    const n = txt((d || {}).targetName) || orgTypeOf(mode, d.orgType).honorific;
+    return n + 'を知ったのは、' + by + 'がきっかけでした。';
   }
 
   /**
@@ -1359,6 +1410,21 @@
             }
           },
           {
+            id: 'effortUse', group: 'effort', type: 'text', maxChars: 30,
+            required: true,
+            label: isJob ? 'その経験を、会社でどう活かせそうですか' : 'その経験を、学校でどう活かせそうですか',
+            refer: function (d) { return about(d.effortLearned); },
+            placeholder: isJob ? '手順を確認しながら作業する場面' : '実習で記録をとる場面',
+            examples: isJob
+              ? ['手順を確認しながら作業する場面', '後輩に教えるとき', 'チームで一つの製品を仕上げる作業']
+              : ['実習で記録をとる場面', 'グループで研究を進めるとき', '発表の準備をする作業'],
+            avoid: '「活かせると思います」まで書くと文が二重になります。場面だけを書いてください',
+            hint: '学んだことが実際に役立つ場面を、短い言葉で書きます。'
+              + '「〜する場面」「〜するとき」「〜の作業」の形にすると、そのまま文に入ります。'
+              + 'ここまで書けると、学んで終わりではなく、これからにつながる文章になります。',
+            preview: function (d) { return effortUseLine(d); }
+          },
+          {
             id: 'strengths', group: 'youself', type: 'chips', max: 1,
             label: isJob ? '仕事で活かせそうな、自分の得意なこと' : '得意な教科・好きなこと',
             options: isJob
@@ -1665,12 +1731,23 @@
                 '先輩・家族の話', 'その他'],
             hint: '近いものを1つ選びます。ここが「その会社と出会った場面」として文章の書き出し近くに出ます。'
               .replace('その会社', isJob ? 'その会社' : 'その学校'),
-            preview: function (d) {
-              const by = txt(d.knewBy);
-              if (!by || by === 'その他') return '';
-              const n = txt(d.targetName) || orgTypeOf(mode, d.orgType).honorific;
-              return n + 'を知ったのは、' + by + 'がきっかけでした。';
-            }
+            rerender: true,
+            preview: function (d) { return knewByLine(d, mode); }
+          },
+          {
+            id: 'knewByOther', group: 'meet', type: 'text', maxChars: 30, required: true,
+            // 「その他」のときだけ、自分の言葉で書いてもらう
+            showIf: function (d) { return txt(d.knewBy) === 'その他'; },
+            label: isJob ? 'どんなきっかけで知りましたか' : 'どんなきっかけで知りましたか',
+            refer: '「その他」を選びました',
+            placeholder: isJob ? '家族が使っている製品' : '兄が通っていたこと',
+            examples: isJob
+              ? ['家族が使っている製品', '近所にある工場', 'テレビで見た特集', 'アルバイト先での話']
+              : ['兄が通っていたこと', '地域の広報誌', 'テレビで見た特集', '部活動の先輩の進学先'],
+            hint: 'ものごとの名前で短く書きます。'
+              + 'ここに書いた言葉が「◯◯を知ったのは、△△がきっかけでした。」の△△に入ります。',
+            avoid: '「たまたま」「なんとなく」だけでは、きっかけになりません',
+            preview: function (d) { return knewByLine(d, mode); }
           },
           {
             id: 'featureKind', group: 'found', type: 'select', required: true,
@@ -1721,8 +1798,7 @@
           },
           {
             id: 'featureDetail', group: 'found', type: 'text', maxChars: 30,
-            only: ['prep', 'future', 'scene', 'three'],
-            requiredIn: ['prep', 'scene'],
+            required: true,
             noteIn: {
               prep: '結論先行型では、この一文が結論を支える理由になります。',
               scene: '場面描写型では、あの場面のあとに続く「調べて分かったこと」になります。'
@@ -1762,8 +1838,8 @@
             id: 'subReason', group: 'found', type: 'text', maxChars: 30,
             label: function (d) {
               const sub = txt(d.targetSub);
-              return (sub ? '「' + sub + '」' : (isJob ? 'その職種' : 'その学科・コース'))
-                + 'を選んだのは、なぜですか';
+              if (isJob) return 'この業務内容（' + (sub || '希望する職種') + '）を選んだのは、なぜですか';
+              return 'この学科・コース（' + (sub || '希望する学科') + '）を選んだのは、なぜですか';
             },
             required: true,
             refer: function (d) { return about(d.targetSub); },
@@ -2166,8 +2242,10 @@
     traitSentence: traitSentence,
     featureSentence: featureSentence,
     subReasonSentence: subReasonSentence,
+    knewBySource: knewBySource,
     featureWord: featureWord,
     strengthSentence: strengthSentence,
+    effortUseLine: effortUseLine,
     CHIP_JOIN_LIMIT: CHIP_JOIN_LIMIT
   };
 })(window);
