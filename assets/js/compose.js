@@ -594,9 +594,10 @@
   const MAKE_END = /(作成|制作|製作|作り|づくり|づくり|設計)$/;
 
   function sEffortAction(m) {
-    const lead = m.effortRole ? m.effortRole + 'として、'
+    // 役割は設問側と同じ関数で受ける（「まとめました」と書かれても文になる）
+    const lead = global.QUESTIONS.roleLead(m.effortRole)
       // 「取り組む中で、〜に取り組みました」と重ならない言い回しにしておく
-      : variant(m, ['その中で、', 'その活動では、', '日々の活動の中で、'], 7);
+      || variant(m, ['その中で、', 'その活動では、', '日々の活動の中で、'], 7);
 
     if (!m.effortMade) {
       return fit(m.effortAction, lead + '{X}に取り組みました。', lead + '{X}ことに力を注ぎました。');
@@ -1551,7 +1552,9 @@
     if (chars > target) {
       note = '素材が多いため、目標より' + (chars - target) + '字オーバーしています。重複した説明を削ってください。';
     } else if (ratio < 0.9) {
-      note = 'あと' + (Math.floor(target * 0.9) - chars) + '字ほど足りません。STEP 2〜4に戻って具体的なエピソードを増やしましょう。';
+      note = 'あと' + (Math.floor(target * 0.9) - chars) + '字ほど足りません。'
+        + '「そこに決めた理由」「' + (data.course === 'shushoku' ? 'その会社' : 'その学校')
+        + 'と自分が合っていると思う理由」に戻って、具体的なエピソードを増やしましょう。';
     } else {
       note = '目標の' + target + '字にきれいに収まりました。';
     }

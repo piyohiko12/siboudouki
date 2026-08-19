@@ -1602,7 +1602,8 @@
       onclick: async function () {
         if (!state.data.studentName || !state.data.targetName) {
           status.className = 'status status--error';
-          status.textContent = 'STEP 1 の「名前」と「' + (isJob() ? '志望する会社名' : '志望校名') + '」を入力してください。';
+          status.textContent = 'STEP ' + indexOf('basic') + '「基本情報」の「名前」と「'
+            + (isJob() ? '志望する会社名' : '志望校名') + '」を入力してください。';
           return;
         }
         sendBtn.disabled = true;

@@ -537,6 +537,17 @@
     return 'この学びは、' + scene + '活かしていきたいと考えています。';
   }
 
+  /**
+   * 「副キャプテンとして、」の書き出しを作る。
+   * 肩書き（名詞）で書いてほしい欄だが、「みんなをまとめました」と文で書く人がいる。
+   * そのまま「として、」を付けると非文になるので、述語のときは枠を変える。
+   */
+  function roleLead(v) {
+    const t = txt(v);
+    if (!t) return '';
+    return frame(t, '{X}として、', '{X}立場で、');
+  }
+
   /** 「いちばん力を入れてきたのは〜です。」の一文（プレビューと生成側で同じ形） */
   function effortTopSentence(d) {
     const word = effortTopWord(d) || '学校生活';
@@ -726,8 +737,7 @@
   function knewByLine(d, mode) {
     const by = knewBySource(d);
     if (!by) return '';
-    const n = txt((d || {}).targetName) || orgTypeOf(mode, d.orgType).honorific;
-    return n + 'を知ったのは、' + by + 'がきっかけでした。';
+    return fullName(d || {}, mode) + 'を知ったのは、' + by + 'がきっかけでした。';
   }
 
   /**
@@ -888,7 +898,9 @@
    */
   function fullName(d, mode) {
     const isJob = job(mode);
-    const name = txt(d.targetName) || (isJob ? '貴社' : '貴校');
+    // 名前が空のときの呼び方は、本文と同じく「志望先の種類」から引く。
+    // ここだけ「貴社／貴校」に固定すると、大学（貴学）や病院（貴院）で本文とずれる
+    const name = txt(d.targetName) || orgTypeOf(mode, (d || {}).orgType).honorific;
     const sub = txt(d.targetSub);
     if (!sub) return name;
     return isJob ? name + 'の' + sub : name + sub;
@@ -1312,7 +1324,7 @@
             hint: '肩書きの名前だけ書きます。役割がなければ、空のままで構いません。',
             preview: function (d) {
               if (!txt(d.effortRole) || !txt(d.effortAction)) return '';
-              return txt(d.effortRole) + 'として、' + txt(d.effortAction) + 'に取り組みました。';
+              return roleLead(d.effortRole) + txt(d.effortAction) + 'に取り組みました。';
             }
           },
           {
@@ -1327,7 +1339,7 @@
             avoid: '「がんばりました」「一生懸命やりました」のような文は書きません',
             preview: function (d) {
               return txt(d.effortAction)
-                ? (txt(d.effortRole) ? txt(d.effortRole) + 'として、' : 'その中で、')
+                ? (roleLead(d.effortRole) || 'その中で、')
                   + txt(d.effortAction) + 'に取り組みました。'
                 : '';
             }
@@ -1343,7 +1355,7 @@
             preview: function (d) {
               const t = txt(d.effortAction);
               if (!t) return '';
-              const lead = txt(d.effortRole) ? txt(d.effortRole) + 'として、' : 'その中で、';
+              const lead = roleLead(d.effortRole) || 'その中で、';
               return d.effortActionKind === '自分が作ったもの・仕組み'
                 ? frame(t, lead + '{X}を作りました。', lead + '{X}ものを作りました。')
                 : frame(t, lead + '{X}に取り組みました。', lead + '{X}ことに力を注ぎました。');
@@ -1367,11 +1379,14 @@
           {
             id: 'effortHard', group: 'effort', type: 'text', maxChars: 30,
             only: ['prep', 'story', 'gap', 'three'],
+            // ここを書いた人にだけ「どうやって乗り越えましたか」を出す。
+            // 空のまま次を必須にすると、「それを」が何も指さない設問になってしまう
+            rerender: true,
             label: function (d) { return effortName(d) + 'で、いちばん大変だったこと'; },
             refer: function (d) { return about(effortAt(d, 0)); },
             placeholder: function (d) { return activityOf(effortAt(d, 0)).hard[0]; },
             examples: function (d) { return activityOf(effortAt(d, 0)).hard; },
-            hint: '大変だったことを書くと、そのあとの「乗り越え方」が活きます。'
+            hint: '大変だったことを書くと、下に「どうやって乗り越えましたか」の欄が出ます。'
               + '空でも進めますが、ここが書けると文章にぐっと厚みが出ます。',
             avoid: '「大変でした」だけでは、何が大変だったのか伝わりません',
             preview: function (d) {
@@ -1382,6 +1397,7 @@
           {
             id: 'effortHow', group: 'effort', type: 'text', maxChars: 30,
             only: ['prep', 'story', 'gap', 'three'],
+            showIf: function (d) { return !!txt(d.effortHard); },
             requiredIn: ['story'],
             label: 'それを、どうやって乗り越えましたか',
             refer: function (d) { return about(d.effortHard); },
@@ -1692,7 +1708,7 @@
         ].filter(usable).map(tune)
       },
 
-      // ───────────────────────────── 調べる
+      // ───────────────────────────── 会社／学校を選んだきっかけ
       {
         id: 'research',
         no: 2,
@@ -1738,7 +1754,7 @@
             id: 'knewByOther', group: 'meet', type: 'text', maxChars: 30, required: true,
             // 「その他」のときだけ、自分の言葉で書いてもらう
             showIf: function (d) { return txt(d.knewBy) === 'その他'; },
-            label: isJob ? 'どんなきっかけで知りましたか' : 'どんなきっかけで知りましたか',
+            label: 'どんなきっかけで知りましたか',
             refer: '「その他」を選びました',
             placeholder: isJob ? '家族が使っている製品' : '兄が通っていたこと',
             examples: isJob
@@ -1996,7 +2012,8 @@
             examples: isJob
               ? ['検査工程まで自社で行う体制', '入社1年目からの現場配属', '地元にこだわった生産']
               : ['提言まで行う地域連携', '1学年30人の少人数制', '附属病院での実習'],
-            hint: 'パンフレットや求人票で見つけた「ここだけ」を、ものの名前で書きます。'
+            hint: (isJob ? '求人票や会社のホームページ' : 'パンフレットや学校のホームページ')
+              + 'で見つけた「ここだけ」を、ものの名前で書きます。'
               + '読み手がいちばん知りたいのは、この一文です。',
             avoid: '「雰囲気が良い」「家から近い」は、他でも言えてしまいます',
             preview: function (d) {
@@ -2062,10 +2079,28 @@
             examples: isJob
               ? ['先輩への質問', '作業手順のメモ取り', 'あいさつと報告']
               : ['地域の方への取材', '毎日の予習', '先生への質問'],
-            hint: '入学・入社したその日からできる、小さなことで構いません。'
+            hint: (isJob ? '入社した' : '入学した') + 'その日からできる、小さなことで構いません。'
               + '小さいほど、本当にやるつもりだと伝わります。',
             preview: function (d) {
               return txt(d.afterAction) ? 'まずは' + txt(d.afterAction) + 'から始めたいです。' : '';
+            }
+          },
+          {
+            id: 'dailyImage', group: 'after', type: 'text', maxChars: 30,
+            label: isJob ? 'どんな場面で働いている自分を思い描きますか' : 'どんな場面で学んでいる自分を思い描きますか',
+            refer: function (d) {
+              const a = (d.afterEnter || []).slice(0, 2);
+              return a.length ? '「' + a.join('、') + '」について' : '';
+            },
+            placeholder: isJob ? '先輩と一緒に在庫を数えている場面' : 'ゼミで自分の考えを話している場面',
+            examples: isJob
+              ? ['先輩と一緒に在庫を数えている場面', '機械の音を聞き分けている場面', '後輩に手順を教えている場面']
+              : ['ゼミで自分の考えを話している場面', '実習先で患者さんと話している場面', '地域の方に取材している場面'],
+            hint: '入ってからの一場面を思い描いて書きます。'
+              + '具体的な絵が浮かぶほど、本気で考えていることが伝わります。空でも進めます。',
+            preview: function (d) {
+              return frame(d.dailyImage,
+                '{X}を思い描いています。', '{X}自分を思い描いています。');
             }
           },
           {
@@ -2085,7 +2120,8 @@
             refer: function (d) { return about(d.contribution); },
             options: CONTRIB_FROM,
             default: 'アルバイト',
-            hint: '上の欄とセットで、「自分が会社に何を返せるか」を示す一文になります。',
+            hint: '上の欄とセットで、「自分が' + (isJob ? '会社' : '学校')
+              + 'に何を返せるか」を示す一文になります。',
             preview: function (d) {
               return txt(d.contribution)
                 ? (txt(d.contributionFrom) || '高校生活') + 'で身につけた' + txt(d.contribution)
@@ -2111,39 +2147,6 @@
               + '選びまちがえると「先輩を身につけていたいです」という文になってしまいます。'
           },
           {
-            id: 'dailyImage', group: 'after', type: 'text', maxChars: 30,
-            label: isJob ? 'どんな場面で働いている自分を思い描きますか' : 'どんな場面で学んでいる自分を思い描きますか',
-            refer: function (d) {
-              const a = (d.afterEnter || []).slice(0, 2);
-              return a.length ? '「' + a.join('、') + '」について' : '';
-            },
-            placeholder: isJob ? '先輩と一緒に在庫を数えている場面' : 'ゼミで自分の考えを話している場面',
-            examples: isJob
-              ? ['先輩と一緒に在庫を数えている場面', '機械の音を聞き分けている場面', '後輩に手順を教えている場面']
-              : ['ゼミで自分の考えを話している場面', '実習先で患者さんと話している場面', '地域の方に取材している場面'],
-            hint: '入ってからの一場面を思い描いて書きます。'
-              + '具体的な絵が浮かぶほど、本気で考えていることが伝わります。空でも進めます。',
-            preview: function (d) {
-              return frame(d.dailyImage,
-                '{X}を思い描いています。', '{X}自分を思い描いています。');
-            }
-          },
-          {
-            id: 'contributeTo', group: 'far', type: 'text', maxChars: 25,
-            label: 'いずれは、誰の役に立ちたいですか',
-            placeholder: isJob ? '地域のものづくりを支える人' : '地域の高齢者',
-            examples: isJob
-              ? ['地域のものづくり', '現場で働く人', '製品を使う人']
-              : ['地域の高齢者', '子どもたち', '同じ悩みを持つ人'],
-            hint: '大きな話でなくて構いません。顔が浮かぶ相手を1つ書くと、'
-              + '文章の最後に芯が通ります。空でも進めます。',
-            preview: function (d) {
-              return frame(d.contributeTo,
-                'いずれは{X}の役に立てる人になりたいと考えています。',
-                'いずれは{X}人になりたいと考えています。');
-            }
-          },
-          {
             id: 'afterGradWhat', group: 'far', type: 'text', maxChars: 30,
             label: isJob ? 'そのとき、身につけていたいもの' : 'そのとき、目指していること',
             refer: function (d) { return about(d.afterGradWhen); },
@@ -2165,7 +2168,22 @@
                 : frame(d.afterGradWhat,
                   lead + '{X}を目指したいと考えています。', lead + '{X}ことを目指したいと考えています。');
             }
-          }
+          },
+          {
+            id: 'contributeTo', group: 'far', type: 'text', maxChars: 25,
+            label: 'いずれは、誰の役に立ちたいですか',
+            placeholder: isJob ? '地域のものづくりを支える人' : '地域の高齢者',
+            examples: isJob
+              ? ['地域のものづくり', '現場で働く人', '製品を使う人']
+              : ['地域の高齢者', '子どもたち', '同じ悩みを持つ人'],
+            hint: '大きな話でなくて構いません。顔が浮かぶ相手を1つ書くと、'
+              + '文章の最後に芯が通ります。空でも進めます。',
+            preview: function (d) {
+              return frame(d.contributeTo,
+                'いずれは{X}の役に立てる人になりたいと考えています。',
+                'いずれは{X}人になりたいと考えています。');
+            }
+          },
         ].filter(usable).map(tune)
       }
     ];
@@ -2246,6 +2264,7 @@
     featureWord: featureWord,
     strengthSentence: strengthSentence,
     effortUseLine: effortUseLine,
+    roleLead: roleLead,
     CHIP_JOIN_LIMIT: CHIP_JOIN_LIMIT
   };
 })(window);

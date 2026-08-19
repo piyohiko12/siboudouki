@@ -164,9 +164,17 @@ function saveRow(payload) {
     var sheet = getSheet();
     payload.timestamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
 
-    var values = COLUMNS.map(function (c) {
+    // 列は「見出しの名前」で探す。位置で決め打ちにすると、
+    // あとから COLUMNS の途中に項目を足したときに、
+    // すでに記録してある行と見出しがずれてしまう
+    var map = headerMap(sheet);
+    var width = sheet.getLastColumn();
+    var values = [];
+    for (var i = 0; i < width; i++) values.push('');
+
+    COLUMNS.forEach(function (c) {
       var v = payload[c.key];
-      return v === undefined || v === null ? '' : v;
+      values[map[c.label] - 1] = (v === undefined || v === null) ? '' : v;
     });
 
     var existing = UPDATE_IF_EXISTS ? findRow(sheet, payload.studentName, payload.targetName) : -1;
@@ -191,9 +199,11 @@ function findRow(sheet, name, target) {
   var last = sheet.getLastRow();
   if (last < 2) return -1;
 
-  var nameCol = colIndex('studentName');
-  var targetCol = colIndex('targetName');
-  var data = sheet.getRange(2, 1, last - 1, COLUMNS.length).getValues();
+  var map = headerMap(sheet);
+  var nameCol = map[labelOf('studentName')];
+  var targetCol = map[labelOf('targetName')];
+  if (!nameCol || !targetCol) return -1;
+  var data = sheet.getRange(2, 1, last - 1, sheet.getLastColumn()).getValues();
 
   for (var i = 0; i < data.length; i++) {
     if (String(data[i][nameCol - 1]).trim() === String(name).trim() &&
@@ -204,11 +214,46 @@ function findRow(sheet, name, target) {
   return -1;
 }
 
-function colIndex(key) {
+function labelOf(key) {
   for (var i = 0; i < COLUMNS.length; i++) {
-    if (COLUMNS[i].key === key) return i + 1;
+    if (COLUMNS[i].key === key) return COLUMNS[i].label;
   }
-  return -1;
+  return '';
+}
+
+/**
+ * いまシートに並んでいる見出しから「見出し名 → 列番号」を作る。
+ * COLUMNS にあってシートに無い見出しは、右端に足してから返す。
+ * これで、アプリ側に設問が増えても、すでに記録した行はそのまま残る。
+ */
+function headerMap(sheet) {
+  var width = sheet.getLastColumn();
+  var labels = width ? sheet.getRange(1, 1, 1, width).getValues()[0] : [];
+  var map = {};
+  for (var i = 0; i < labels.length; i++) {
+    var name = String(labels[i]).trim();
+    if (name && !map[name]) map[name] = i + 1;
+  }
+
+  var added = [];
+  COLUMNS.forEach(function (c) {
+    if (map[c.label]) return;
+    added.push(c);
+    map[c.label] = width + added.length;
+  });
+
+  if (added.length) {
+    sheet.getRange(1, width + 1, 1, added.length)
+         .setValues([added.map(function (c) { return c.label; })])
+         .setFontWeight('bold')
+         .setBackground('#2f6fd0')
+         .setFontColor('#ffffff')
+         .setVerticalAlignment('middle');
+    added.forEach(function (c, i) {
+      sheet.setColumnWidth(width + 1 + i, c.width || 140);
+    });
+  }
+  return map;
 }
 
 // ── シート準備 ────────────────────────────────────────
