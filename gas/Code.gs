@@ -13,6 +13,18 @@ var SHEET_NAME = '回答';
 /** 同じ「名前 + 志望校」の行があれば、追加せずに上書きする（書き直しを想定） */
 var UPDATE_IF_EXISTS = true;
 
+/**
+ * アプリ本体もここから配信するか。
+ *
+ * true にして Index.html を同じプロジェクトに置くと、
+ * ウェブアプリのURLを開くだけでアプリが使えるようになる。
+ * （GitHub Pages などに置く場合は false のままでよい）
+ */
+var SERVE_APP = true;
+
+/** 書きかけの下書きを預かるシート名（SERVE_APP のときだけ使う） */
+var DRAFT_SHEET_NAME = '下書き';
+
 /** 列の定義。順番がそのままスプレッドシートの列順になる。 */
 var COLUMNS = [
   { key: 'timestamp',        label: '送信日時',              width: 140 },
@@ -145,14 +157,147 @@ function doPost(e) {
   }
 }
 
-/** 動作確認用。ブラウザでURLを開くとこれが返る。 */
+/**
+ * ブラウザでウェブアプリのURLを開いたときの応答。
+ *
+ * SERVE_APP が true で Index.html が置いてあれば、アプリそのものを返す。
+ * 置いていなければ、動作確認用のJSONを返す（今までどおり）。
+ */
 function doGet() {
+  if (SERVE_APP) {
+    try {
+      return HtmlService.createHtmlOutputFromFile('Index')
+        .setTitle('志望動機メーカー')
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    } catch (err) {
+      // Index.html をまだ置いていないときは、下の確認用JSONにそのまま落ちる
+    }
+  }
   return json({
     ok: true,
     message: '志望動機メーカーの受信サーバーは動作しています。',
     sheet: SHEET_NAME,
     columns: COLUMNS.length
   });
+}
+
+// ── 配信したページから直接よばれる関数 ──────────────────
+//
+// google.script.run から呼ぶので、CORS も合言葉も要らない。
+// アクセスできる相手は、デプロイの「アクセスできるユーザー」で決まる。
+
+/** ページの「送信」ボタンから呼ばれる */
+function submitFromPage(payload) {
+  try {
+    if (!payload) return { ok: false, message: '送信内容が空です。' };
+    if (!String(payload.studentName || '').trim()) {
+      return { ok: false, message: '名前が入力されていません。' };
+    }
+    if (!String(payload.body || '').trim()) {
+      return { ok: false, message: '本文が空です。' };
+    }
+    var tooLong = null;
+    Object.keys(payload).forEach(function (k) {
+      if (String(payload[k] || '').length > MAX_FIELD_CHARS) tooLong = k;
+    });
+    if (tooLong) return { ok: false, message: '入力が長すぎます（' + tooLong + '）。' };
+
+    var saved = saveRow(payload);
+    return { ok: true, row: saved.row, mode: saved.mode, message: '保存しました。' };
+  } catch (err) {
+    return { ok: false, message: 'サーバー側でエラーが起きました: ' + err.message };
+  }
+}
+
+// ── 書きかけの下書き ───────────────────────────────────
+//
+// GAS が返すページは、読み込みのたびにアドレスが変わることがあり、
+// ブラウザの保存（localStorage）が「前回の続き」として残らない。
+// そこで、誰が開いているか分かるときだけ、シートに預かっておく。
+//
+// 「誰が開いているか」は、デプロイを
+//   実行するユーザー：自分
+//   アクセスできるユーザー：同じドメインの全員
+// にしたときに分かる。「全員（匿名を含む）」だと分からないので、
+// そのときは預からず、ブラウザの保存だけで動く。
+
+/** いま開いている人の目印（分からなければ空） */
+function draftKey() {
+  try {
+    return String(Session.getActiveUser().getEmail() || '').trim();
+  } catch (err) {
+    return '';
+  }
+}
+
+/** 下書きを預かれる状態か（ページ側が最初に確かめる） */
+function canKeepDraft() {
+  return SERVE_APP && !!draftKey();
+}
+
+function getDraftSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(DRAFT_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(DRAFT_SHEET_NAME);
+    sheet.getRange(1, 1, 1, 3).setValues([['だれ', '最終保存', '書きかけ']]);
+    sheet.setFrozenRows(1);
+    sheet.setColumnWidth(1, 220);
+    sheet.setColumnWidth(2, 150);
+    sheet.setColumnWidth(3, 400);
+    sheet.hideSheet();
+  }
+  return sheet;
+}
+
+/** 預かってある行を探す（無ければ -1） */
+function findDraftRow(sheet, key) {
+  var last = sheet.getLastRow();
+  if (last < 2) return -1;
+  var keys = sheet.getRange(2, 1, last - 1, 1).getValues();
+  for (var i = 0; i < keys.length; i++) {
+    if (String(keys[i][0]).trim() === key) return i + 2;
+  }
+  return -1;
+}
+
+function loadDraft() {
+  var key = draftKey();
+  if (!key) return '';
+  var sheet = getDraftSheet();
+  var row = findDraftRow(sheet, key);
+  return row > 0 ? String(sheet.getRange(row, 3).getValue() || '') : '';
+}
+
+function saveDraft(text) {
+  var key = draftKey();
+  if (!key) return false;
+  var body = String(text || '');
+  // セル1つに入る上限（5万字）を超えないよう、念のため見ておく
+  if (body.length > 45000) return false;
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sheet = getDraftSheet();
+    var when = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
+    var row = findDraftRow(sheet, key);
+    if (row > 0) sheet.getRange(row, 1, 1, 3).setValues([[key, when, body]]);
+    else sheet.appendRow([key, when, body]);
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function clearDraft() {
+  var key = draftKey();
+  if (!key) return false;
+  var sheet = getDraftSheet();
+  var row = findDraftRow(sheet, key);
+  if (row > 0) sheet.deleteRow(row);
+  return true;
 }
 
 // ── 保存処理 ─────────────────────────────────────────

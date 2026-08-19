@@ -5,7 +5,7 @@ const fs = require('fs'), vm = require('vm');
 const base = '/home/user/siboudouki/';
 
 /** 最低限のシートの代わり */
-function fakeSheet(header, rows) {
+function fakeSheet(header, rows, name) {
   const grid = [header.slice()].concat((rows || []).map(r => r.slice()));
   const pad = () => {
     const w = Math.max(...grid.map(r => r.length));
@@ -24,25 +24,42 @@ function fakeSheet(header, rows) {
       }
       return out;
     },
+    getValue() { return grid[api._r - 1][api._c - 1]; },
     setFontWeight: noop, setBackground: noop, setFontColor: noop,
     setVerticalAlignment: noop, setWrap: noop
   };
   return {
     grid: grid,
+    name: name || '回答',
     getLastRow: () => grid.length,
     getLastColumn: () => Math.max(...grid.map(r => r.length)),
     getRange(r, c, h, w) { api._r = r; api._c = c; api._h = h || 1; api._w = w || 1; return api; },
     appendRow(v) { grid.push(v.slice()); pad(); },
-    setColumnWidth: () => {}, setFrozenRows: () => {}, setRowHeight: () => {}
+    deleteRow(r) { grid.splice(r - 1, 1); },
+    setColumnWidth: () => {}, setFrozenRows: () => {}, setRowHeight: () => {}, hideSheet: () => {}
   };
 }
 
-function load(sheet) {
+function load(sheet, email) {
+  const sheets = { '回答': sheet };
   const ctx = {
     console,
     SpreadsheetApp: {
-      getActiveSpreadsheet: () => ({ getSheetByName: () => sheet, insertSheet: () => sheet }),
+      getActiveSpreadsheet: () => ({
+        getSheetByName: (n) => sheets[n] || null,
+        insertSheet: (n) => { sheets[n] = fakeSheet([], [], n); return sheets[n]; }
+      }),
       getUi: () => { throw new Error('no ui'); }
+    },
+    Session: { getActiveUser: () => ({ getEmail: () => (email === undefined ? 'hanako@example.ed.jp' : email) }) },
+    HtmlService: {
+      XFrameOptionsMode: { ALLOWALL: 1 },
+      createHtmlOutputFromFile: (n) => {
+        if (n !== 'Index') throw new Error('no file');
+        const o = { kind: 'html', file: n };
+        o.setTitle = () => o; o.addMetaTag = () => o; o.setXFrameOptionsMode = () => o;
+        return o;
+      }
     },
     Utilities: { formatDate: () => '2026/01/01 00:00:00', getUuid: () => 'test-uuid' },
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => '', setProperty: () => {} }) },
@@ -109,6 +126,75 @@ function is(label, got, want) {
   is('行が増えない', sheet.grid.length, 2);
   is('上書きになる', r.mode, 'update');
   is('本文が新しくなる', sheet.grid[1][head.indexOf('本文')], '2回目');
+}
+
+// ── 4. アプリ本体の配信 ───────────────────────────
+{
+  const ctx = load(fakeSheet([]));
+  console.log('アプリの配信:');
+  const res = ctx.doGet();
+  is('Index.html を返す', res.kind, 'html');
+
+  // Index.html を置いていないときは、確認用のJSONに落ちる
+  const ctx2 = load(fakeSheet([]));
+  ctx2.HtmlService.createHtmlOutputFromFile = () => { throw new Error('no file'); };
+  is('置いていなければ確認用の応答', JSON.parse(ctx2.doGet().getContent()).ok, 'true');
+}
+
+// ── 5. ページから直接よぶ送信 ──────────────────────
+{
+  const sheet = fakeSheet([]);
+  const ctx = load(sheet);
+  ctx.initSheet(sheet);
+  console.log('ページからの送信:');
+  is('名前が空なら断る', ctx.submitFromPage({ body: 'あ' }).ok, 'false');
+  is('本文が空なら断る', ctx.submitFromPage({ studentName: '山田' }).ok, 'false');
+  const r = ctx.submitFromPage({ studentName: '山田太郎', targetName: '〇〇社', body: 'ほんぶん' });
+  is('ふつうに保存できる', r.ok, 'true');
+  is('本文が入る', sheet.grid[1][sheet.grid[0].indexOf('本文')], 'ほんぶん');
+  is('合言葉は要らない', ctx.submitFromPage({ studentName: '佐藤', targetName: '△△社', body: 'x' }).ok, 'true');
+}
+
+// ── 6. 書きかけの下書き ──────────────────────────
+{
+  const ctx = load(fakeSheet([]));
+  console.log('書きかけの下書き:');
+  is('預かれる', ctx.canKeepDraft(), 'true');
+  is('はじめは空', ctx.loadDraft(), '');
+  ctx.saveDraft('{"data":{"studentName":"山田太郎"},"savedAt":1}');
+  is('預けたものが戻る', JSON.parse(ctx.loadDraft()).data.studentName, '山田太郎');
+  ctx.saveDraft('{"data":{"studentName":"山田次郎"},"savedAt":2}');
+  is('上書きになる', JSON.parse(ctx.loadDraft()).data.studentName, '山田次郎');
+  ctx.clearDraft();
+  is('消せる', ctx.loadDraft(), '');
+
+  // 誰が開いているか分からないとき（匿名で公開したとき）は預からない
+  const anon = load(fakeSheet([]), '');
+  is('匿名なら預からない', anon.canKeepDraft(), 'false');
+  is('匿名では読めない', anon.loadDraft(), '');
+  is('匿名では書けない', anon.saveDraft('x'), 'false');
+}
+
+// ── 7. 人がちがえば下書きも別 ─────────────────────
+{
+  const shared = fakeSheet([]);
+  const a = load(shared, 'a@example.ed.jp');
+  const b = load(shared, 'b@example.ed.jp');
+  // 同じスプレッドシートを見るように、下書きシートを共有させる
+  const box = {};
+  [a, b].forEach(ctx => {
+    ctx.SpreadsheetApp.getActiveSpreadsheet = () => ({
+      getSheetByName: (n) => box[n] || null,
+      insertSheet: (n) => { box[n] = fakeSheet([], [], n); return box[n]; }
+    });
+  });
+  a.saveDraft('{"savedAt":1,"data":{"studentName":"Aさん"}}');
+  b.saveDraft('{"savedAt":1,"data":{"studentName":"Bさん"}}');
+  console.log('人ごとの下書き:');
+  is('Aさんの下書き', JSON.parse(a.loadDraft()).data.studentName, 'Aさん');
+  is('Bさんの下書き', JSON.parse(b.loadDraft()).data.studentName, 'Bさん');
+  a.clearDraft();
+  is('Aを消してもBは残る', JSON.parse(b.loadDraft()).data.studentName, 'Bさん');
 }
 
 console.log('\n=== ' + (bad ? bad + ' 件おかしい' : '問題なし') + ' ===');

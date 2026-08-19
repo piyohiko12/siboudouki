@@ -26,6 +26,7 @@
     foldDone: true,      // 答え終わった設問を1行にたたむか
     open: {},            // たたむ設定でも開いておく設問（画面を移ると空に戻す）
     touched: {},         // 生徒が自分で触った設問
+    savedAt: 0,          // いま画面に出ている内容が、いつ保存されたものか
     bodyEdited: false,   // 本文を手で直したか（自動再生成の上書き確認に使う）
     submitted: null
   };
@@ -80,18 +81,49 @@
   // 「やり直す」を押したあとは、読み込み直すまで一切保存しない
   let saveOff = false;
 
+  function snapshot() {
+    return JSON.stringify({
+      data: state.data, custom: state.custom, index: state.index,
+      bodyEdited: state.bodyEdited, helpOpen: state.helpOpen, foldDone: state.foldDone,
+      touched: state.touched, savedAt: Date.now()
+    });
+  }
+
   function save() {
     if (saveOff) return;
+    const text = snapshot();
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        data: state.data, custom: state.custom, index: state.index,
-        bodyEdited: state.bodyEdited, helpOpen: state.helpOpen, foldDone: state.foldDone,
-        touched: state.touched
-      }));
+      localStorage.setItem(STORAGE_KEY, text);
       flashSaved();
     } catch (e) {
       console.warn('保存できませんでした', e);
     }
+    keepOnServer(text);
+  }
+
+  /**
+   * GAS から配信しているときは、サーバー側にも預けておく。
+   *
+   * GAS のページは読み込みのたびにアドレスが変わることがあり、
+   * localStorage が「前回の続き」として残らない。
+   * ただ毎回よぶと重いので、少し間をおいてまとめて送る。
+   */
+  let serverTimer = null;
+  let serverPending = null;
+
+  function keepOnServer(text) {
+    if (!global.API.inGas()) return;
+    serverPending = text;
+    clearTimeout(serverTimer);
+    serverTimer = setTimeout(flushToServer, 2500);
+  }
+
+  function flushToServer() {
+    clearTimeout(serverTimer);
+    if (saveOff || serverPending == null) return;
+    const text = serverPending;
+    serverPending = null;
+    global.API.saveDraft(text);
   }
 
   function scheduleSave() {
@@ -103,7 +135,16 @@
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return false;
-      const saved = JSON.parse(raw);
+      return apply(JSON.parse(raw));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** 保存しておいた内容を、いまの状態に流し込む */
+  function apply(saved) {
+    try {
+      if (!saved || !saved.data) return false;
       Object.assign(state.data, saved.data || {});
       state.data.whyChain = Object.assign({ why1: '', why2: '', why3: '' }, state.data.whyChain);
       migrate();
@@ -113,10 +154,36 @@
       state.foldDone = saved.foldDone !== false;
       state.touched = saved.touched || {};
       state.index = Math.min(saved.index || 0, views().length - 1);
+      state.savedAt = saved.savedAt || 0;
       return true;
     } catch (e) {
       return false;
     }
+  }
+
+  /**
+   * サーバーに預けてあった下書きを取りにいく（GAS 配信のときだけ）。
+   * この端末に残っているものより新しければ、そちらを使う。
+   */
+  async function restoreFromServer() {
+    if (!global.API.inGas()) return false;
+    let raw;
+    try {
+      raw = await global.API.loadDraft();
+    } catch (e) {
+      return false;
+    }
+    if (!raw) return false;
+    let saved;
+    try {
+      saved = JSON.parse(raw);
+    } catch (e) {
+      return false;
+    }
+    if ((saved.savedAt || 0) <= (state.savedAt || 0)) return false;
+    if (!apply(saved)) return false;
+    render();
+    return true;
   }
 
   /** 旧バージョンの保存データを、今の形に寄せる */
@@ -1837,9 +1904,14 @@
     // 先に保存の口をすべて閉じてから消す
     window.removeEventListener('beforeunload', save);
     if (saveTimer) clearTimeout(saveTimer);
+    clearTimeout(serverTimer);
     saveOff = true;
+    serverPending = null;
     localStorage.removeItem(STORAGE_KEY);
-    location.reload();
+    if (!global.API.inGas()) { location.reload(); return; }
+    // サーバーに預けてあるぶんも消してから開き直す
+    global.API.clearDraft().then(function () { location.reload(); },
+      function () { location.reload(); });
   }
 
   /** いま何問答えているか（消す前の確認に出す） */
@@ -1849,6 +1921,19 @@
       st.fields.forEach(function (f) { if (answered(f)) n += 1; });
     });
     return n;
+  }
+
+  /** 「前回の続きから」の知らせを出す */
+  function tellRestored(restored) {
+    if (!restored || state.index <= 0) return;
+    const el = document.getElementById('saveIndicator');
+    el.textContent = '前回の続きから再開しました';
+    el.classList.add('is-visible');
+    clearTimeout(tellRestored._t);
+    tellRestored._t = setTimeout(function () {
+      el.classList.remove('is-visible');
+      el.textContent = '保存しました';
+    }, 2600);
   }
 
   // ── 起動 ─────────────────────────────────────────
@@ -1861,17 +1946,16 @@
 
     const restored = load();
     render();
-    if (restored && state.index > 0) {
-      const el = document.getElementById('saveIndicator');
-      el.textContent = '前回の続きから再開しました';
-      el.classList.add('is-visible');
-      setTimeout(function () {
-        el.classList.remove('is-visible');
-        el.textContent = '保存しました';
-      }, 2600);
-    }
+    tellRestored(restored);
 
-    window.addEventListener('beforeunload', save);
+    // サーバーに新しい下書きがあれば、そちらで上書きする
+    restoreFromServer().then(function (fromServer) {
+      if (fromServer) tellRestored(true);
+    });
+
+    window.addEventListener('beforeunload', function () { save(); flushToServer(); });
+    // 画面を切り替えるところは、まとまりの切れ目なので預けておく
+    window.addEventListener('pagehide', flushToServer);
   }
 
   document.addEventListener('DOMContentLoaded', boot);

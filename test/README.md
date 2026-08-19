@@ -9,7 +9,8 @@ node test/options.js   選択肢を1つずつ文にして目で確認（約290�
 node test/case1.js     実際に生徒が作った文章の再現（不具合が戻っていないか）
 node test/metrics.js   文章の読み心地を数字で測る（改善の前後を比べる）
 node test/consistency.js 設問のそろい方（ID重複・見出しの並び・進路ごとの言葉・列のずれ）
-node test/gas.js       受信側の列そろえ（あとから列が増えても行がずれないか）
+node test/gas.js       受信側の点検（列そろえ・配信・下書きの預かり）
+node test/gas-page.js  GAS から配信したときの通し操作（Playwright と http-server が必要）
 node test/ui.js        ブラウザでの通し操作（Playwright と http-server が必要）
 ```
 
@@ -107,3 +108,16 @@ OLD=HEAD~1 node test/metrics.js   1つ前のコミットのコードで測る
 受信側（`gas/Code.gs`）を、スプレッドシートの代わりの偽物で動かします。
 **アプリに設問が増えて列が途中に入っても、
 すでに記録してある行がずれないこと**を確かめます。
+
+### gas-page.js
+`gas/Code.gs` を偽のスプレッドシートで動かしつつ、
+ブラウザ側には `google.script.run` のふりをする物を置いて、
+**GAS から配信したときの動き**を通しで見ます。
+
+| 見ているもの |
+|---|
+| GAS 配信だと気づいて、合言葉なしで動くか |
+| 書きかけがサーバー（下書きシート）に預けられるか |
+| そのパソコンの保存を消しても、続きから書けるか |
+| 送信が「回答」シートに入るか |
+| 「やり直す」で、預かっているぶんも消えるか |
