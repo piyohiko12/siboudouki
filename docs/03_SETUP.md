@@ -127,8 +127,13 @@ window.APP_CONFIG = {
 学校で配りたい場合は GitHub Pages が手軽です。
 
 1. GitHub リポジトリの **Settings → Pages**
-2. Source を **Deploy from a branch**、Branch を `main` / `(root)` にする
-3. 数分後に `https://<ユーザー名>.github.io/<リポジトリ名>/` で開けるようになる
+2. Source を **Deploy from a branch** にする
+3. Branch は、そのリポジトリの**既定のブランチ**（Code タブを開いたときに選ばれているもの）、
+   フォルダは `/(root)` を選んで **Save**
+4. 数分後に `https://<ユーザー名>.github.io/<リポジトリ名>/` で開けるようになる
+
+ビルドは要りません。`index.html` がそのまま動きます。
+あとから直したときは、そのブランチに push すれば1〜2分で反映されます。
 
 > 注意：`config.js` の合言葉は、公開すると誰でも見られます。
 > 合言葉は「いたずら投稿を減らす」程度のものと考え、
